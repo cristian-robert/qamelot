@@ -35,6 +35,7 @@ paths:
 - Mutations → Tanstack Query `useMutation` — never raw `fetch` inside components
 - Forms → React Hook Form + Zod schema imported from `@app/shared`
 - Invoke `react-best-practices` skill when editing any `.tsx` file
+- Invoke `frontend-design` skill when building any UI — pages, layouts, or components
 - Invoke `nextjs` skill for routing, layouts, or Server Component patterns
 
 ## General

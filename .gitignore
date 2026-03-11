@@ -37,3 +37,4 @@ coverage/
 
 # Turbo
 .turbo/
+apps/frontend/tsconfig.tsbuildinfo

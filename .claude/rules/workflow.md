@@ -33,7 +33,8 @@ Save to `docs/plans/issue-X-slug.md` and commit before writing any code.
 | Any `.tsx` file | `react-best-practices` |
 | Next.js routing / Server Components | `nextjs` |
 | New UI components | `shadcn-ui-expert` |
-| New UI screens / design | `frontend-design` or `ui-ux-pro-max:ui-ux-pro-max` |
+| Building any UI (pages, layouts, components) | `frontend-design` — ALWAYS invoke when building UI |
+| New UI screens / design decisions | `ui-ux-pro-max:ui-ux-pro-max` |
 | Tailwind setup / config | `tailwind-v4-shadcn` |
 | Database schema changes | `postgresql-table-design` + `postgresql-expert` |
 | New NestJS module | `backend-architect:backend-architect` |

@@ -1,0 +1,80 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT_COMMAND\" | grep -qE 'git push.*(origin )?(main|master)'; then echo '[Hook] BLOCKED: Never push directly to main/master. Open a PR instead.' >&2; exit 1; fi",
+            "description": "Block direct push to main/master"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT_COMMAND\" | grep -qE 'git commit.*(-n\\b|--no-verify)'; then echo '[Hook] BLOCKED: Never skip commit hooks with --no-verify or -n. Fix the underlying issue.' >&2; exit 1; fi",
+            "description": "Block --no-verify and -n on commits"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT_COMMAND\" | grep -qE 'git commit' && git diff --cached 2>/dev/null | grep -q 'console\\.log'; then echo '[Hook] BLOCKED: console.log found in staged files. Remove it before committing.' >&2; exit 1; fi",
+            "description": "Block git commit if console.log is staged"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT_COMMAND\" | grep -qE '(npm install|npm add|yarn add|yarn install)'; then echo '[Hook] BLOCKED: Use pnpm, not npm or yarn. Run: pnpm install or pnpm add <pkg>' >&2; exit 1; fi",
+            "description": "Enforce pnpm - block npm/yarn installs"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '\\.(ts|tsx)$'; then npx prettier --write \"$CLAUDE_TOOL_INPUT_FILE_PATH\" 2>/dev/null || true; fi",
+            "description": "Auto-format TypeScript/TSX files after edit"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '\\.ts$' && ! echo \"$CLAUDE_TOOL_INPUT_FILE_PATH\" | grep -qE '\\.(spec|test)\\.ts$'; then npx tsc --noEmit --skipLibCheck 2>&1 | head -20 || true; fi",
+            "description": "Run type check after editing TypeScript source files"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if git diff --cached --name-only 2>/dev/null | grep -qE '\\.(ts|tsx|js|jsx)$'; then git diff --cached 2>/dev/null | grep -q 'console\\.log' && echo '[Hook] WARNING: Staged files still contain console.log. Clean up before final commit.' >&2 || true; fi",
+            "description": "Final session warning if console.log remains staged"
+          }
+        ]
+      }
+    ]
+  }
+}

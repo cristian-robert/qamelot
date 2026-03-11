@@ -1,0 +1,21 @@
+module.exports = {
+  root: true,
+  parser: '@typescript-eslint/parser',
+  plugins: ['@typescript-eslint'],
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+  ],
+  rules: {
+    '@typescript-eslint/no-explicit-any': 'error',
+    'no-console': 'error',
+  },
+  ignorePatterns: [
+    'dist/',
+    '.next/',
+    'node_modules/',
+    'coverage/',
+    '**/*.config.js',
+    '**/*.config.mjs',
+  ],
+};

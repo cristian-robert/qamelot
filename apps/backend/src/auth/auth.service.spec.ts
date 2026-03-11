@@ -98,6 +98,25 @@ describe('AuthService', () => {
     });
   });
 
+  describe('refreshTokens', () => {
+    it('signs new access and refresh tokens', async () => {
+      mockUsersService.findById.mockResolvedValue(testUser);
+      mockJwtService.sign.mockReturnValueOnce('new-access').mockReturnValueOnce('new-refresh');
+
+      const result = await service.refreshTokens('user-1');
+
+      expect(result).toEqual({
+        accessToken: 'new-access',
+        refreshToken: 'new-refresh',
+      });
+    });
+
+    it('throws UnauthorizedException when user not found', async () => {
+      mockUsersService.findById.mockResolvedValue(null);
+      await expect(service.refreshTokens('missing')).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
   describe('getProfile', () => {
     it('returns user without password field', async () => {
       mockUsersService.findById.mockResolvedValue(testUser);

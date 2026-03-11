@@ -19,3 +19,10 @@ export interface UserDto extends BaseEntity {
   name: string;
   role: Role;
 }
+
+// JWT payload embedded in access/refresh tokens
+export interface JwtPayload {
+  sub: string;   // user id (cuid)
+  email: string;
+  role: Role;
+}

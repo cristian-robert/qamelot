@@ -25,10 +25,28 @@ model User {
 }
 
 model Project {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   name        String
   description String?
   deletedAt   DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  testSuites  TestSuite[]
+}
+
+model TestSuite {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id])
+  parentId    String?
+  parent      TestSuite?  @relation("SuiteTree", fields: [parentId], references: [id])
+  children    TestSuite[] @relation("SuiteTree")
+  deletedAt   DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([projectId])
+  @@index([parentId])
 }

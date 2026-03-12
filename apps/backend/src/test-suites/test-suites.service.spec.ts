@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TestSuitesService } from './test-suites.service';
 
@@ -154,11 +154,17 @@ describe('TestSuitesService', () => {
     });
 
     it('moves a suite to a different parent', async () => {
-      const newParent = { ...mockSuite, id: 'suite-3', name: 'New Parent' };
+      const suiteThree = { ...mockSuite, id: 'suite-3', name: 'New Parent' };
       const moved = { ...childSuite, parentId: 'suite-3' };
       mockPrisma.testSuite.findFirst
-        .mockResolvedValueOnce(childSuite)
-        .mockResolvedValueOnce(newParent);
+        .mockResolvedValueOnce(childSuite)   // verify suite-2 exists
+        .mockResolvedValueOnce(suiteThree);  // verify suite-3 exists
+      // collectDescendantIds fetches all suites in project
+      mockPrisma.testSuite.findMany.mockResolvedValue([
+        { id: 'suite-1', parentId: null },
+        { id: 'suite-2', parentId: 'suite-1' },
+        { id: 'suite-3', parentId: null },
+      ]);
       mockPrisma.testSuite.update.mockResolvedValue(moved);
 
       const result = await service.update(PROJECT_ID, 'suite-2', { parentId: 'suite-3' });
@@ -168,6 +174,30 @@ describe('TestSuitesService', () => {
         data: { parentId: 'suite-3' },
       });
       expect(result).toEqual(moved);
+    });
+
+    it('throws BadRequestException when setting parent to self', async () => {
+      mockPrisma.testSuite.findFirst.mockResolvedValue(mockSuite);
+
+      await expect(
+        service.update(PROJECT_ID, 'suite-1', { parentId: 'suite-1' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when creating circular reference', async () => {
+      // suite-1 -> suite-2 (child), trying to move suite-1 under suite-2
+      mockPrisma.testSuite.findFirst
+        .mockResolvedValueOnce(mockSuite)    // verify suite-1 exists
+        .mockResolvedValueOnce(childSuite);  // verify suite-2 exists
+      // collectDescendantIds: suite-2 is a descendant of suite-1
+      mockPrisma.testSuite.findMany.mockResolvedValue([
+        { id: 'suite-1', parentId: null },
+        { id: 'suite-2', parentId: 'suite-1' },
+      ]);
+
+      await expect(
+        service.update(PROJECT_ID, 'suite-1', { parentId: 'suite-2' }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('validates new parent exists when moving to non-null parent', async () => {
@@ -192,9 +222,11 @@ describe('TestSuitesService', () => {
   describe('softDelete', () => {
     it('soft-deletes a suite and its descendants', async () => {
       mockPrisma.testSuite.findFirst.mockResolvedValue(mockSuite);
-      mockPrisma.testSuite.findMany
-        .mockResolvedValueOnce([childSuite])  // children of suite-1
-        .mockResolvedValueOnce([]);           // children of suite-2 (leaf)
+      // collectDescendantIds now fetches all project suites in one query
+      mockPrisma.testSuite.findMany.mockResolvedValue([
+        { id: 'suite-1', parentId: null },
+        { id: 'suite-2', parentId: 'suite-1' },
+      ]);
       mockPrisma.testSuite.updateMany.mockResolvedValue({ count: 2 });
 
       const result = await service.softDelete(PROJECT_ID, 'suite-1');

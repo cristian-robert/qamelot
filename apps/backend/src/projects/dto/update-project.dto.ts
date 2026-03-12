@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, MinLength, MaxLength } from 'class-validator';
+import { IsString, IsOptional, MinLength, MaxLength, ValidateIf } from 'class-validator';
 
 export class UpdateProjectDto {
   @ApiPropertyOptional({ example: 'Updated Name', maxLength: 100 })
@@ -10,6 +10,7 @@ export class UpdateProjectDto {
   name?: string;
 
   @ApiPropertyOptional({ example: 'Updated description', maxLength: 500, nullable: true })
+  @ValidateIf((o) => o.description !== null)
   @IsString()
   @IsOptional()
   @MaxLength(500)

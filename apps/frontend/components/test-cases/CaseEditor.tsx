@@ -1,0 +1,155 @@
+'use client';
+
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  CreateTestCaseSchema,
+  type CreateTestCaseInput,
+  type TestCaseDto,
+} from '@app/shared';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { StepEditor } from './StepEditor';
+
+interface CaseEditorProps {
+  testCase?: TestCaseDto;
+  onSave: (data: CreateTestCaseInput) => void;
+  onCancel: () => void;
+  isPending: boolean;
+}
+
+const PRIORITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
+const TYPES = ['FUNCTIONAL', 'REGRESSION', 'SMOKE', 'ACCEPTANCE', 'EXPLORATORY'] as const;
+
+function formatLabel(value: string) {
+  return value.charAt(0) + value.slice(1).toLowerCase();
+}
+
+export function CaseEditor({ testCase, onSave, onCancel, isPending }: CaseEditorProps) {
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm<CreateTestCaseInput>({
+    resolver: zodResolver(CreateTestCaseSchema),
+    defaultValues: {
+      title: testCase?.title ?? '',
+      preconditions: testCase?.preconditions ?? '',
+      steps: testCase?.steps ?? [],
+      priority: testCase?.priority ?? 'MEDIUM',
+      type: testCase?.type ?? 'FUNCTIONAL',
+      automationFlag: testCase?.automationFlag ?? false,
+    },
+  });
+
+  return (
+    <form onSubmit={handleSubmit(onSave)} className="space-y-4">
+      <div className="space-y-1">
+        <Label htmlFor="title">Title</Label>
+        <Input id="title" {...register('title')} placeholder="Test case title" />
+        {errors.title && (
+          <p className="text-sm text-destructive">{errors.title.message}</p>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        <Label htmlFor="preconditions">Preconditions</Label>
+        <Textarea
+          id="preconditions"
+          {...register('preconditions')}
+          placeholder="Pre-conditions for this test case"
+          rows={3}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <Label>Priority</Label>
+          <Controller
+            control={control}
+            name="priority"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRIORITIES.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {formatLabel(p)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <Label>Type</Label>
+          <Controller
+            control={control}
+            name="type"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {formatLabel(t)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Controller
+          control={control}
+          name="automationFlag"
+          render={({ field }) => (
+            <Checkbox
+              id="automationFlag"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
+          )}
+        />
+        <Label htmlFor="automationFlag">Automated</Label>
+      </div>
+
+      <Controller
+        control={control}
+        name="steps"
+        render={({ field }) => (
+          <StepEditor steps={field.value ?? []} onChange={field.onChange} />
+        )}
+      />
+
+      <div className="flex gap-2 pt-2">
+        <Button type="submit" disabled={isPending}>
+          {isPending ? 'Saving…' : 'Save'}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}

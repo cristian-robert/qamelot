@@ -32,6 +32,7 @@ model Project {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   testSuites  TestSuite[]
+  testCases   TestCase[]
 }
 
 model TestSuite {
@@ -43,10 +44,46 @@ model TestSuite {
   parentId    String?
   parent      TestSuite?  @relation("SuiteTree", fields: [parentId], references: [id])
   children    TestSuite[] @relation("SuiteTree")
+  testCases   TestCase[]
   deletedAt   DateTime?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
   @@index([projectId])
   @@index([parentId])
+}
+
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum TestCaseType {
+  FUNCTIONAL
+  REGRESSION
+  SMOKE
+  ACCEPTANCE
+  EXPLORATORY
+}
+
+model TestCase {
+  id              String       @id @default(cuid())
+  title           String
+  preconditions   String?
+  steps           Json         @default("[]")
+  priority        Priority     @default(MEDIUM)
+  type            TestCaseType @default(FUNCTIONAL)
+  automationFlag  Boolean      @default(false)
+  suiteId         String
+  suite           TestSuite    @relation(fields: [suiteId], references: [id])
+  projectId       String
+  project         Project      @relation(fields: [projectId], references: [id])
+  deletedAt       DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([suiteId])
+  @@index([projectId])
 }

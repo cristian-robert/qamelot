@@ -43,3 +43,39 @@ export interface JwtPayload {
   email: string;
   role: Role;
 }
+
+// Test case priority levels
+export enum TestCasePriority {
+  CRITICAL = 'CRITICAL',
+  HIGH = 'HIGH',
+  MEDIUM = 'MEDIUM',
+  LOW = 'LOW',
+}
+
+// Test case type classifications
+export enum TestCaseType {
+  FUNCTIONAL = 'FUNCTIONAL',
+  REGRESSION = 'REGRESSION',
+  SMOKE = 'SMOKE',
+  ACCEPTANCE = 'ACCEPTANCE',
+  EXPLORATORY = 'EXPLORATORY',
+}
+
+// A single step in a test case
+export interface TestCaseStep {
+  action: string;
+  expected: string;
+}
+
+// Test case shape returned by API
+export interface TestCaseDto extends BaseEntity {
+  projectId: string;
+  suiteId: string;
+  title: string;
+  preconditions: string | null;
+  steps: TestCaseStep[];
+  priority: TestCasePriority;
+  type: TestCaseType;
+  automationFlag: boolean;
+  deletedAt: string | null;
+}

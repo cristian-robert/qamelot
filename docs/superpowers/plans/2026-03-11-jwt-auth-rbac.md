@@ -12,13 +12,7 @@
 
 ## pnpm alias (set in every shell session before running commands)
 
-Because `pnpm` is not on PATH in the MINGW64/Git Bash shell on this machine, define this function at the top of every terminal session before running any pnpm commands:
-
-```bash
-pnpm() { "/c/Users/roby2/AppData/Roaming/nvm/v22.14.0/node.exe" "/c/Users/roby2/AppData/Roaming/npm/node_modules/pnpm/bin/pnpm.cjs" "$@"; }
-```
-
-All `pnpm` commands in this plan assume this alias is active.
+If `pnpm` is not on PATH in your shell, define a shell function that invokes `node` and the `pnpm.cjs` binary directly. All `pnpm` commands in this plan assume pnpm is available.
 
 ---
 
@@ -73,11 +67,9 @@ All `pnpm` commands in this plan assume this alias is active.
 **Files:**
 - Modify: `apps/backend/package.json` (via pnpm add)
 
-- [ ] **Step 1: Set pnpm alias**
+- [ ] **Step 1: Ensure pnpm is available**
 
-```bash
-pnpm() { "/c/Users/roby2/AppData/Roaming/nvm/v22.14.0/node.exe" "/c/Users/roby2/AppData/Roaming/npm/node_modules/pnpm/bin/pnpm.cjs" "$@"; }
-```
+Verify `pnpm` is on PATH or set a shell alias/function if needed.
 
 - [ ] **Step 2: Install backend runtime deps**
 

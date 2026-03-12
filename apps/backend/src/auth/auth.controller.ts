@@ -86,6 +86,7 @@ export class AuthController {
     return res.json({ ok: true });
   }
 
+  @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Clear auth cookies' })

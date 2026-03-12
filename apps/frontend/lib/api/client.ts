@@ -1,0 +1,17 @@
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: {
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as Record<string, string>).message ?? `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}

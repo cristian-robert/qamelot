@@ -48,8 +48,8 @@ const fakeUser: UserDto = {
   email: 'test@example.com',
   name: 'Test User',
   role: Role.TESTER,
-  createdAt: new Date('2026-01-01'),
-  updatedAt: new Date('2026-01-01'),
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
 describe('useAuth', () => {

@@ -1,7 +1,8 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CaseEditor } from './CaseEditor';
-import type { TestCaseDto } from '@app/shared';
+import { TestCasePriority, TestCaseType, type TestCaseDto } from '@app/shared';
 
 describe('CaseEditor', () => {
   const mockOnSave = vi.fn();
@@ -24,8 +25,8 @@ describe('CaseEditor', () => {
       title: 'Verify login',
       preconditions: 'User exists',
       steps: [{ action: 'Click', expected: 'OK' }],
-      priority: 'HIGH',
-      type: 'REGRESSION',
+      priority: TestCasePriority.HIGH,
+      type: TestCaseType.REGRESSION,
       automationFlag: true,
       suiteId: 'suite-1',
       projectId: 'proj-1',

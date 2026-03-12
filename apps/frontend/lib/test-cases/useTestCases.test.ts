@@ -1,9 +1,10 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { useTestCases, testCasesQueryKey } from './useTestCases';
 import { testCasesApi } from '../api/test-cases';
-import type { TestCaseDto } from '@app/shared';
+import { TestCasePriority, TestCaseType, type TestCaseDto } from '@app/shared';
 
 vi.mock('../api/test-cases', () => ({
   testCasesApi: {
@@ -27,8 +28,8 @@ const mockCase: TestCaseDto = {
   title: 'Verify login',
   preconditions: null,
   steps: [],
-  priority: 'MEDIUM',
-  type: 'FUNCTIONAL',
+  priority: TestCasePriority.MEDIUM,
+  type: TestCaseType.FUNCTIONAL,
   automationFlag: false,
   suiteId: SUITE_ID,
   projectId: PROJECT_ID,

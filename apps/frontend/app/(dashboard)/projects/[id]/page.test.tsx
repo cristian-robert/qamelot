@@ -18,9 +18,20 @@ vi.mock('@/lib/api/projects', () => ({
   },
 }));
 
+vi.mock('@/lib/api/test-suites', () => ({
+  testSuitesApi: {
+    listByProject: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+  },
+}));
+
 import { projectsApi } from '@/lib/api/projects';
+import { testSuitesApi } from '@/lib/api/test-suites';
 
 const mockGetById = projectsApi.getById as ReturnType<typeof vi.fn>;
+const mockListSuites = testSuitesApi.listByProject as ReturnType<typeof vi.fn>;
 
 function renderWithProviders(ui: React.ReactElement) {
   const queryClient = new QueryClient({
@@ -41,6 +52,7 @@ describe('ProjectDetailPage', () => {
 
   it('shows loading state initially', () => {
     mockGetById.mockReturnValue(new Promise(() => {}));
+    mockListSuites.mockReturnValue(new Promise(() => {}));
 
     renderWithProviders(React.createElement(ProjectDetailPage));
 
@@ -56,6 +68,7 @@ describe('ProjectDetailPage', () => {
       createdAt: '2026-01-01',
       updatedAt: '2026-01-01',
     });
+    mockListSuites.mockResolvedValue([]);
 
     renderWithProviders(React.createElement(ProjectDetailPage));
 
@@ -67,11 +80,78 @@ describe('ProjectDetailPage', () => {
 
   it('shows not found when project does not exist', async () => {
     mockGetById.mockRejectedValue(new Error('HTTP 404'));
+    mockListSuites.mockResolvedValue([]);
 
     renderWithProviders(React.createElement(ProjectDetailPage));
 
     await waitFor(() => {
       expect(screen.getByText('Project not found.')).toBeInTheDocument();
+    });
+  });
+
+  it('shows suite sidebar with empty state', async () => {
+    mockGetById.mockResolvedValue({
+      id: 'proj-1',
+      name: 'Alpha Project',
+      description: null,
+      deletedAt: null,
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+    });
+    mockListSuites.mockResolvedValue([]);
+
+    renderWithProviders(React.createElement(ProjectDetailPage));
+
+    await waitFor(() => {
+      expect(screen.getByText('Alpha Project')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/no suites/i)).toBeInTheDocument();
+  });
+
+  it('renders suites in the sidebar', async () => {
+    mockGetById.mockResolvedValue({
+      id: 'proj-1',
+      name: 'Alpha Project',
+      description: null,
+      deletedAt: null,
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+    });
+    mockListSuites.mockResolvedValue([
+      {
+        id: 'suite-1',
+        projectId: 'proj-1',
+        name: 'Login Tests',
+        description: null,
+        parentId: null,
+        deletedAt: null,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      },
+    ]);
+
+    renderWithProviders(React.createElement(ProjectDetailPage));
+
+    await waitFor(() => {
+      expect(screen.getByText('Login Tests')).toBeInTheDocument();
+    });
+  });
+
+  it('shows create suite button', async () => {
+    mockGetById.mockResolvedValue({
+      id: 'proj-1',
+      name: 'Alpha Project',
+      description: null,
+      deletedAt: null,
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+    });
+    mockListSuites.mockResolvedValue([]);
+
+    renderWithProviders(React.createElement(ProjectDetailPage));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /new suite/i })).toBeInTheDocument();
     });
   });
 });

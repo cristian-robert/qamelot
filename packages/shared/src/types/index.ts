@@ -6,11 +6,12 @@ export enum Role {
   VIEWER = 'VIEWER',
 }
 
-// Base entity fields present on every DB record
+// Base entity fields present on every DB record.
+// Dates are strings (ISO 8601) because JSON has no Date type.
 export interface BaseEntity {
   id: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Minimal user shape returned by API (no password hash)
@@ -24,7 +25,7 @@ export interface UserDto extends BaseEntity {
 export interface ProjectDto extends BaseEntity {
   name: string;
   description: string | null;
-  deletedAt: Date | null;
+  deletedAt: string | null;
 }
 
 // JWT payload embedded in access/refresh tokens

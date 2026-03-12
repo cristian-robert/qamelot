@@ -10,8 +10,9 @@ describe('ProjectsService', () => {
     project: {
       create: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
-      update: jest.fn(),
+      updateMany: jest.fn(),
     },
   };
 
@@ -66,73 +67,76 @@ describe('ProjectsService', () => {
 
   describe('findOne', () => {
     it('returns project when found and not deleted', async () => {
-      mockPrisma.project.findUnique.mockResolvedValue(testProject);
+      mockPrisma.project.findFirst.mockResolvedValue(testProject);
 
       const result = await service.findOne('proj-1');
 
-      expect(mockPrisma.project.findUnique).toHaveBeenCalledWith({
-        where: { id: 'proj-1' },
+      expect(mockPrisma.project.findFirst).toHaveBeenCalledWith({
+        where: { id: 'proj-1', deletedAt: null },
       });
       expect(result).toEqual(testProject);
     });
 
     it('throws NotFoundException when project not found', async () => {
-      mockPrisma.project.findUnique.mockResolvedValue(null);
+      mockPrisma.project.findFirst.mockResolvedValue(null);
 
       await expect(service.findOne('nonexistent')).rejects.toThrow(NotFoundException);
-    });
-
-    it('throws NotFoundException when project is soft-deleted', async () => {
-      mockPrisma.project.findUnique.mockResolvedValue({
-        ...testProject,
-        deletedAt: new Date(),
-      });
-
-      await expect(service.findOne('proj-1')).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
-    it('updates and returns the project', async () => {
+    it('atomically updates and returns the project', async () => {
       const updated = { ...testProject, name: 'Updated Name' };
-      mockPrisma.project.findUnique.mockResolvedValue(testProject);
-      mockPrisma.project.update.mockResolvedValue(updated);
+      mockPrisma.project.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.project.findUnique.mockResolvedValue(updated);
 
       const result = await service.update('proj-1', { name: 'Updated Name' });
 
-      expect(mockPrisma.project.update).toHaveBeenCalledWith({
-        where: { id: 'proj-1' },
+      expect(mockPrisma.project.updateMany).toHaveBeenCalledWith({
+        where: { id: 'proj-1', deletedAt: null },
         data: { name: 'Updated Name' },
       });
       expect(result).toEqual(updated);
     });
 
     it('throws NotFoundException when project does not exist', async () => {
-      mockPrisma.project.findUnique.mockResolvedValue(null);
+      mockPrisma.project.updateMany.mockResolvedValue({ count: 0 });
 
       await expect(service.update('nonexistent', { name: 'X' })).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when project is soft-deleted', async () => {
+      mockPrisma.project.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.update('proj-1', { name: 'X' })).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('softDelete', () => {
-    it('sets deletedAt timestamp on the project', async () => {
+    it('atomically sets deletedAt on the project', async () => {
       const deleted = { ...testProject, deletedAt: new Date() };
-      mockPrisma.project.findUnique.mockResolvedValue(testProject);
-      mockPrisma.project.update.mockResolvedValue(deleted);
+      mockPrisma.project.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.project.findUnique.mockResolvedValue(deleted);
 
       const result = await service.softDelete('proj-1');
 
-      expect(mockPrisma.project.update).toHaveBeenCalledWith({
-        where: { id: 'proj-1' },
+      expect(mockPrisma.project.updateMany).toHaveBeenCalledWith({
+        where: { id: 'proj-1', deletedAt: null },
         data: { deletedAt: expect.any(Date) },
       });
-      expect(result.deletedAt).not.toBeNull();
+      expect(result!.deletedAt).not.toBeNull();
     });
 
     it('throws NotFoundException when project does not exist', async () => {
-      mockPrisma.project.findUnique.mockResolvedValue(null);
+      mockPrisma.project.updateMany.mockResolvedValue({ count: 0 });
 
       await expect(service.softDelete('nonexistent')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when project is already soft-deleted', async () => {
+      mockPrisma.project.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(service.softDelete('proj-1')).rejects.toThrow(NotFoundException);
     });
   });
 });

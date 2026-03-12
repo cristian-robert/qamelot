@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 
 export default function ProjectsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { projects, isLoading, createProject } = useProjects();
+  const { projects, isLoading, error, createProject } = useProjects();
 
   const {
     register,
@@ -20,6 +20,18 @@ export default function ProjectsPage() {
   } = useForm<CreateProjectInput>({
     resolver: zodResolver(CreateProjectSchema),
   });
+
+  useEffect(() => {
+    if (!dialogOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setDialogOpen(false);
+        reset();
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [dialogOpen, reset]);
 
   function openDialog() {
     reset();
@@ -46,7 +58,11 @@ export default function ProjectsPage() {
         <Button onClick={openDialog}>New Project</Button>
       </div>
 
-      {isLoading ? (
+      {error ? (
+        <p className="text-sm text-destructive">
+          {error instanceof Error ? error.message : 'Failed to load projects'}
+        </p>
+      ) : isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : projects.length === 0 ? (
         <p className="text-sm text-muted-foreground">No projects yet. Create your first project to get started.</p>
@@ -75,8 +91,12 @@ export default function ProjectsPage() {
           aria-modal="true"
           aria-label="Create project"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={closeDialog}
         >
-          <div className="w-full max-w-md rounded-lg border bg-card p-6 shadow-lg space-y-4">
+          <div
+            className="w-full max-w-md rounded-lg border bg-card p-6 shadow-lg space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className="text-lg font-semibold">New Project</h2>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

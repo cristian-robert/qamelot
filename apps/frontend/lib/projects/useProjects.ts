@@ -9,7 +9,7 @@ export const PROJECTS_QUERY_KEY = ['projects'] as const;
 export function useProjects() {
   const queryClient = useQueryClient();
 
-  const { data: projects, isLoading } = useQuery({
+  const { data: projects, isLoading, error } = useQuery({
     queryKey: PROJECTS_QUERY_KEY,
     queryFn: projectsApi.list,
   });
@@ -39,6 +39,7 @@ export function useProjects() {
   return {
     projects: projects ?? [],
     isLoading,
+    error,
     createProject,
     updateProject,
     deleteProject,

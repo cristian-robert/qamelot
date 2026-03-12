@@ -18,23 +18,34 @@ export class ProjectsService {
   }
 
   async findOne(id: string) {
-    const project = await this.prisma.project.findUnique({ where: { id } });
-    if (!project || project.deletedAt) {
-      throw new NotFoundException(`Project ${id} not found`);
+    const project = await this.prisma.project.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!project) {
+      throw new NotFoundException('Project not found');
     }
     return project;
   }
 
   async update(id: string, data: UpdateProjectInput) {
-    await this.findOne(id);
-    return this.prisma.project.update({ where: { id }, data });
+    const result = await this.prisma.project.updateMany({
+      where: { id, deletedAt: null },
+      data,
+    });
+    if (result.count === 0) {
+      throw new NotFoundException('Project not found');
+    }
+    return this.prisma.project.findUnique({ where: { id } });
   }
 
   async softDelete(id: string) {
-    await this.findOne(id);
-    return this.prisma.project.update({
-      where: { id },
+    const result = await this.prisma.project.updateMany({
+      where: { id, deletedAt: null },
       data: { deletedAt: new Date() },
     });
+    if (result.count === 0) {
+      throw new NotFoundException('Project not found');
+    }
+    return this.prisma.project.findUnique({ where: { id } });
   }
 }

@@ -116,7 +116,9 @@ export default function ProjectsPage() {
 
               {createProject.error && (
                 <p className="text-sm text-destructive">
-                  {(createProject.error as Error).message}
+                  {createProject.error instanceof Error
+                    ? createProject.error.message
+                    : 'Failed to create project'}
                 </p>
               )}
 

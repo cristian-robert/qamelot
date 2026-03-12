@@ -28,6 +28,15 @@ export interface ProjectDto extends BaseEntity {
   deletedAt: string | null;
 }
 
+// Test suite node in a hierarchical tree structure
+export interface TestSuiteDto extends BaseEntity {
+  projectId: string;
+  name: string;
+  description: string | null;
+  parentId: string | null;
+  deletedAt: string | null;
+}
+
 // JWT payload embedded in access/refresh tokens
 export interface JwtPayload {
   sub: string;   // user id (cuid)

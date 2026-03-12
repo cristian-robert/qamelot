@@ -102,6 +102,6 @@ describe('SuiteTree', () => {
       />,
     );
 
-    expect(screen.getByText(/no suites/i)).toBeInTheDocument();
+    expect(screen.getByText(/no suites yet/i)).toBeInTheDocument();
   });
 });

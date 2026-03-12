@@ -72,4 +72,14 @@ describe('buildTree', () => {
 
     expect(tree).toHaveLength(2);
   });
+
+  it('treats nodes with missing parents as root nodes', () => {
+    const suites = [
+      makeSuite({ id: 'orphan', name: 'Orphan', parentId: 'deleted-parent' }),
+    ];
+    const tree = buildTree(suites);
+
+    expect(tree).toHaveLength(1);
+    expect(tree[0].id).toBe('orphan');
+  });
 });

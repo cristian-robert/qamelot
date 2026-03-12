@@ -20,7 +20,7 @@ export function SuiteTree({ tree, onCreateChild, onRename, onDelete }: SuiteTree
   if (tree.length === 0) {
     return (
       <p className="px-3 py-4 text-sm text-muted-foreground">
-        No suites yet. Right-click to create one.
+        No suites yet. Use the button above to create one.
       </p>
     );
   }

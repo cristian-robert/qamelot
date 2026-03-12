@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { JwtService } from '@nestjs/jwt';
+import { UnauthorizedException } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { Role } from '@app/shared';
@@ -9,10 +9,6 @@ const mockAuthService = {
   login: jest.fn(),
   refreshTokens: jest.fn(),
   getProfile: jest.fn(),
-};
-
-const mockJwtService = {
-  verify: jest.fn(),
 };
 
 const testUser = {
@@ -42,7 +38,6 @@ describe('AuthController', () => {
       controllers: [AuthController],
       providers: [
         { provide: AuthService, useValue: mockAuthService },
-        { provide: JwtService, useValue: mockJwtService },
       ],
     }).compile();
     controller = module.get<AuthController>(AuthController);
@@ -80,18 +75,56 @@ describe('AuthController', () => {
       expect(res['cookie']).toHaveBeenCalledWith(
         'refresh_token',
         'rt',
-        expect.objectContaining({ httpOnly: true }),
+        expect.objectContaining({ httpOnly: true, path: '/auth/refresh' }),
       );
       expect(res['json']).toHaveBeenCalledWith(testUser);
     });
   });
 
+  describe('refresh', () => {
+    it('rotates tokens when valid refresh cookie is present', async () => {
+      mockAuthService.refreshTokens.mockResolvedValue({
+        accessToken: 'new-at',
+        refreshToken: 'new-rt',
+      });
+      const req = { cookies: { refresh_token: 'valid-refresh-token' } };
+      const res = mockResponse();
+      await controller.refresh(req as never, res as never);
+
+      expect(mockAuthService.refreshTokens).toHaveBeenCalledWith('valid-refresh-token');
+      expect(res['cookie']).toHaveBeenCalledWith(
+        'access_token',
+        'new-at',
+        expect.objectContaining({ httpOnly: true }),
+      );
+      expect(res['cookie']).toHaveBeenCalledWith(
+        'refresh_token',
+        'new-rt',
+        expect.objectContaining({ httpOnly: true, path: '/auth/refresh' }),
+      );
+      expect(res['json']).toHaveBeenCalledWith({ ok: true });
+    });
+
+    it('throws UnauthorizedException when no refresh cookie', async () => {
+      const req = { cookies: {} };
+      const res = mockResponse();
+      await expect(controller.refresh(req as never, res as never))
+        .rejects.toThrow(UnauthorizedException);
+    });
+  });
+
   describe('logout', () => {
-    it('clears both auth cookies', async () => {
+    it('clears both auth cookies with matching options', async () => {
       const res = mockResponse();
       await controller.logout(res as never);
-      expect(res['clearCookie']).toHaveBeenCalledWith('access_token');
-      expect(res['clearCookie']).toHaveBeenCalledWith('refresh_token');
+      expect(res['clearCookie']).toHaveBeenCalledWith(
+        'access_token',
+        expect.objectContaining({ httpOnly: true, path: '/' }),
+      );
+      expect(res['clearCookie']).toHaveBeenCalledWith(
+        'refresh_token',
+        expect.objectContaining({ httpOnly: true, path: '/auth/refresh' }),
+      );
     });
   });
 

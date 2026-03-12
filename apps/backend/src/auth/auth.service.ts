@@ -29,20 +29,30 @@ export class AuthService {
     if (!valid) throw new UnauthorizedException('Invalid credentials');
 
     const payload: JwtPayload = { sub: user.id, email: user.email, role: user.role as Role };
-    const accessToken = this.jwt.sign(payload, { expiresIn: '15m' });
-    const refreshToken = this.jwt.sign(payload, { expiresIn: '7d' });
+    const accessToken = this.jwt.sign({ ...payload, type: 'access' }, { expiresIn: '15m' });
+    const refreshToken = this.jwt.sign({ ...payload, type: 'refresh' }, { expiresIn: '7d' });
 
     return { accessToken, refreshToken, user: this.toDto(user) };
   }
 
-  async refreshTokens(userId: string): Promise<{ accessToken: string; refreshToken: string }> {
-    const user = await this.users.findById(userId);
+  async refreshTokens(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+    let payload: { sub: string; type?: string };
+    try {
+      payload = this.jwt.verify(refreshToken) as { sub: string; type?: string };
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+    if (payload.type !== 'refresh') {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const user = await this.users.findById(payload.sub);
     if (!user) throw new UnauthorizedException('User not found');
 
-    const payload: JwtPayload = { sub: user.id, email: user.email, role: user.role as Role };
-    const accessToken = this.jwt.sign(payload, { expiresIn: '15m' });
-    const refreshToken = this.jwt.sign(payload, { expiresIn: '7d' });
-    return { accessToken, refreshToken };
+    const newPayload: JwtPayload = { sub: user.id, email: user.email, role: user.role as Role };
+    const accessToken = this.jwt.sign({ ...newPayload, type: 'access' }, { expiresIn: '15m' });
+    const newRefreshToken = this.jwt.sign({ ...newPayload, type: 'refresh' }, { expiresIn: '7d' });
+    return { accessToken, refreshToken: newRefreshToken };
   }
 
   async getProfile(userId: string): Promise<UserDto> {

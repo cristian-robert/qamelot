@@ -7,10 +7,10 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response, Request } from 'express';
-import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -23,12 +23,16 @@ const COOKIE_OPTIONS = {
   path: '/',
 };
 
+const REFRESH_COOKIE_OPTIONS = {
+  ...COOKIE_OPTIONS,
+  path: '/auth/refresh',
+};
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
-    private readonly jwt: JwtService,
   ) {}
 
   @Public()
@@ -53,7 +57,7 @@ export class AuthController {
       maxAge: 15 * 60 * 1000,
     });
     res.cookie('refresh_token', refreshToken, {
-      ...COOKIE_OPTIONS,
+      ...REFRESH_COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     return res.json(user);
@@ -63,27 +67,20 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Rotate access token using refresh cookie' })
+  @ApiResponse({ status: 200, description: 'Tokens rotated' })
+  @ApiResponse({ status: 401, description: 'Invalid or missing refresh token' })
   async refresh(@Req() req: Request, @Res() res: Response) {
     const refreshToken = req.cookies?.['refresh_token'];
-    if (!refreshToken) {
-      return res.status(401).json({ message: 'No refresh token' });
-    }
-
-    let payload: { sub: string };
-    try {
-      payload = this.jwt.verify(refreshToken) as { sub: string };
-    } catch {
-      return res.status(401).json({ message: 'Invalid refresh token' });
-    }
+    if (!refreshToken) throw new UnauthorizedException('No refresh token');
 
     const { accessToken, refreshToken: newRefreshToken } =
-      await this.auth.refreshTokens(payload.sub);
+      await this.auth.refreshTokens(refreshToken);
     res.cookie('access_token', accessToken, {
       ...COOKIE_OPTIONS,
       maxAge: 15 * 60 * 1000,
     });
     res.cookie('refresh_token', newRefreshToken, {
-      ...COOKIE_OPTIONS,
+      ...REFRESH_COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     return res.json({ ok: true });
@@ -92,9 +89,11 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Clear auth cookies' })
+  @ApiResponse({ status: 200, description: 'Cookies cleared' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
   async logout(@Res() res: Response) {
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
+    res.clearCookie('access_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, path: '/' });
+    res.clearCookie('refresh_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, path: '/auth/refresh' });
     return res.json({ ok: true });
   }
 

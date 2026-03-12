@@ -16,6 +16,7 @@ const mockUsersService = {
 
 const mockJwtService = {
   sign: jest.fn(),
+  verify: jest.fn(),
 };
 
 const testUser = {
@@ -99,21 +100,34 @@ describe('AuthService', () => {
   });
 
   describe('refreshTokens', () => {
-    it('signs new access and refresh tokens', async () => {
+    it('verifies token and signs new access and refresh tokens', async () => {
+      mockJwtService.verify.mockReturnValue({ sub: 'user-1', type: 'refresh' });
       mockUsersService.findById.mockResolvedValue(testUser);
       mockJwtService.sign.mockReturnValueOnce('new-access').mockReturnValueOnce('new-refresh');
 
-      const result = await service.refreshTokens('user-1');
+      const result = await service.refreshTokens('valid-refresh-token');
 
+      expect(mockJwtService.verify).toHaveBeenCalledWith('valid-refresh-token');
       expect(result).toEqual({
         accessToken: 'new-access',
         refreshToken: 'new-refresh',
       });
     });
 
+    it('throws UnauthorizedException when token verification fails', async () => {
+      mockJwtService.verify.mockImplementation(() => { throw new Error('invalid'); });
+      await expect(service.refreshTokens('bad-token')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('throws UnauthorizedException when token type is not refresh', async () => {
+      mockJwtService.verify.mockReturnValue({ sub: 'user-1', type: 'access' });
+      await expect(service.refreshTokens('access-token')).rejects.toThrow(UnauthorizedException);
+    });
+
     it('throws UnauthorizedException when user not found', async () => {
+      mockJwtService.verify.mockReturnValue({ sub: 'missing', type: 'refresh' });
       mockUsersService.findById.mockResolvedValue(null);
-      await expect(service.refreshTokens('missing')).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshTokens('valid-token')).rejects.toThrow(UnauthorizedException);
     });
   });
 

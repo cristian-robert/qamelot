@@ -65,9 +65,11 @@ function SelectTrigger({
   )
 }
 
-function SelectValue() {
+function SelectValue({ placeholder, formatter }: { placeholder?: string; formatter?: (value: string) => string }) {
   const { value } = useSelectContext()
-  return <span>{value}</span>
+  if (!value && placeholder) return <span className="text-muted-foreground">{placeholder}</span>
+  const display = formatter && value ? formatter(value) : value
+  return <span>{display || placeholder}</span>
 }
 
 function SelectContent({
@@ -75,12 +77,38 @@ function SelectContent({
   children,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  const { open } = useSelectContext()
+  const { open, setOpen } = useSelectContext()
+  const contentRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (!open) return
+
+    function handleMouseDown(e: MouseEvent) {
+      if (contentRef.current && !contentRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleMouseDown)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [open, setOpen])
 
   if (!open) return null
 
   return (
     <div
+      ref={contentRef}
+      role="listbox"
       className={cn(
         "relative z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md",
         className,
@@ -103,6 +131,7 @@ function SelectItem({ className, value, children, ...props }: SelectItemProps) {
     <div
       role="option"
       aria-selected={selected === value}
+      tabIndex={0}
       className={cn(
         "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
         selected === value && "bg-accent text-accent-foreground",

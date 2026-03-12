@@ -9,8 +9,10 @@ import {
   ValidateIf,
   MinLength,
   MaxLength,
+  ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { TestCasePriority, TestCaseType } from '@app/shared';
 import { TestCaseStepDto } from './test-case-step.dto';
 
 export class UpdateTestCaseDto {
@@ -18,7 +20,7 @@ export class UpdateTestCaseDto {
   @IsString()
   @IsOptional()
   @MinLength(1)
-  @MaxLength(200)
+  @MaxLength(300)
   title?: string;
 
   @ApiPropertyOptional({ example: 'Updated preconditions', maxLength: 2000, nullable: true })
@@ -30,22 +32,23 @@ export class UpdateTestCaseDto {
 
   @ApiPropertyOptional({ type: [TestCaseStepDto], description: 'Ordered test steps' })
   @IsArray()
+  @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => TestCaseStepDto)
   @IsOptional()
   steps?: TestCaseStepDto[];
 
   @ApiPropertyOptional({ enum: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] })
-  @IsIn(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
+  @IsIn(Object.values(TestCasePriority))
   @IsOptional()
-  priority?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  priority?: TestCasePriority;
 
   @ApiPropertyOptional({
     enum: ['FUNCTIONAL', 'REGRESSION', 'SMOKE', 'ACCEPTANCE', 'EXPLORATORY'],
   })
-  @IsIn(['FUNCTIONAL', 'REGRESSION', 'SMOKE', 'ACCEPTANCE', 'EXPLORATORY'])
+  @IsIn(Object.values(TestCaseType))
   @IsOptional()
-  type?: 'FUNCTIONAL' | 'REGRESSION' | 'SMOKE' | 'ACCEPTANCE' | 'EXPLORATORY';
+  type?: TestCaseType;
 
   @ApiPropertyOptional({ example: true })
   @IsBoolean()

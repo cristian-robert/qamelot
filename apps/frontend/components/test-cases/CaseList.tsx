@@ -3,7 +3,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { TestCaseDto } from '@app/shared';
+import { TestCasePriority, type TestCaseDto } from '@app/shared';
+import { formatLabel } from '@/lib/format';
 
 interface CaseListProps {
   cases: TestCaseDto[];
@@ -13,16 +14,12 @@ interface CaseListProps {
   onDelete: (id: string) => void;
 }
 
-const PRIORITY_VARIANT: Record<string, 'destructive' | 'default' | 'secondary' | 'outline'> = {
-  CRITICAL: 'destructive',
-  HIGH: 'default',
-  MEDIUM: 'secondary',
-  LOW: 'outline',
+const PRIORITY_VARIANT: Record<TestCasePriority, 'destructive' | 'default' | 'secondary' | 'outline'> = {
+  [TestCasePriority.CRITICAL]: 'destructive',
+  [TestCasePriority.HIGH]: 'default',
+  [TestCasePriority.MEDIUM]: 'secondary',
+  [TestCasePriority.LOW]: 'outline',
 };
-
-function formatLabel(value: string) {
-  return value.charAt(0) + value.slice(1).toLowerCase();
-}
 
 export function CaseList({ cases, selectedId, onSelect, onCreate, onDelete }: CaseListProps) {
   return (

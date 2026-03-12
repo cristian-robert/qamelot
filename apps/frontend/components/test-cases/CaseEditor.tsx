@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StepEditor } from './StepEditor';
+import { formatLabel } from '@/lib/format';
 
 interface CaseEditorProps {
   testCase?: TestCaseDto;
@@ -30,10 +31,6 @@ interface CaseEditorProps {
 
 const PRIORITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
 const TYPES = ['FUNCTIONAL', 'REGRESSION', 'SMOKE', 'ACCEPTANCE', 'EXPLORATORY'] as const;
-
-function formatLabel(value: string) {
-  return value.charAt(0) + value.slice(1).toLowerCase();
-}
 
 export function CaseEditor({ testCase, onSave, onCancel, isPending }: CaseEditorProps) {
   const {
@@ -82,7 +79,7 @@ export function CaseEditor({ testCase, onSave, onCancel, isPending }: CaseEditor
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue formatter={formatLabel} />
                 </SelectTrigger>
                 <SelectContent>
                   {PRIORITIES.map((p) => (
@@ -104,7 +101,7 @@ export function CaseEditor({ testCase, onSave, onCancel, isPending }: CaseEditor
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue formatter={formatLabel} />
                 </SelectTrigger>
                 <SelectContent>
                   {TYPES.map((t) => (

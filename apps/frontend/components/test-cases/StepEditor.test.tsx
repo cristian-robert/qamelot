@@ -88,4 +88,16 @@ describe('StepEditor', () => {
       { action: 'First', expected: 'R1' },
     ]);
   });
+
+  it('updates a step action field', async () => {
+    const user = userEvent.setup();
+    const steps: TestCaseStep[] = [{ action: 'Old action', expected: 'Result' }];
+    render(<StepEditor steps={steps} onChange={mockOnChange} />);
+
+    const actionInput = screen.getByDisplayValue('Old action');
+    await user.clear(actionInput);
+    await user.type(actionInput, 'New');
+
+    expect(mockOnChange).toHaveBeenCalled();
+  });
 });

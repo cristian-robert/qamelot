@@ -14,7 +14,7 @@ import { CaseEditor } from '@/components/test-cases/CaseEditor';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { TreeNode } from '@/lib/test-suites/tree-utils';
-import type { CreateTestSuiteInput, CreateTestCaseInput } from '@app/shared';
+import type { CreateTestSuiteInput, CreateTestCaseInput, UpdateTestCaseInput } from '@app/shared';
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -106,8 +106,12 @@ export default function ProjectDetailPage() {
         onSuccess: () => setEditorMode('idle'),
       });
     } else if (editorMode === 'edit' && selectedCaseId) {
+      const updateData: UpdateTestCaseInput = {
+        ...data,
+        preconditions: data.preconditions ?? null,
+      };
       updateCase.mutate(
-        { id: selectedCaseId, data },
+        { id: selectedCaseId, data: updateData },
         { onSuccess: () => setEditorMode('idle') },
       );
     }

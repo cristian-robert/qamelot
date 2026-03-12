@@ -41,44 +41,38 @@ export function CaseList({ cases, selectedId, onSelect, onCreate, onDelete }: Ca
             {cases.map((tc) => (
               <div
                 key={tc.id}
-                role="button"
-                tabIndex={0}
                 data-selected={selectedId === tc.id}
-                className={`flex w-full cursor-pointer flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-muted/50 ${
+                className={`flex items-center transition-colors ${
                   selectedId === tc.id ? 'bg-muted' : ''
                 }`}
-                onClick={() => onSelect(tc.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onSelect(tc.id);
-                  }
-                }}
               >
-                <span className="text-sm font-medium">{tc.title}</span>
-                <div className="flex items-center gap-2">
-                  <Badge variant={PRIORITY_VARIANT[tc.priority] ?? 'secondary'}>
-                    {formatLabel(tc.priority)}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">{formatLabel(tc.type)}</span>
-                  {tc.automationFlag && (
-                    <span className="text-xs text-muted-foreground">Auto</span>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    {tc.steps.length} step{tc.steps.length !== 1 ? 's' : ''}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label={`Delete ${tc.title}`}
-                    className="ml-auto text-xs text-muted-foreground hover:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(tc.id);
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="flex flex-1 cursor-pointer flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+                  onClick={() => onSelect(tc.id)}
+                >
+                  <span className="text-sm font-medium">{tc.title}</span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={PRIORITY_VARIANT[tc.priority] ?? 'secondary'}>
+                      {formatLabel(tc.priority)}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{formatLabel(tc.type)}</span>
+                    {tc.automationFlag && (
+                      <span className="text-xs text-muted-foreground">Auto</span>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {tc.steps.length} step{tc.steps.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete ${tc.title}`}
+                  className="mr-4 shrink-0 text-xs text-muted-foreground hover:text-destructive"
+                  onClick={() => onDelete(tc.id)}
+                >
+                  Delete
+                </button>
               </div>
             ))}
           </div>

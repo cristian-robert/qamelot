@@ -2,8 +2,11 @@
 
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
   CreateTestCaseSchema,
+  TestCasePriority,
+  TestCaseType,
   type CreateTestCaseInput,
   type TestCaseDto,
 } from '@app/shared';
@@ -38,14 +41,14 @@ export function CaseEditor({ testCase, onSave, onCancel, isPending }: CaseEditor
     handleSubmit,
     control,
     formState: { errors },
-  } = useForm<CreateTestCaseInput>({
+  } = useForm<z.input<typeof CreateTestCaseSchema>>({
     resolver: zodResolver(CreateTestCaseSchema),
     defaultValues: {
       title: testCase?.title ?? '',
       preconditions: testCase?.preconditions ?? '',
       steps: testCase?.steps ?? [],
-      priority: testCase?.priority ?? 'MEDIUM',
-      type: testCase?.type ?? 'FUNCTIONAL',
+      priority: testCase?.priority ?? TestCasePriority.MEDIUM,
+      type: testCase?.type ?? TestCaseType.FUNCTIONAL,
       automationFlag: testCase?.automationFlag ?? false,
     },
   });
@@ -72,13 +75,13 @@ export function CaseEditor({ testCase, onSave, onCancel, isPending }: CaseEditor
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label>Priority</Label>
+          <Label htmlFor="priority">Priority</Label>
           <Controller
             control={control}
             name="priority"
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger>
+                <SelectTrigger id="priority">
                   <SelectValue formatter={formatLabel} />
                 </SelectTrigger>
                 <SelectContent>
@@ -94,13 +97,13 @@ export function CaseEditor({ testCase, onSave, onCancel, isPending }: CaseEditor
         </div>
 
         <div className="space-y-1">
-          <Label>Type</Label>
+          <Label htmlFor="type">Type</Label>
           <Controller
             control={control}
             name="type"
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger>
+                <SelectTrigger id="type">
                   <SelectValue formatter={formatLabel} />
                 </SelectTrigger>
                 <SelectContent>

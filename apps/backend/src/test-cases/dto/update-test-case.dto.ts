@@ -16,7 +16,7 @@ import { TestCasePriority, TestCaseType } from '@app/shared';
 import { TestCaseStepDto } from './test-case-step.dto';
 
 export class UpdateTestCaseDto {
-  @ApiPropertyOptional({ example: 'Updated test title', maxLength: 200 })
+  @ApiPropertyOptional({ example: 'Updated test title', maxLength: 300 })
   @IsString()
   @IsOptional()
   @MinLength(1)

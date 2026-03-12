@@ -15,7 +15,7 @@ import { TestCasePriority, TestCaseType } from '@app/shared';
 import { TestCaseStepDto } from './test-case-step.dto';
 
 export class CreateTestCaseDto {
-  @ApiProperty({ example: 'Verify login with valid credentials', maxLength: 200 })
+  @ApiProperty({ example: 'Verify login with valid credentials', maxLength: 300 })
   @IsString()
   @MinLength(1)
   @MaxLength(300)

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TestCasesService } from './test-cases.service';
+import { TestCasePriority, TestCaseType } from '@app/shared';
 
 const PROJECT_ID = 'proj-1';
 const SUITE_ID = 'suite-1';
@@ -193,8 +194,8 @@ describe('TestCasesService', () => {
 
       const result = await service.update(PROJECT_ID, 'case-1', {
         steps: newSteps,
-        priority: 'HIGH',
-        type: 'REGRESSION',
+        priority: TestCasePriority.HIGH,
+        type: TestCaseType.REGRESSION,
         automationFlag: true,
       });
 

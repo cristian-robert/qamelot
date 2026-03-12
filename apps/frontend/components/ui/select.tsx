@@ -141,6 +141,13 @@ function SelectItem({ className, value, children, ...props }: SelectItemProps) {
         onValueChange(value)
         setOpen(false)
       }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onValueChange(value)
+          setOpen(false)
+        }
+      }}
       {...props}
     >
       {children}

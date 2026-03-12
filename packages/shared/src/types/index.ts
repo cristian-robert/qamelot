@@ -20,6 +20,13 @@ export interface UserDto extends BaseEntity {
   role: Role;
 }
 
+// Project shape returned by API
+export interface ProjectDto extends BaseEntity {
+  name: string;
+  description: string | null;
+  deletedAt: Date | null;
+}
+
 // JWT payload embedded in access/refresh tokens
 export interface JwtPayload {
   sub: string;   // user id (cuid)

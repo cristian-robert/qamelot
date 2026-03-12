@@ -22,7 +22,7 @@ describe('SuiteTree', () => {
   const mockOnRename = vi.fn();
   const mockOnDelete = vi.fn();
 
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it('renders suite names', () => {
     const tree = [

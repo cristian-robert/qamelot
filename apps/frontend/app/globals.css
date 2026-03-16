@@ -1,31 +1,66 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.145 0 0);
+  --color-background: oklch(0.985 0 0);
+  --color-foreground: oklch(0.145 0.02 240);
   --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.145 0 0);
-  --color-primary: oklch(0.205 0 0);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-secondary: oklch(0.97 0 0);
-  --color-secondary-foreground: oklch(0.205 0 0);
-  --color-muted: oklch(0.97 0 0);
-  --color-muted-foreground: oklch(0.556 0 0);
-  --color-accent: oklch(0.97 0 0);
-  --color-accent-foreground: oklch(0.205 0 0);
+  --color-card-foreground: oklch(0.145 0.02 240);
+  --color-primary: oklch(0.55 0.17 155);
+  --color-primary-foreground: oklch(0.99 0 0);
+  --color-secondary: oklch(0.965 0.01 155);
+  --color-secondary-foreground: oklch(0.25 0.05 155);
+  --color-muted: oklch(0.955 0.005 240);
+  --color-muted-foreground: oklch(0.45 0.02 240);
+  --color-accent: oklch(0.92 0.03 155);
+  --color-accent-foreground: oklch(0.25 0.05 155);
   --color-destructive: oklch(0.577 0.245 27.325);
-  --color-border: oklch(0.922 0 0);
-  --color-input: oklch(0.922 0 0);
-  --color-ring: oklch(0.708 0 0);
-  --radius: 0.625rem;
+  --color-border: oklch(0.91 0.005 240);
+  --color-input: oklch(0.91 0.005 240);
+  --color-ring: oklch(0.55 0.17 155);
+  --color-sidebar: oklch(0.16 0.03 240);
+  --color-sidebar-foreground: oklch(0.85 0 0);
+  --color-sidebar-muted: oklch(0.35 0.02 240);
+  --color-sidebar-accent: oklch(0.55 0.17 155);
+  --radius: 0.5rem;
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
   }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      oklch(0.92 0.005 240 / 0.4) 1px,
+      transparent 0
+    );
+    background-size: 24px 24px;
+  }
+
+  /* Thin scrollbar styling */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.82 0.01 240) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: oklch(0.82 0.01 240);
+    border-radius: 3px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.7 0.01 240);
   }
 }

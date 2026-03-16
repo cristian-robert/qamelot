@@ -1,10 +1,15 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('next/navigation', () => ({
+  redirect: vi.fn(),
+}));
+
+import { redirect } from 'next/navigation';
 import Home from './page';
 
 describe('Home page', () => {
-  it('renders the app name', () => {
-    render(<Home />);
-    expect(screen.getByText(/qamelot/i)).toBeInTheDocument();
+  it('redirects to /dashboard', () => {
+    Home();
+    expect(redirect).toHaveBeenCalledWith('/dashboard');
   });
 });

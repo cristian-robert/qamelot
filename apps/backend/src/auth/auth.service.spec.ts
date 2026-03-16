@@ -25,6 +25,7 @@ const testUser = {
   name: 'Alice',
   role: Role.TESTER,
   password: 'hashed',
+  deletedAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };

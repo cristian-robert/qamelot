@@ -16,6 +16,7 @@ const testUser = {
   email: 'a@b.com',
   name: 'Alice',
   role: Role.TESTER,
+  deletedAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };

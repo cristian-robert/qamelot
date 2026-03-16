@@ -19,6 +19,7 @@ export interface UserDto extends BaseEntity {
   email: string;
   name: string;
   role: Role;
+  deletedAt: string | null;
 }
 
 // Project shape returned by API

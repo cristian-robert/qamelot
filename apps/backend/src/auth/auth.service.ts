@@ -63,13 +63,15 @@ export class AuthService {
 
   private toDto(user: {
     id: string; email: string; name: string;
-    role: string; createdAt: Date; updatedAt: Date;
+    role: string; deletedAt: Date | null;
+    createdAt: Date; updatedAt: Date;
   }): UserDto {
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role as UserDto['role'],
+      deletedAt: user.deletedAt?.toISOString() ?? null,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     };

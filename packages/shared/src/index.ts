@@ -8,3 +8,4 @@ export * from './schemas/test-run';
 export * from './schemas/test-result';
 export * from './schemas/milestone';
 export * from './schemas/defect';
+export * from './schemas/user';

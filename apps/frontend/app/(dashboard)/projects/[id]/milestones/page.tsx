@@ -1,71 +1,85 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { Flag, Plus } from 'lucide-react';
-import { projectsApi } from '@/lib/api/projects';
-import { PROJECTS_QUERY_KEY } from '@/lib/projects/useProjects';
+import Link from 'next/link';
+import { useMilestones } from '@/lib/milestones/useMilestones';
+import { MilestoneCard } from '@/components/milestones/MilestoneCard';
+import { MilestoneFormDialog } from '@/components/milestones/MilestoneFormDialog';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-
-function MilestonesSkeleton() {
-  return (
-    <div className="p-6 space-y-6">
-      <div className="h-4 w-56 animate-pulse rounded bg-muted" />
-      <div className="h-8 w-48 animate-pulse rounded bg-muted" />
-      <div className="space-y-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-20 animate-pulse rounded-xl bg-muted" />
-        ))}
-      </div>
-    </div>
-  );
-}
+import type { CreateMilestoneInput } from '@app/shared';
 
 export default function MilestonesPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: projectId } = useParams<{ id: string }>();
+  const {
+    milestones,
+    isLoading,
+    error,
+    createMilestone,
+    updateMilestone,
+    deleteMilestone,
+  } = useMilestones(projectId);
 
-  const { data: project, isLoading } = useQuery({
-    queryKey: [...PROJECTS_QUERY_KEY, id],
-    queryFn: () => projectsApi.getById(id),
-    enabled: !!id,
-  });
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  if (isLoading) {
-    return <MilestonesSkeleton />;
-  }
+  const handleCreate = (data: CreateMilestoneInput) => {
+    createMilestone.mutate(data, {
+      onSuccess: () => setDialogOpen(false),
+    });
+  };
+
+  const handleClose = (milestoneId: string) => {
+    updateMilestone.mutate({ id: milestoneId, data: { status: 'CLOSED' } });
+  };
+
+  const handleDelete = (milestoneId: string) => {
+    if (window.confirm('Delete this milestone?')) {
+      deleteMilestone.mutate(milestoneId);
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">
-      <Breadcrumb
-        items={[
-          { label: 'Projects', href: '/projects' },
-          { label: project?.name ?? 'Project', href: `/projects/${id}` },
-          { label: 'Milestones' },
-        ]}
-      />
-
+      <Breadcrumb items={[
+        { label: 'Projects', href: '/projects' },
+        { label: 'Milestones' },
+      ]} />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Milestones</h1>
-        <Button disabled>
-          <Plus className="size-4" />
-          New Milestone
-        </Button>
+        <Button onClick={() => setDialogOpen(true)}>New Milestone</Button>
       </div>
 
-      <Card>
-        <CardContent className="flex flex-col items-center py-12 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mb-4">
-            <Flag className="size-7" />
-          </div>
-          <h3 className="text-lg font-semibold">No milestones yet</h3>
-          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Milestones help you track testing progress toward release targets.
-            Create your first milestone to get started.
-          </p>
-        </CardContent>
-      </Card>
+      {error ? (
+        <p className="text-sm text-destructive">
+          {error instanceof Error ? error.message : 'Failed to load milestones'}
+        </p>
+      ) : isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      ) : milestones.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No milestones yet. Create one to track deadlines for this project.
+        </p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {milestones.map((milestone) => (
+            <MilestoneCard
+              key={milestone.id}
+              milestone={milestone}
+              onClose={handleClose}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
+      )}
+
+      <MilestoneFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSubmit={handleCreate}
+        isPending={createMilestone.isPending}
+        title="Create Milestone"
+      />
     </div>
   );
 }

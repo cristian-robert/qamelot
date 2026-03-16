@@ -125,7 +125,7 @@ describe('PlanDetailPage', () => {
     renderWithProviders(React.createElement(PlanDetailPage));
 
     await waitFor(() => {
-      expect(screen.getByText('Sprint 1 Plan')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Sprint 1 Plan' })).toBeInTheDocument();
     });
     expect(screen.getByText(/no test runs/i)).toBeInTheDocument();
   });

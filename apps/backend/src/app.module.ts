@@ -8,6 +8,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { TestSuitesModule } from './test-suites/test-suites.module';
 import { TestPlansModule } from './test-plans/test-plans.module';
 import { TestRunsModule } from './test-runs/test-runs.module';
+import { TestResultsModule } from './test-results/test-results.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { TestRunsModule } from './test-runs/test-runs.module';
     TestSuitesModule,
     TestPlansModule,
     TestRunsModule,
+    TestResultsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

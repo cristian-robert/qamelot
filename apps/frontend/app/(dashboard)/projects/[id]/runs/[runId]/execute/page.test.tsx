@@ -19,6 +19,10 @@ vi.mock('@/lib/api/test-results', () => ({
   },
 }));
 
+vi.mock('@/lib/test-results/useRunSSE', () => ({
+  useRunSSE: () => ({ status: 'connected' }),
+}));
+
 import { testResultsApi } from '@/lib/api/test-results';
 
 const mockGetExecution = testResultsApi.getExecution as ReturnType<typeof vi.fn>;
@@ -148,6 +152,16 @@ describe('RunExecutionPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('IN PROGRESS')).toBeInTheDocument();
+    });
+  });
+
+  it('shows live indicator when SSE is connected', async () => {
+    mockGetExecution.mockResolvedValue(fakeExecution);
+
+    renderWithProviders(React.createElement(RunExecutionPage));
+
+    await waitFor(() => {
+      expect(screen.getByText('Live')).toBeInTheDocument();
     });
   });
 

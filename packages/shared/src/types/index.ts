@@ -138,6 +138,17 @@ export interface TestRunExecutionDto extends TestRunDto {
   summary: TestRunResultSummary;
 }
 
+// SSE event emitted when a test result is submitted or updated
+export interface RunProgressEvent {
+  runId: string;
+  summary: TestRunResultSummary;
+  updatedCase: {
+    testRunCaseId: string;
+    latestResult: TestResultDto;
+  };
+  runStatus: TestRunStatus;
+}
+
 // JWT payload embedded in access/refresh tokens
 export interface JwtPayload {
   sub: string;   // user id (cuid)

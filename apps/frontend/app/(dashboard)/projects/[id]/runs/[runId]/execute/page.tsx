@@ -3,15 +3,18 @@
 import { useParams } from 'next/navigation';
 import { useCallback } from 'react';
 import { useTestExecution } from '@/lib/test-results/useTestExecution';
+import { useRunSSE } from '@/lib/test-results/useRunSSE';
 import { ExecutionProgress } from '@/components/test-results/ExecutionProgress';
 import { ExecutionTable } from '@/components/test-results/ExecutionTable';
+import { LiveIndicator } from '@/components/test-results/LiveIndicator';
 import { Badge } from '@/components/ui/badge';
 import type { SubmitTestResultInput } from '@app/shared';
 
 export default function RunExecutionPage() {
   const { runId } = useParams<{ id: string; runId: string }>();
+  const { status: sseStatus } = useRunSSE(runId);
   const { execution, isLoading, error, submitResult, updateResult } =
-    useTestExecution(runId);
+    useTestExecution(runId, { enablePolling: sseStatus === 'disconnected' });
 
   const handleSubmit = useCallback(
     (testRunCaseId: string, status: string, comment?: string, elapsed?: number) => {
@@ -53,18 +56,21 @@ export default function RunExecutionPage() {
             )}
           </p>
         </div>
-        <Badge
-          variant="secondary"
-          className={
-            execution.status === 'COMPLETED'
-              ? 'bg-green-100 text-green-800'
-              : execution.status === 'IN_PROGRESS'
-                ? 'bg-blue-100 text-blue-800'
-                : 'bg-gray-100 text-gray-600'
-          }
-        >
-          {execution.status.replace('_', ' ')}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <LiveIndicator status={sseStatus} />
+          <Badge
+            variant="secondary"
+            className={
+              execution.status === 'COMPLETED'
+                ? 'bg-green-100 text-green-800'
+                : execution.status === 'IN_PROGRESS'
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'bg-gray-100 text-gray-600'
+            }
+          >
+            {execution.status.replace('_', ' ')}
+          </Badge>
+        </div>
       </div>
 
       <ExecutionProgress summary={execution.summary} />

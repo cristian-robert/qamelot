@@ -4,11 +4,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SubmitTestResultInput, UpdateTestResultInput } from '@app/shared';
 import { testResultsApi } from '../api/test-results';
 
+const POLLING_INTERVAL_MS = 5_000;
+
 export function executionQueryKey(runId: string) {
   return ['runs', runId, 'execution'] as const;
 }
 
-export function useTestExecution(runId: string) {
+interface UseTestExecutionOptions {
+  /** Enable polling fallback (e.g. when SSE is disconnected) */
+  enablePolling?: boolean;
+}
+
+export function useTestExecution(runId: string, options?: UseTestExecutionOptions) {
   const queryClient = useQueryClient();
   const queryKey = executionQueryKey(runId);
 
@@ -16,6 +23,7 @@ export function useTestExecution(runId: string) {
     queryKey,
     queryFn: () => testResultsApi.getExecution(runId),
     enabled: !!runId,
+    refetchInterval: options?.enablePolling ? POLLING_INTERVAL_MS : false,
   });
 
   const submitResult = useMutation({

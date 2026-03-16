@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RunEventsService } from '../run-events/run-events.service';
 import type { UpdateTestResultInput, TestRunResultSummary } from '@app/shared';
-import { TestResultStatus } from '@app/shared';
+import { TestResultStatus, TestRunStatus } from '@app/shared';
 
 /** Input shape for submitting a result — accepts the full enum for DTO compatibility */
 interface SubmitResultData {
@@ -15,7 +16,10 @@ interface SubmitResultData {
 export class TestResultsService {
   private readonly logger = new Logger(TestResultsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly runEventsService: RunEventsService,
+  ) {}
 
   async submit(runId: string, executedById: string, data: SubmitResultData) {
     const run = await this.verifyRun(runId);
@@ -38,6 +42,9 @@ export class TestResultsService {
     await this.updateRunStatus(runId, run.status);
 
     this.logger.log(`Result submitted for run ${runId}, case ${data.testRunCaseId}`);
+
+    await this.emitProgressEvent(runId, data.testRunCaseId, result);
+
     return result;
   }
 
@@ -74,6 +81,8 @@ export class TestResultsService {
     });
 
     await this.updateRunStatus(result.testRunId);
+
+    await this.emitProgressEvent(result.testRunId, result.testRunCaseId, updated);
 
     return updated;
   }
@@ -148,6 +157,40 @@ export class TestResultsService {
     }
 
     return { total, passed, failed, blocked, retest, untested };
+  }
+
+  private async emitProgressEvent(
+    runId: string,
+    testRunCaseId: string,
+    latestResult: Record<string, unknown>,
+  ): Promise<void> {
+    const testRunCases = await this.prisma.testRunCase.findMany({
+      where: { testRunId: runId },
+      include: {
+        testResults: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { status: true },
+        },
+      },
+    });
+
+    const summary = this.calculateSummary(testRunCases);
+
+    const run = await this.prisma.testRun.findUnique({
+      where: { id: runId },
+      select: { status: true },
+    });
+
+    this.runEventsService.emitUpdate({
+      runId,
+      summary,
+      updatedCase: {
+        testRunCaseId,
+        latestResult: latestResult as never,
+      },
+      runStatus: (run?.status ?? TestRunStatus.PENDING) as TestRunStatus,
+    });
   }
 
   private async updateRunStatus(runId: string, currentStatus?: string) {

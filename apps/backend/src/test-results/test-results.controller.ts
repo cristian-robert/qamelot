@@ -3,14 +3,18 @@ import {
   Get,
   Post,
   Patch,
+  Sse,
   Body,
   Param,
   Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Observable, map, merge, interval } from 'rxjs';
 import { Role } from '@app/shared';
+import type { RunProgressEvent } from '@app/shared';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { TestResultsService } from './test-results.service';
+import { RunEventsService } from '../run-events/run-events.service';
 import { SubmitTestResultDto } from './dto/submit-test-result.dto';
 import { UpdateTestResultDto } from './dto/update-test-result.dto';
 
@@ -21,7 +25,10 @@ interface AuthenticatedRequest {
 @ApiTags('test-results')
 @Controller()
 export class TestResultsController {
-  constructor(private readonly testResultsService: TestResultsService) {}
+  constructor(
+    private readonly testResultsService: TestResultsService,
+    private readonly runEventsService: RunEventsService,
+  ) {}
 
   @Post('runs/:runId/results')
   @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
@@ -51,6 +58,23 @@ export class TestResultsController {
   @ApiResponse({ status: 404, description: 'Run not found' })
   getExecution(@Param('runId') runId: string) {
     return this.testResultsService.getRunWithSummary(runId);
+  }
+
+  @Sse('runs/:runId/stream')
+  @ApiOperation({ summary: 'SSE stream of real-time result updates for a run' })
+  @ApiResponse({ status: 200, description: 'SSE event stream' })
+  stream(
+    @Param('runId') runId: string,
+  ): Observable<MessageEvent<RunProgressEvent | string>> {
+    const HEARTBEAT_MS = 30_000;
+
+    const heartbeat$ = interval(HEARTBEAT_MS).pipe(
+      map(() => ({ data: 'heartbeat' }) as MessageEvent<string>),
+    );
+
+    const events$ = this.runEventsService.getStream(runId);
+
+    return merge(events$, heartbeat$);
   }
 
   @Patch('results/:id')

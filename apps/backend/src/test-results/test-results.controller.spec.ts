@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { firstValueFrom, take, toArray, Subject } from 'rxjs';
 import { TestResultsController } from './test-results.controller';
 import { TestResultsService } from './test-results.service';
-import { TestResultStatus } from '@app/shared';
+import { RunEventsService } from '../run-events/run-events.service';
+import { TestResultStatus, TestRunStatus } from '@app/shared';
+import type { RunProgressEvent } from '@app/shared';
 
 const RUN_ID = 'run-1';
 const USER_ID = 'user-1';
@@ -31,11 +34,19 @@ describe('TestResultsController', () => {
     update: jest.fn(),
   };
 
+  const mockRunEventsService = {
+    getStream: jest.fn(),
+    emitUpdate: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TestResultsController],
-      providers: [{ provide: TestResultsService, useValue: mockService }],
+      providers: [
+        { provide: TestResultsService, useValue: mockService },
+        { provide: RunEventsService, useValue: mockRunEventsService },
+      ],
     }).compile();
     controller = module.get<TestResultsController>(TestResultsController);
   });
@@ -79,5 +90,31 @@ describe('TestResultsController', () => {
       status: TestResultStatus.FAILED,
     });
     expect(result).toEqual(updated);
+  });
+
+  describe('stream (SSE)', () => {
+    it('returns observable that emits run events', async () => {
+      const subject = new Subject<MessageEvent<RunProgressEvent>>();
+      mockRunEventsService.getStream.mockReturnValue(subject.asObservable());
+
+      const stream$ = controller.stream(RUN_ID);
+      const resultPromise = firstValueFrom(stream$.pipe(take(1), toArray()));
+
+      const event: RunProgressEvent = {
+        runId: RUN_ID,
+        summary: { total: 1, passed: 1, failed: 0, blocked: 0, retest: 0, untested: 0 },
+        updatedCase: {
+          testRunCaseId: 'trc-1',
+          latestResult: mockResult as never,
+        },
+        runStatus: TestRunStatus.COMPLETED,
+      };
+      subject.next({ data: event } as MessageEvent<RunProgressEvent>);
+
+      const results = await resultPromise;
+      expect(results).toHaveLength(1);
+      expect(results[0].data).toEqual(event);
+      expect(mockRunEventsService.getStream).toHaveBeenCalledWith(RUN_ID);
+    });
   });
 });

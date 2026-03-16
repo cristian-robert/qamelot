@@ -9,11 +9,13 @@ import { TestSuitesModule } from './test-suites/test-suites.module';
 import { TestPlansModule } from './test-plans/test-plans.module';
 import { TestRunsModule } from './test-runs/test-runs.module';
 import { TestResultsModule } from './test-results/test-results.module';
+import { RunEventsModule } from './run-events/run-events.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    RunEventsModule,
     AuthModule,
     ProjectsModule,
     TestSuitesModule,

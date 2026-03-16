@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RunEventsService } from '../run-events/run-events.service';
 import { TestResultsService } from './test-results.service';
 import { TestResultStatus } from '@app/shared';
 
@@ -61,19 +62,24 @@ describe('TestResultsService', () => {
     },
   };
 
+  const mockRunEventsService = {
+    emitUpdate: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TestResultsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: RunEventsService, useValue: mockRunEventsService },
       ],
     }).compile();
     service = module.get<TestResultsService>(TestResultsService);
   });
 
   describe('submit', () => {
-    it('creates a test result and updates run status', async () => {
+    it('creates a test result and emits SSE event', async () => {
       mockPrisma.testRun.findFirst.mockResolvedValue(mockRun);
       mockPrisma.testRunCase.findFirst.mockResolvedValue(mockRunCase);
       mockPrisma.testResult.create.mockResolvedValue(mockResult);
@@ -81,6 +87,7 @@ describe('TestResultsService', () => {
         { ...mockRunCase, testResults: [{ status: TestResultStatus.PASSED }] },
       ]);
       mockPrisma.testRun.update.mockResolvedValue({ ...mockRun, status: 'COMPLETED' });
+      mockPrisma.testRun.findUnique.mockResolvedValue({ status: 'COMPLETED' });
 
       const result = await service.submit(RUN_ID, USER_ID, {
         testRunCaseId: TRC_ID,
@@ -99,6 +106,9 @@ describe('TestResultsService', () => {
         },
       });
       expect(result).toEqual(mockResult);
+      expect(mockRunEventsService.emitUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ runId: RUN_ID }),
+      );
     });
 
     it('throws NotFoundException when run does not exist', async () => {
@@ -133,6 +143,7 @@ describe('TestResultsService', () => {
         { id: 'trc-2', testRunId: RUN_ID, testResults: [] },
       ]);
       mockPrisma.testRun.update.mockResolvedValue({ ...mockRun, status: 'IN_PROGRESS' });
+      mockPrisma.testRun.findUnique.mockResolvedValue({ status: 'IN_PROGRESS' });
 
       await service.submit(RUN_ID, USER_ID, {
         testRunCaseId: TRC_ID,
@@ -153,6 +164,7 @@ describe('TestResultsService', () => {
         { ...mockRunCase, testResults: [{ status: TestResultStatus.PASSED }] },
       ]);
       mockPrisma.testRun.update.mockResolvedValue({ ...mockRun, status: 'COMPLETED' });
+      mockPrisma.testRun.findUnique.mockResolvedValue({ status: 'COMPLETED' });
 
       await service.submit(RUN_ID, USER_ID, {
         testRunCaseId: TRC_ID,
@@ -191,7 +203,7 @@ describe('TestResultsService', () => {
   });
 
   describe('update', () => {
-    it('updates a result status', async () => {
+    it('updates a result status and emits SSE event', async () => {
       const updated = { ...mockResult, status: TestResultStatus.FAILED };
       mockPrisma.testResult.findUnique.mockResolvedValue(mockResult);
       mockPrisma.testResult.update.mockResolvedValue(updated);
@@ -199,6 +211,7 @@ describe('TestResultsService', () => {
         { ...mockRunCase, testResults: [{ status: TestResultStatus.FAILED }] },
       ]);
       mockPrisma.testRun.update.mockResolvedValue({ ...mockRun, status: 'COMPLETED' });
+      mockPrisma.testRun.findUnique.mockResolvedValue({ status: 'COMPLETED' });
 
       const result = await service.update('result-1', { status: TestResultStatus.FAILED });
 
@@ -210,6 +223,9 @@ describe('TestResultsService', () => {
         },
       });
       expect(result).toEqual(updated);
+      expect(mockRunEventsService.emitUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ runId: RUN_ID }),
+      );
     });
 
     it('updates a result comment', async () => {
@@ -220,6 +236,7 @@ describe('TestResultsService', () => {
         { ...mockRunCase, testResults: [{ status: TestResultStatus.PASSED }] },
       ]);
       mockPrisma.testRun.update.mockResolvedValue({ ...mockRun, status: 'COMPLETED' });
+      mockPrisma.testRun.findUnique.mockResolvedValue({ status: 'COMPLETED' });
 
       const result = await service.update('result-1', { comment: 'New comment' });
 

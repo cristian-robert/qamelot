@@ -35,3 +35,11 @@ export function useActivityReport(projectId: string) {
     enabled: !!projectId,
   });
 }
+
+export function useReferenceCoverageReport(projectId: string) {
+  return useQuery({
+    queryKey: [...REPORTS_QUERY_KEY, 'reference-coverage', projectId],
+    queryFn: () => reportsApi.getReferenceCoverage(projectId),
+    enabled: !!projectId,
+  });
+}

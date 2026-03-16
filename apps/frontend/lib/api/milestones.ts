@@ -1,9 +1,21 @@
 import type { MilestoneDto, CreateMilestoneInput, UpdateMilestoneInput } from '@app/shared';
 import { apiFetch } from './client';
 
+export interface MilestoneFilters {
+  status?: string;
+}
+
+function buildQueryString(filters?: MilestoneFilters): string {
+  if (!filters) return '';
+  const params = new URLSearchParams();
+  if (filters.status) params.set('status', filters.status);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
 export const milestonesApi = {
-  listByProject: (projectId: string) =>
-    apiFetch<MilestoneDto[]>(`/projects/${projectId}/milestones`),
+  listByProject: (projectId: string, filters?: MilestoneFilters) =>
+    apiFetch<MilestoneDto[]>(`/projects/${projectId}/milestones${buildQueryString(filters)}`),
 
   getById: (id: string) =>
     apiFetch<MilestoneDto>(`/milestones/${id}`),

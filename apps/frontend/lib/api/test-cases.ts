@@ -1,5 +1,10 @@
 import type { TestCaseDto, CreateTestCaseInput, UpdateTestCaseInput } from '@app/shared';
-import { apiFetch } from './client';
+import { apiFetch, apiDownload, apiUpload } from './client';
+
+export interface CsvImportResult {
+  imported: number;
+  errors: Array<{ row: number; field: string; message: string }>;
+}
 
 export const testCasesApi = {
   listBySuite: (projectId: string, suiteId: string) =>
@@ -24,4 +29,16 @@ export const testCasesApi = {
     apiFetch<TestCaseDto>(`/projects/${projectId}/cases/${id}`, {
       method: 'DELETE',
     }),
+
+  exportCsv: (projectId: string) =>
+    apiDownload(
+      `/projects/${projectId}/cases/export?format=csv`,
+      `test-cases-${projectId}.csv`,
+    ),
+
+  importCsv: (projectId: string, file: File) =>
+    apiUpload<CsvImportResult>(
+      `/projects/${projectId}/cases/import`,
+      file,
+    ),
 };

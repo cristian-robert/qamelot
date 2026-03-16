@@ -34,7 +34,7 @@ export class UsersService {
       where: { deletedAt: null },
       orderBy: { createdAt: 'desc' },
     });
-    return users.map((u) => this.toDto(u));
+    return users.map((u: { id: string; email: string; name: string; role: string; deletedAt: Date | null; createdAt: Date; updatedAt: Date }) => this.toDto(u));
   }
 
   async findOneById(id: string): Promise<UserDto> {

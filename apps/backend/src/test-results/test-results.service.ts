@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RunEventsService } from '../run-events/run-events.service';
+import { CsvService } from '../test-cases/csv.service';
 import type { UpdateTestResultInput, TestRunResultSummary } from '@app/shared';
 import { TestResultStatus, TestRunStatus } from '@app/shared';
 
-/** Input shape for submitting a result — accepts the full enum for DTO compatibility */
+/** Input shape for submitting a result -- accepts the full enum for DTO compatibility */
 interface SubmitResultData {
   testRunCaseId: string;
   status: TestResultStatus;
@@ -19,10 +20,12 @@ export class TestResultsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly runEventsService: RunEventsService,
+    private readonly csvService: CsvService,
   ) {}
 
   async submit(runId: string, executedById: string, data: SubmitResultData) {
     const run = await this.verifyRun(runId);
+    this.rejectIfClosed(run);
     await this.verifyRunCaseBelongsToRun(data.testRunCaseId, runId);
 
     const result = await this.prisma.testResult.create({
@@ -68,6 +71,9 @@ export class TestResultsService {
       throw new NotFoundException('Test result not found');
     }
 
+    const run = await this.verifyRun(result.testRunId);
+    this.rejectIfClosed(run);
+
     const updated = await this.prisma.testResult.update({
       where: { id: resultId },
       data: {
@@ -95,7 +101,28 @@ export class TestResultsService {
         assignedTo: { select: { id: true, name: true, email: true } },
         testRunCases: {
           include: {
-            suite: { select: { id: true, name: true } },
+            testCase: {
+              select: {
+                id: true,
+                title: true,
+                priority: true,
+                type: true,
+                suiteId: true,
+                suite: { select: { id: true, name: true } },
+                steps: {
+                  orderBy: { stepNumber: 'asc' as const },
+                  select: {
+                    id: true,
+                    caseId: true,
+                    stepNumber: true,
+                    description: true,
+                    expectedResult: true,
+                    createdAt: true,
+                    updatedAt: true,
+                  },
+                },
+              },
+            },
             testResults: {
               orderBy: { createdAt: 'desc' },
               take: 1,
@@ -116,13 +143,39 @@ export class TestResultsService {
 
     return {
       ...run,
-      testRunCases: run.testRunCases.map((trc) => ({
+      testRunCases: run.testRunCases.map((trc: { testResults: Record<string, unknown>[]; [key: string]: unknown }) => ({
         ...trc,
         latestResult: trc.testResults[0] ?? null,
         testResults: undefined,
       })),
       summary,
     };
+  }
+
+  async exportResultsCsv(runId: string): Promise<string> {
+    await this.verifyRun(runId);
+
+    const results = await this.prisma.testResult.findMany({
+      where: { testRunId: runId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        executedBy: { select: { name: true } },
+        testRunCase: {
+          include: { testCase: { select: { title: true } } },
+        },
+      },
+    });
+
+    const rows = results.map((r: { testRunCase: { testCase: { title: string } }; status: string; comment: string | null; executedBy: { name: string }; elapsed: number | null; createdAt: Date }) => ({
+      suiteName: r.testRunCase.testCase.title,
+      status: r.status,
+      comment: r.comment,
+      executedBy: r.executedBy.name,
+      elapsed: r.elapsed,
+      createdAt: r.createdAt.toISOString(),
+    }));
+
+    return this.csvService.generateResultsCsv(rows);
   }
 
   calculateSummary(
@@ -205,9 +258,9 @@ export class TestResultsService {
       },
     });
 
-    const hasAnyResult = testRunCases.some((trc) => trc.testResults.length > 0);
+    const hasAnyResult = testRunCases.some((trc: { testResults: { status: string }[] }) => trc.testResults.length > 0);
     const allHaveResults = testRunCases.every(
-      (trc) =>
+      (trc: { testResults: { status: string }[] }) =>
         trc.testResults.length > 0 &&
         trc.testResults[0].status !== TestResultStatus.UNTESTED,
     );
@@ -217,7 +270,7 @@ export class TestResultsService {
         where: { id: runId },
         data: { status: 'COMPLETED' },
       });
-      this.logger.log(`Run ${runId} auto-completed — all cases have results`);
+      this.logger.log(`Run ${runId} auto-completed -- all cases have results`);
     } else if (hasAnyResult && (currentStatus === 'PENDING' || currentStatus === undefined)) {
       const run = currentStatus === undefined
         ? await this.prisma.testRun.findUnique({ where: { id: runId }, select: { status: true } })
@@ -228,8 +281,14 @@ export class TestResultsService {
           where: { id: runId },
           data: { status: 'IN_PROGRESS' },
         });
-        this.logger.log(`Run ${runId} auto-started — first result submitted`);
+        this.logger.log(`Run ${runId} auto-started -- first result submitted`);
       }
+    }
+  }
+
+  private rejectIfClosed(run: { status: string }): void {
+    if (run.status === TestRunStatus.COMPLETED) {
+      throw new ConflictException('Cannot submit results to a closed run');
     }
   }
 

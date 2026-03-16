@@ -6,6 +6,9 @@ import PlanDetailPage from './page';
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: 'proj-1', planId: 'plan-1' }),
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ replace: vi.fn() }),
+  usePathname: () => '/projects/proj-1/plans/plan-1',
 }));
 
 vi.mock('@/lib/api/test-plans', () => ({
@@ -31,6 +34,16 @@ vi.mock('@/lib/api/test-runs', () => ({
 vi.mock('@/lib/api/test-suites', () => ({
   testSuitesApi: {
     listByProject: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+  },
+}));
+
+vi.mock('@/lib/api/test-cases', () => ({
+  testCasesApi: {
+    listBySuite: vi.fn(),
+    getById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
@@ -130,7 +143,7 @@ describe('PlanDetailPage', () => {
     expect(screen.getByText(/no test runs/i)).toBeInTheDocument();
   });
 
-  it('renders runs list', async () => {
+  it('renders runs list with case count', async () => {
     mockGetPlan.mockResolvedValue({
       id: 'plan-1',
       name: 'Sprint 1 Plan',
@@ -163,7 +176,7 @@ describe('PlanDetailPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Smoke Test')).toBeInTheDocument();
-      expect(screen.getByText(/5 suites/)).toBeInTheDocument();
+      expect(screen.getByText(/5 cases/)).toBeInTheDocument();
     });
   });
 

@@ -3,16 +3,12 @@ import {
   IsString,
   IsOptional,
   IsIn,
-  IsBoolean,
-  IsArray,
-  ValidateNested,
+  IsInt,
+  Min,
   MinLength,
   MaxLength,
-  ArrayMaxSize,
 } from 'class-validator';
-import { Type } from 'class-transformer';
-import { TestCasePriority, TestCaseType } from '@app/shared';
-import { TestCaseStepDto } from './test-case-step.dto';
+import { CasePriority, CaseType, TemplateType } from '@app/shared';
 
 export class CreateTestCaseDto {
   @ApiProperty({ example: 'Verify login with valid credentials', maxLength: 300 })
@@ -27,29 +23,30 @@ export class CreateTestCaseDto {
   @MaxLength(2000)
   preconditions?: string;
 
-  @ApiPropertyOptional({ type: [TestCaseStepDto], description: 'Ordered test steps' })
-  @IsArray()
-  @ArrayMaxSize(100)
-  @ValidateNested({ each: true })
-  @Type(() => TestCaseStepDto)
+  @ApiPropertyOptional({ enum: TemplateType, default: 'TEXT' })
+  @IsIn(Object.values(TemplateType))
   @IsOptional()
-  steps?: TestCaseStepDto[];
+  templateType?: TemplateType;
 
-  @ApiPropertyOptional({ enum: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'], default: 'MEDIUM' })
-  @IsIn(Object.values(TestCasePriority))
+  @ApiPropertyOptional({ enum: CasePriority, default: 'MEDIUM' })
+  @IsIn(Object.values(CasePriority))
   @IsOptional()
-  priority?: TestCasePriority;
+  priority?: CasePriority;
 
-  @ApiPropertyOptional({
-    enum: ['FUNCTIONAL', 'REGRESSION', 'SMOKE', 'ACCEPTANCE', 'EXPLORATORY'],
-    default: 'FUNCTIONAL',
-  })
-  @IsIn(Object.values(TestCaseType))
+  @ApiPropertyOptional({ enum: CaseType, default: 'FUNCTIONAL' })
+  @IsIn(Object.values(CaseType))
   @IsOptional()
-  type?: TestCaseType;
+  type?: CaseType;
 
-  @ApiPropertyOptional({ example: false, default: false })
-  @IsBoolean()
+  @ApiPropertyOptional({ example: 300, description: 'Estimated duration in seconds' })
+  @IsInt()
+  @Min(0)
   @IsOptional()
-  automationFlag?: boolean;
+  estimate?: number | null;
+
+  @ApiPropertyOptional({ example: 'JIRA-123,JIRA-456', maxLength: 1000 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  references?: string | null;
 }

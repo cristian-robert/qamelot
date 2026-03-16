@@ -44,13 +44,25 @@ describe('TestPlansController', () => {
     expect(result).toEqual(mockPlan);
   });
 
-  it('findAll delegates to service', async () => {
+  it('findAll delegates to service without filters', async () => {
     mockService.findAllByProject.mockResolvedValue([mockPlan]);
 
     const result = await controller.findAll(PROJECT_ID);
 
-    expect(mockService.findAllByProject).toHaveBeenCalledWith(PROJECT_ID);
+    expect(mockService.findAllByProject).toHaveBeenCalledWith(PROJECT_ID, {
+      status: undefined,
+    });
     expect(result).toEqual([mockPlan]);
+  });
+
+  it('findAll passes status filter to service', async () => {
+    mockService.findAllByProject.mockResolvedValue([]);
+
+    await controller.findAll(PROJECT_ID, 'ACTIVE');
+
+    expect(mockService.findAllByProject).toHaveBeenCalledWith(PROJECT_ID, {
+      status: 'ACTIVE',
+    });
   });
 
   it('findOne delegates to service', async () => {

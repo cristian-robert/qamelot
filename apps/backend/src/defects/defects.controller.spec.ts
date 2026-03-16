@@ -9,6 +9,7 @@ describe('DefectsController', () => {
     create: jest.fn(),
     findAllByProject: jest.fn(),
     findOne: jest.fn(),
+    findByTestResultId: jest.fn(),
     update: jest.fn(),
     softDelete: jest.fn(),
   };
@@ -18,6 +19,7 @@ describe('DefectsController', () => {
     reference: 'PROJ-123',
     description: 'Login fails with special chars',
     projectId: 'proj-1',
+    testResultId: null,
     deletedAt: null,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
@@ -44,16 +46,59 @@ describe('DefectsController', () => {
       expect(mockService.create).toHaveBeenCalledWith('proj-1', dto);
       expect(result).toEqual(testDefect);
     });
+
+    it('passes testResultId to service.create', async () => {
+      const linkedDefect = { ...testDefect, testResultId: 'result-1' };
+      mockService.create.mockResolvedValue(linkedDefect);
+      const dto = { reference: 'PROJ-123', description: 'Failure', testResultId: 'result-1' };
+
+      const result = await controller.create('proj-1', dto);
+
+      expect(mockService.create).toHaveBeenCalledWith('proj-1', dto);
+      expect(result).toEqual(linkedDefect);
+    });
   });
 
   describe('findAll', () => {
-    it('calls service.findAllByProject and returns the result', async () => {
+    it('calls service.findAllByProject without filters', async () => {
       mockService.findAllByProject.mockResolvedValue([testDefect]);
 
       const result = await controller.findAll('proj-1');
 
-      expect(mockService.findAllByProject).toHaveBeenCalledWith('proj-1');
+      expect(mockService.findAllByProject).toHaveBeenCalledWith('proj-1', {
+        search: undefined,
+      });
       expect(result).toEqual([testDefect]);
+    });
+
+    it('passes search filter to service', async () => {
+      mockService.findAllByProject.mockResolvedValue([]);
+
+      await controller.findAll('proj-1', 'login');
+
+      expect(mockService.findAllByProject).toHaveBeenCalledWith('proj-1', {
+        search: 'login',
+      });
+    });
+  });
+
+  describe('findByTestResult', () => {
+    it('calls service.findByTestResultId and returns defects', async () => {
+      const linkedDefect = { ...testDefect, testResultId: 'result-1' };
+      mockService.findByTestResultId.mockResolvedValue([linkedDefect]);
+
+      const result = await controller.findByTestResult('result-1');
+
+      expect(mockService.findByTestResultId).toHaveBeenCalledWith('result-1');
+      expect(result).toEqual([linkedDefect]);
+    });
+
+    it('returns empty array when no defects linked', async () => {
+      mockService.findByTestResultId.mockResolvedValue([]);
+
+      const result = await controller.findByTestResult('result-no-defects');
+
+      expect(result).toEqual([]);
     });
   });
 

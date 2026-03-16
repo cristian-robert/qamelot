@@ -6,9 +6,9 @@ export const CreateTestRunSchema = z.object({
     .min(1, 'Name is required')
     .max(100, 'Name must be 100 characters or less'),
   assignedToId: z.string().min(1).optional(),
-  suiteIds: z
+  caseIds: z
     .array(z.string().min(1))
-    .min(1, 'At least one suite must be selected'),
+    .min(1, 'At least one case must be selected'),
 });
 
 export const UpdateTestRunSchema = z.object({

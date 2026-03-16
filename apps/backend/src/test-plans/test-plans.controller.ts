@@ -6,8 +6,9 @@ import {
   Delete,
   Body,
   Param,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Role } from '@app/shared';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { TestPlansService } from './test-plans.service';
@@ -35,8 +36,12 @@ export class TestPlansController {
   @ApiOperation({ summary: 'List all test plans for a project' })
   @ApiResponse({ status: 200, description: 'Array of test plans' })
   @ApiResponse({ status: 404, description: 'Project not found' })
-  findAll(@Param('projectId') projectId: string) {
-    return this.testPlansService.findAllByProject(projectId);
+  @ApiQuery({ name: 'status', required: false, enum: ['DRAFT', 'ACTIVE', 'COMPLETED', 'ARCHIVED'] })
+  findAll(
+    @Param('projectId') projectId: string,
+    @Query('status') status?: string,
+  ) {
+    return this.testPlansService.findAllByProject(projectId, { status });
   }
 
   @Get(':id')

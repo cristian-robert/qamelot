@@ -7,8 +7,10 @@ import {
   Body,
   Param,
   Request,
+  Res,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { Response } from 'express';
 import { Observable, map, merge, interval } from 'rxjs';
 import { Role } from '@app/shared';
 import type { RunProgressEvent } from '@app/shared';
@@ -58,6 +60,24 @@ export class TestResultsController {
   @ApiResponse({ status: 404, description: 'Run not found' })
   getExecution(@Param('runId') runId: string) {
     return this.testResultsService.getRunWithSummary(runId);
+  }
+
+  @Get('runs/:runId/results/export')
+  @ApiOperation({ summary: 'Export run results as CSV' })
+  @ApiResponse({ status: 200, description: 'CSV file download' })
+  @ApiResponse({ status: 404, description: 'Run not found' })
+  @ApiQuery({ name: 'format', required: false, enum: ['csv'] })
+  async exportResults(
+    @Param('runId') runId: string,
+    @Res() res: Response,
+  ) {
+    const csv = await this.testResultsService.exportResultsCsv(runId);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="run-results-${runId}.csv"`,
+    );
+    res.send(csv);
   }
 
   @Sse('runs/:runId/stream')

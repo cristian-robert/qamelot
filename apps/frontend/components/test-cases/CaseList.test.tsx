@@ -2,16 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CaseList } from './CaseList';
-import { TestCasePriority, TestCaseType, type TestCaseDto } from '@app/shared';
+import { CasePriority, CaseType, TemplateType, type TestCaseDto } from '@app/shared';
 
 const mockCase: TestCaseDto = {
   id: 'case-1',
   title: 'Verify login with valid credentials',
   preconditions: null,
-  steps: [{ action: 'Click', expected: 'OK' }],
-  priority: TestCasePriority.HIGH,
-  type: TestCaseType.FUNCTIONAL,
-  automationFlag: false,
+  templateType: TemplateType.TEXT,
+  priority: CasePriority.HIGH,
+  type: CaseType.FUNCTIONAL,
+  estimate: null,
+  references: null,
+  position: 0,
   suiteId: 'suite-1',
   projectId: 'proj-1',
   deletedAt: null,

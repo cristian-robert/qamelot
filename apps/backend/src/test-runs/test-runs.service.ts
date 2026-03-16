@@ -1,15 +1,32 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateTestRunInput, UpdateTestRunInput } from '@app/shared';
+import { TestRunStatus, TestResultStatus } from '@app/shared';
+
+/** Shared include shape for testRunCases with testCase relation */
+const TEST_RUN_CASE_INCLUDE = {
+  testCase: {
+    select: {
+      id: true,
+      title: true,
+      priority: true,
+      type: true,
+      suiteId: true,
+      suite: { select: { id: true, name: true } },
+    },
+  },
+} as const;
 
 @Injectable()
 export class TestRunsService {
+  private readonly logger = new Logger(TestRunsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async create(planId: string, data: CreateTestRunInput) {
     const plan = await this.verifyPlan(planId);
 
-    await this.verifySuitesExist(data.suiteIds, plan.projectId);
+    await this.verifyCasesExist(data.caseIds, plan.projectId);
 
     if (data.assignedToId) {
       await this.verifyUser(data.assignedToId);
@@ -22,22 +39,30 @@ export class TestRunsService {
         projectId: plan.projectId,
         ...(data.assignedToId && { assignedToId: data.assignedToId }),
         testRunCases: {
-          create: data.suiteIds.map((suiteId) => ({ suiteId })),
+          create: data.caseIds.map((testCaseId) => ({ testCaseId })),
         },
       },
       include: {
-        testRunCases: { include: { suite: { select: { id: true, name: true } } } },
+        testRunCases: { include: TEST_RUN_CASE_INCLUDE },
         assignedTo: { select: { id: true, name: true, email: true } },
         testPlan: { select: { id: true, name: true } },
       },
     });
   }
 
-  async findAllByPlan(planId: string) {
+  async findAllByPlan(
+    planId: string,
+    filters?: { status?: string; assigneeId?: string },
+  ) {
     await this.verifyPlan(planId);
 
     return this.prisma.testRun.findMany({
-      where: { testPlanId: planId, deletedAt: null },
+      where: {
+        testPlanId: planId,
+        deletedAt: null,
+        ...(filters?.status && { status: filters.status as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' }),
+        ...(filters?.assigneeId && { assignedToId: filters.assigneeId }),
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         assignedTo: { select: { id: true, name: true, email: true } },
@@ -53,7 +78,7 @@ export class TestRunsService {
         testPlan: { select: { id: true, name: true } },
         assignedTo: { select: { id: true, name: true, email: true } },
         testRunCases: {
-          include: { suite: { select: { id: true, name: true } } },
+          include: TEST_RUN_CASE_INCLUDE,
         },
       },
     });
@@ -78,6 +103,92 @@ export class TestRunsService {
         ...(data.status !== undefined && { status: data.status }),
       },
     });
+  }
+
+  async closeRun(id: string) {
+    const run = await this.verifyRun(id);
+
+    if (run.status === TestRunStatus.COMPLETED) {
+      throw new ConflictException('Run is already closed');
+    }
+
+    const closed = await this.prisma.testRun.update({
+      where: { id },
+      data: { status: TestRunStatus.COMPLETED },
+      include: {
+        testPlan: { select: { id: true, name: true } },
+        assignedTo: { select: { id: true, name: true, email: true } },
+        testRunCases: {
+          include: TEST_RUN_CASE_INCLUDE,
+        },
+      },
+    });
+
+    this.logger.log(`Run ${id} closed manually`);
+    return closed;
+  }
+
+  async rerun(sourceRunId: string) {
+    const sourceRun = await this.prisma.testRun.findFirst({
+      where: { id: sourceRunId, deletedAt: null },
+      include: {
+        testRunCases: {
+          include: {
+            testResults: {
+              orderBy: { createdAt: 'desc' as const },
+              take: 1,
+              select: { status: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!sourceRun) {
+      throw new NotFoundException('Source test run not found');
+    }
+
+    if (sourceRun.status !== TestRunStatus.COMPLETED) {
+      throw new BadRequestException('Can only rerun a completed run');
+    }
+
+    const failedOrUntestedCases = sourceRun.testRunCases.filter((trc: { testResults: { status: string }[]; testCaseId: string }) => {
+      const latestStatus = trc.testResults[0]?.status;
+      return (
+        !latestStatus ||
+        latestStatus === TestResultStatus.FAILED ||
+        latestStatus === TestResultStatus.BLOCKED ||
+        latestStatus === TestResultStatus.RETEST ||
+        latestStatus === TestResultStatus.UNTESTED
+      );
+    });
+
+    if (failedOrUntestedCases.length === 0) {
+      throw new BadRequestException('No failed or untested cases to rerun');
+    }
+
+    const caseIds = failedOrUntestedCases.map((trc: { testCaseId: string }) => trc.testCaseId);
+
+    const newRun = await this.prisma.testRun.create({
+      data: {
+        name: `${sourceRun.name} (Rerun)`,
+        testPlanId: sourceRun.testPlanId,
+        projectId: sourceRun.projectId,
+        ...(sourceRun.assignedToId && { assignedToId: sourceRun.assignedToId }),
+        sourceRunId,
+        testRunCases: {
+          create: caseIds.map((testCaseId: string) => ({ testCaseId })),
+        },
+      },
+      include: {
+        testRunCases: { include: TEST_RUN_CASE_INCLUDE },
+        assignedTo: { select: { id: true, name: true, email: true } },
+        testPlan: { select: { id: true, name: true } },
+      },
+    });
+
+    this.logger.log(`Rerun created: ${newRun.id} from source run ${sourceRunId}`);
+    return newRun;
   }
 
   async softDelete(id: string) {
@@ -109,13 +220,13 @@ export class TestRunsService {
     return run;
   }
 
-  private async verifySuitesExist(suiteIds: string[], projectId: string) {
-    const suites = await this.prisma.testSuite.findMany({
-      where: { id: { in: suiteIds }, projectId, deletedAt: null },
+  private async verifyCasesExist(caseIds: string[], projectId: string) {
+    const cases = await this.prisma.testCase.findMany({
+      where: { id: { in: caseIds }, projectId, deletedAt: null },
       select: { id: true },
     });
-    if (suites.length !== suiteIds.length) {
-      throw new BadRequestException('One or more suites not found in this project');
+    if (cases.length !== caseIds.length) {
+      throw new BadRequestException('One or more cases not found in this project');
     }
   }
 

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { useTestExecution } from './useTestExecution';
-import { TestResultStatus, TestRunStatus } from '@app/shared';
+import { TestResultStatus, TestRunStatus, CasePriority, CaseType } from '@app/shared';
 import type { TestRunExecutionDto } from '@app/shared';
 
 const mockGetExecution = vi.fn();
@@ -40,6 +40,7 @@ const fakeExecution: TestRunExecutionDto = {
   testPlanId: 'plan-1',
   projectId: 'proj-1',
   assignedToId: null,
+  sourceRunId: null,
   status: TestRunStatus.PENDING,
   deletedAt: null,
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -50,8 +51,15 @@ const fakeExecution: TestRunExecutionDto = {
     {
       id: 'trc-1',
       testRunId: 'run-1',
-      suiteId: 'suite-1',
-      suite: { id: 'suite-1', name: 'Login Suite' },
+      testCaseId: 'case-1',
+      testCase: {
+        id: 'case-1',
+        title: 'Login Test',
+        priority: CasePriority.MEDIUM,
+        type: CaseType.FUNCTIONAL,
+        suiteId: 'suite-1',
+        suite: { id: 'suite-1', name: 'Login Suite' },
+      },
       createdAt: '2026-01-01T00:00:00.000Z',
       latestResult: null,
     },

@@ -9,6 +9,7 @@ describe('ReportsService', () => {
 
   const mockPrisma = {
     project: { findFirst: jest.fn(), count: jest.fn() },
+    testCase: { findMany: jest.fn() },
     testRunCase: { findMany: jest.fn() },
     testRun: { findMany: jest.fn(), count: jest.fn() },
     testResult: { findMany: jest.fn(), count: jest.fn() },
@@ -152,6 +153,91 @@ describe('ReportsService', () => {
     });
   });
 
+  describe('getReferenceCoverage', () => {
+    it('throws NotFoundException when project does not exist', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(null);
+
+      await expect(service.getReferenceCoverage('bad-id')).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns empty references when no cases have references', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.testCase.findMany.mockResolvedValue([]);
+      mockPrisma.testRunCase.findMany.mockResolvedValue([]);
+
+      const result = await service.getReferenceCoverage('p1');
+
+      expect(result.references).toEqual([]);
+    });
+
+    it('aggregates cases by reference and calculates coverage', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.testCase.findMany.mockResolvedValue([
+        { id: 'c1', references: 'REQ-001, REQ-002', suiteId: 's1' },
+        { id: 'c2', references: 'REQ-001', suiteId: 's1' },
+        { id: 'c3', references: 'REQ-002', suiteId: 's2' },
+      ]);
+      mockPrisma.testRunCase.findMany.mockResolvedValue([
+        { suiteId: 's1', testResults: [{ status: TestResultStatus.PASSED }] },
+        { suiteId: 's2', testResults: [] },
+      ]);
+
+      const result = await service.getReferenceCoverage('p1');
+
+      expect(result.references).toHaveLength(2);
+
+      const req001 = result.references.find((r) => r.reference === 'REQ-001');
+      expect(req001).toEqual({
+        reference: 'REQ-001',
+        totalCases: 2,
+        passed: 2,
+        failed: 0,
+        blocked: 0,
+        retest: 0,
+        untested: 0,
+        coveragePercent: 100,
+      });
+
+      const req002 = result.references.find((r) => r.reference === 'REQ-002');
+      expect(req002).toBeDefined();
+      expect(req002!.totalCases).toBe(2);
+      expect(req002!.passed).toBe(1);
+      expect(req002!.untested).toBe(1);
+      expect(req002!.coveragePercent).toBe(50);
+    });
+
+    it('handles URL references correctly', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.testCase.findMany.mockResolvedValue([
+        { id: 'c1', references: 'https://jira.example.com/PROJ-42', suiteId: 's1' },
+      ]);
+      mockPrisma.testRunCase.findMany.mockResolvedValue([
+        { suiteId: 's1', testResults: [{ status: TestResultStatus.FAILED }] },
+      ]);
+
+      const result = await service.getReferenceCoverage('p1');
+
+      expect(result.references).toHaveLength(1);
+      expect(result.references[0].reference).toBe('https://jira.example.com/PROJ-42');
+      expect(result.references[0].failed).toBe(1);
+      expect(result.references[0].coveragePercent).toBe(100);
+    });
+
+    it('returns sorted references alphabetically', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.testCase.findMany.mockResolvedValue([
+        { id: 'c1', references: 'ZEBRA-01', suiteId: 's1' },
+        { id: 'c2', references: 'ALPHA-01', suiteId: 's1' },
+      ]);
+      mockPrisma.testRunCase.findMany.mockResolvedValue([]);
+
+      const result = await service.getReferenceCoverage('p1');
+
+      expect(result.references[0].reference).toBe('ALPHA-01');
+      expect(result.references[1].reference).toBe('ZEBRA-01');
+    });
+  });
+
   describe('getSummary', () => {
     it('returns dashboard summary with counts and recent results', async () => {
       mockPrisma.project.count.mockResolvedValue(3);
@@ -163,7 +249,7 @@ describe('ReportsService', () => {
           createdAt: new Date('2026-03-15'),
           executedBy: { name: 'Alice' },
           testRun: { name: 'Run 1' },
-          testRunCase: { suite: { name: 'Suite A' } },
+          testRunCase: { testCase: { title: 'Login Test' } },
         },
       ]);
       mockPrisma.testResult.count.mockResolvedValue(42);
@@ -184,7 +270,7 @@ describe('ReportsService', () => {
         status: TestResultStatus.PASSED,
         userName: 'Alice',
         runName: 'Run 1',
-        suiteName: 'Suite A',
+        caseName: 'Login Test',
         createdAt: '2026-03-15T00:00:00.000Z',
       });
     });

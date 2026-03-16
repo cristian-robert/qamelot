@@ -8,6 +8,8 @@ import type {
   DashboardSummaryDto,
   StatusCount,
   RunProgressEntry,
+  ReferenceCoverageDto,
+  ReferenceCoverageEntry,
 } from '@app/shared';
 
 @Injectable()
@@ -85,7 +87,7 @@ export class ReportsService {
       },
     });
 
-    const entries: RunProgressEntry[] = runs.map((run) => {
+    const entries: RunProgressEntry[] = runs.map((run: { id: string; name: string; createdAt: Date; testRunCases: { testResults: { status: string }[] }[] }) => {
       const summary = { passed: 0, failed: 0, blocked: 0, retest: 0, untested: 0 };
       for (const trc of run.testRunCases) {
         const status = trc.testResults[0]?.status;
@@ -169,7 +171,7 @@ export class ReportsService {
           executedBy: { select: { name: true } },
           testRun: { select: { name: true } },
           testRunCase: {
-            select: { suite: { select: { name: true } } },
+            select: { testCase: { select: { title: true } } },
           },
         },
       }),
@@ -188,15 +190,106 @@ export class ReportsService {
       activeRuns,
       overallPassRate: passRate,
       recentActivityCount,
-      recentResults: recentResults.map((r) => ({
+      recentResults: recentResults.map((r: { id: string; status: string; executedBy: { name: string }; testRun: { name: string }; testRunCase: { testCase: { title: string } }; createdAt: Date }) => ({
         id: r.id,
         status: r.status as TestResultStatus,
         userName: r.executedBy.name,
         runName: r.testRun.name,
-        suiteName: r.testRunCase.suite.name,
+        caseName: r.testRunCase.testCase.title,
         createdAt: r.createdAt.toISOString(),
       })),
     };
+  }
+
+  async getReferenceCoverage(projectId: string): Promise<ReferenceCoverageDto> {
+    await this.verifyProject(projectId);
+
+    // Get all test cases with references in this project
+    const casesWithRefs = await this.prisma.testCase.findMany({
+      where: {
+        projectId,
+        deletedAt: null,
+        references: { not: null },
+      },
+      select: {
+        id: true,
+        references: true,
+        suiteId: true,
+      },
+    });
+
+    // Get all test run cases (run+suite junctions) for this project
+    // with their latest result
+    const runCases = await this.prisma.testRunCase.findMany({
+      where: {
+        testRun: { projectId, deletedAt: null },
+      },
+      select: {
+        testCaseId: true,
+        testResults: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { status: true },
+        },
+      },
+    });
+
+    // Build a map: testCaseId -> latest status from all run cases
+    const caseStatusMap = new Map<string, TestResultStatus>();
+    for (const rc of runCases) {
+      const status = ((rc as { testResults: { status: string }[] }).testResults[0]?.status as TestResultStatus) ?? TestResultStatus.UNTESTED;
+      const existing = caseStatusMap.get(rc.testCaseId);
+      if (!existing || status !== TestResultStatus.UNTESTED) {
+        caseStatusMap.set(rc.testCaseId, status);
+      }
+    }
+
+    // Parse references and aggregate results per reference
+    const refMap = new Map<string, ReferenceCoverageEntry>();
+
+    for (const tc of casesWithRefs) {
+      if (!tc.references) continue;
+
+      const refs = tc.references.split(',').map((r: string) => r.trim()).filter((r: string) => r.length > 0);
+      const status = caseStatusMap.get(tc.id) ?? TestResultStatus.UNTESTED;
+
+      for (const ref of refs) {
+        const entry = refMap.get(ref) ?? {
+          reference: ref,
+          totalCases: 0,
+          passed: 0,
+          failed: 0,
+          blocked: 0,
+          retest: 0,
+          untested: 0,
+          coveragePercent: 0,
+        };
+        entry.totalCases++;
+
+        switch (status) {
+          case TestResultStatus.PASSED: entry.passed++; break;
+          case TestResultStatus.FAILED: entry.failed++; break;
+          case TestResultStatus.BLOCKED: entry.blocked++; break;
+          case TestResultStatus.RETEST: entry.retest++; break;
+          default: entry.untested++; break;
+        }
+
+        refMap.set(ref, entry);
+      }
+    }
+
+    // Calculate coverage percent for each reference
+    const references = Array.from(refMap.values()).map((entry) => ({
+      ...entry,
+      coveragePercent: entry.totalCases > 0
+        ? Math.round(((entry.totalCases - entry.untested) / entry.totalCases) * 10000) / 100
+        : 0,
+    }));
+
+    // Sort by reference name
+    references.sort((a, b) => a.reference.localeCompare(b.reference));
+
+    return { references };
   }
 
   private async calculateOverallPassRate(): Promise<number> {
@@ -211,11 +304,11 @@ export class ReportsService {
       },
     });
 
-    const withResults = allRunCases.filter((rc) => rc.testResults.length > 0);
+    const withResults = allRunCases.filter((rc: { testResults: { status: string }[] }) => rc.testResults.length > 0);
     if (withResults.length === 0) return 0;
 
     const passed = withResults.filter(
-      (rc) => rc.testResults[0].status === TestResultStatus.PASSED,
+      (rc: { testResults: { status: string }[] }) => rc.testResults[0].status === TestResultStatus.PASSED,
     ).length;
 
     return Math.round((passed / withResults.length) * 10000) / 100;

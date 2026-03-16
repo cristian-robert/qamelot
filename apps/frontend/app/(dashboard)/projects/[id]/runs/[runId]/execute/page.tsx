@@ -1,20 +1,26 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 import { useTestExecution } from '@/lib/test-results/useTestExecution';
 import { useRunSSE } from '@/lib/test-results/useRunSSE';
 import { ExecutionProgress } from '@/components/test-results/ExecutionProgress';
 import { ExecutionTable } from '@/components/test-results/ExecutionTable';
 import { LiveIndicator } from '@/components/test-results/LiveIndicator';
+import { ResultsCsvExportButton } from '@/components/test-results/ResultsCsvExportButton';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { TestRunStatus } from '@app/shared';
 import type { SubmitTestResultInput } from '@app/shared';
 
 export default function RunExecutionPage() {
-  const { runId } = useParams<{ id: string; runId: string }>();
+  const { id: projectId, runId } = useParams<{ id: string; runId: string }>();
+  const router = useRouter();
   const { status: sseStatus } = useRunSSE(runId);
-  const { execution, isLoading, error, submitResult, updateResult } =
+  const { execution, isLoading, error, submitResult, updateResult, closeRun, rerunRun } =
     useTestExecution(runId, { enablePolling: sseStatus === 'disconnected' });
+
+  const isClosed = execution?.status === TestRunStatus.COMPLETED;
 
   const handleSubmit = useCallback(
     (testRunCaseId: string, status: string, comment?: string, elapsed?: number) => {
@@ -36,6 +42,18 @@ export default function RunExecutionPage() {
     [updateResult],
   );
 
+  const handleClose = useCallback(() => {
+    closeRun.mutate(undefined);
+  }, [closeRun]);
+
+  const handleRerun = useCallback(() => {
+    rerunRun.mutate(undefined, {
+      onSuccess: (newRun) => {
+        router.push(`/projects/${projectId}/runs/${newRun.id}/execute`);
+      },
+    });
+  }, [rerunRun, router, projectId]);
+
   if (isLoading) {
     return <div className="p-6">Loading execution data...</div>;
   }
@@ -54,14 +72,18 @@ export default function RunExecutionPage() {
             {execution.assignedTo && (
               <> &middot; Assigned to: {execution.assignedTo.name}</>
             )}
+            {execution.sourceRunId && (
+              <> &middot; Rerun of previous run</>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <ResultsCsvExportButton runId={runId} />
           <LiveIndicator status={sseStatus} />
           <Badge
             variant="secondary"
             className={
-              execution.status === 'COMPLETED'
+              isClosed
                 ? 'bg-green-100 text-green-800'
                 : execution.status === 'IN_PROGRESS'
                   ? 'bg-blue-100 text-blue-800'
@@ -70,6 +92,26 @@ export default function RunExecutionPage() {
           >
             {execution.status.replace('_', ' ')}
           </Badge>
+          {!isClosed && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleClose}
+              disabled={closeRun.isPending}
+            >
+              {closeRun.isPending ? 'Closing...' : 'Close Run'}
+            </Button>
+          )}
+          {isClosed && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRerun}
+              disabled={rerunRun.isPending}
+            >
+              {rerunRun.isPending ? 'Creating...' : 'Rerun'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -77,9 +119,12 @@ export default function RunExecutionPage() {
 
       <ExecutionTable
         testRunCases={execution.testRunCases}
+        projectId={projectId}
+        runName={execution.name}
         onSubmit={handleSubmit}
         onUpdateComment={handleUpdateComment}
         isPending={submitResult.isPending || updateResult.isPending}
+        disabled={isClosed}
       />
     </div>
   );

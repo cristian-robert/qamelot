@@ -17,6 +17,9 @@ describe('DefectsService', () => {
       findUnique: jest.fn(),
       updateMany: jest.fn(),
     },
+    testResult: {
+      findUnique: jest.fn(),
+    },
   };
 
   const testDefect = {
@@ -24,6 +27,7 @@ describe('DefectsService', () => {
     reference: 'PROJ-123',
     description: 'Login fails with special chars',
     projectId: 'proj-1',
+    testResultId: null,
     deletedAt: null,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
@@ -66,6 +70,42 @@ describe('DefectsService', () => {
         service.create('nonexistent', { reference: 'PROJ-123' }),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('creates a defect linked to a test result', async () => {
+      const linkedDefect = { ...testDefect, testResultId: 'result-1' };
+      mockPrisma.testResult.findUnique.mockResolvedValue({ id: 'result-1' });
+      mockPrisma.defect.create.mockResolvedValue(linkedDefect);
+
+      const result = await service.create('proj-1', {
+        reference: 'PROJ-123',
+        description: 'Login fails',
+        testResultId: 'result-1',
+      });
+
+      expect(mockPrisma.testResult.findUnique).toHaveBeenCalledWith({
+        where: { id: 'result-1' },
+      });
+      expect(mockPrisma.defect.create).toHaveBeenCalledWith({
+        data: {
+          reference: 'PROJ-123',
+          description: 'Login fails',
+          testResultId: 'result-1',
+          projectId: 'proj-1',
+        },
+      });
+      expect(result).toEqual(linkedDefect);
+    });
+
+    it('throws NotFoundException when linked test result not found', async () => {
+      mockPrisma.testResult.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.create('proj-1', {
+          reference: 'PROJ-123',
+          testResultId: 'nonexistent',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
   });
 
   describe('findAllByProject', () => {
@@ -81,6 +121,37 @@ describe('DefectsService', () => {
       expect(result).toEqual([testDefect]);
     });
 
+    it('filters by search text across reference and description', async () => {
+      mockPrisma.defect.findMany.mockResolvedValue([testDefect]);
+
+      await service.findAllByProject('proj-1', { search: 'login' });
+
+      expect(mockPrisma.defect.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            projectId: 'proj-1',
+            deletedAt: null,
+            OR: [
+              { reference: { contains: 'login', mode: 'insensitive' } },
+              { description: { contains: 'login', mode: 'insensitive' } },
+            ],
+          },
+        }),
+      );
+    });
+
+    it('does not add search filter when value is empty string', async () => {
+      mockPrisma.defect.findMany.mockResolvedValue([]);
+
+      await service.findAllByProject('proj-1', { search: '' });
+
+      expect(mockPrisma.defect.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { projectId: 'proj-1', deletedAt: null },
+        }),
+      );
+    });
+
     it('throws NotFoundException when project not found', async () => {
       mockPrisma.project.findFirst.mockResolvedValue(null);
 
@@ -91,15 +162,45 @@ describe('DefectsService', () => {
   });
 
   describe('findOne', () => {
-    it('returns defect when found and not deleted', async () => {
-      mockPrisma.defect.findFirst.mockResolvedValue(testDefect);
+    it('returns defect with test result context when found', async () => {
+      const defectWithResult = {
+        ...testDefect,
+        testResultId: 'result-1',
+        testResult: {
+          id: 'result-1',
+          status: 'FAILED',
+          comment: 'Button did not respond',
+          testRunId: 'run-1',
+          testRunCase: { suite: { id: 'suite-1', name: 'Login Suite' } },
+          testRun: { id: 'run-1', name: 'Smoke Run' },
+        },
+      };
+      mockPrisma.defect.findFirst.mockResolvedValue(defectWithResult);
 
       const result = await service.findOne('def-1');
 
       expect(mockPrisma.defect.findFirst).toHaveBeenCalledWith({
         where: { id: 'def-1', deletedAt: null },
+        include: {
+          testResult: {
+            select: {
+              id: true,
+              status: true,
+              comment: true,
+              testRunId: true,
+              testRunCase: {
+                select: {
+                  suite: { select: { id: true, name: true } },
+                },
+              },
+              testRun: {
+                select: { id: true, name: true },
+              },
+            },
+          },
+        },
       });
-      expect(result).toEqual(testDefect);
+      expect(result).toEqual(defectWithResult);
     });
 
     it('throws NotFoundException when defect not found', async () => {
@@ -108,6 +209,29 @@ describe('DefectsService', () => {
       await expect(service.findOne('nonexistent')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('findByTestResultId', () => {
+    it('returns defects linked to a test result', async () => {
+      const linkedDefect = { ...testDefect, testResultId: 'result-1' };
+      mockPrisma.defect.findMany.mockResolvedValue([linkedDefect]);
+
+      const result = await service.findByTestResultId('result-1');
+
+      expect(mockPrisma.defect.findMany).toHaveBeenCalledWith({
+        where: { testResultId: 'result-1', deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(result).toEqual([linkedDefect]);
+    });
+
+    it('returns empty array when no defects linked', async () => {
+      mockPrisma.defect.findMany.mockResolvedValue([]);
+
+      const result = await service.findByTestResultId('result-no-defects');
+
+      expect(result).toEqual([]);
     });
   });
 

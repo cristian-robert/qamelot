@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { useRunSSE } from './useRunSSE';
-import { TestRunStatus, TestResultStatus } from '@app/shared';
+import { TestRunStatus, TestResultStatus, CasePriority, CaseType } from '@app/shared';
 import type { RunProgressEvent, TestRunExecutionDto } from '@app/shared';
 
 /** Minimal mock for EventSource */
@@ -164,6 +164,7 @@ describe('useRunSSE', () => {
       testPlanId: 'plan-1',
       projectId: 'proj-1',
       assignedToId: null,
+      sourceRunId: null,
       status: TestRunStatus.PENDING,
       deletedAt: null,
       createdAt: '2026-01-01T00:00:00.000Z',
@@ -174,8 +175,15 @@ describe('useRunSSE', () => {
         {
           id: 'trc-1',
           testRunId: 'run-1',
-          suiteId: 'suite-1',
-          suite: { id: 'suite-1', name: 'Login Suite' },
+          testCaseId: 'case-1',
+          testCase: {
+            id: 'case-1',
+            title: 'Login Test',
+            priority: CasePriority.MEDIUM,
+            type: CaseType.FUNCTIONAL,
+            suiteId: 'suite-1',
+            suite: { id: 'suite-1', name: 'Login Suite' },
+          },
           createdAt: '2026-01-01T00:00:00.000Z',
           latestResult: null,
         },

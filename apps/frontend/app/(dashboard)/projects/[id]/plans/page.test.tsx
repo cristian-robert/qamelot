@@ -7,6 +7,9 @@ import TestPlansPage from './page';
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: 'proj-1' }),
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ replace: vi.fn() }),
+  usePathname: () => '/projects/proj-1/plans',
 }));
 
 vi.mock('next/link', () => ({

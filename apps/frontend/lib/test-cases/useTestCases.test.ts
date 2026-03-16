@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { useTestCases, testCasesQueryKey } from './useTestCases';
 import { testCasesApi } from '../api/test-cases';
-import { TestCasePriority, TestCaseType, type TestCaseDto } from '@app/shared';
+import { CasePriority, CaseType, TemplateType, type TestCaseDto } from '@app/shared';
 
 vi.mock('../api/test-cases', () => ({
   testCasesApi: {
@@ -27,10 +27,12 @@ const mockCase: TestCaseDto = {
   id: 'case-1',
   title: 'Verify login',
   preconditions: null,
-  steps: [],
-  priority: TestCasePriority.MEDIUM,
-  type: TestCaseType.FUNCTIONAL,
-  automationFlag: false,
+  templateType: TemplateType.TEXT,
+  priority: CasePriority.MEDIUM,
+  type: CaseType.FUNCTIONAL,
+  estimate: null,
+  references: null,
+  position: 0,
   suiteId: SUITE_ID,
   projectId: PROJECT_ID,
   deletedAt: null,

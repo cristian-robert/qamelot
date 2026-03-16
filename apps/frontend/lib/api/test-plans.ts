@@ -6,9 +6,21 @@ import type {
 } from '@app/shared';
 import { apiFetch } from './client';
 
+export interface TestPlanFilters {
+  status?: string;
+}
+
+function buildQueryString(filters?: TestPlanFilters): string {
+  if (!filters) return '';
+  const params = new URLSearchParams();
+  if (filters.status) params.set('status', filters.status);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
 export const testPlansApi = {
-  listByProject: (projectId: string) =>
-    apiFetch<TestPlanWithRunCountDto[]>(`/projects/${projectId}/plans`),
+  listByProject: (projectId: string, filters?: TestPlanFilters) =>
+    apiFetch<TestPlanWithRunCountDto[]>(`/projects/${projectId}/plans${buildQueryString(filters)}`),
 
   getById: (projectId: string, id: string) =>
     apiFetch<TestPlanWithRunCountDto>(`/projects/${projectId}/plans/${id}`),

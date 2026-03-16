@@ -1,13 +1,39 @@
 import { z } from 'zod';
-import { TestCasePriority, TestCaseType } from '../types/index';
+import { CasePriority, CaseType, TemplateType } from '../types/index';
 
-export const TestCaseStepSchema = z.object({
-  action: z.string().min(1, 'Action is required').max(5000, 'Action must be 5000 characters or less'),
-  expected: z
+// ── Step schemas ──
+
+export const CreateTestCaseStepSchema = z.object({
+  description: z
+    .string()
+    .min(1, 'Description is required')
+    .max(5000, 'Description must be 5000 characters or less'),
+  expectedResult: z
     .string()
     .min(1, 'Expected result is required')
     .max(5000, 'Expected result must be 5000 characters or less'),
 });
+
+export const UpdateTestCaseStepSchema = z.object({
+  description: z
+    .string()
+    .min(1, 'Description is required')
+    .max(5000, 'Description must be 5000 characters or less')
+    .optional(),
+  expectedResult: z
+    .string()
+    .min(1, 'Expected result is required')
+    .max(5000, 'Expected result must be 5000 characters or less')
+    .optional(),
+});
+
+export const ReorderStepsSchema = z.object({
+  stepIds: z
+    .array(z.string().min(1))
+    .min(1, 'At least one step ID is required'),
+});
+
+// ── Case schemas ──
 
 export const CreateTestCaseSchema = z.object({
   title: z
@@ -19,10 +45,15 @@ export const CreateTestCaseSchema = z.object({
     .max(2000, 'Preconditions must be 2000 characters or less')
     .transform((v) => (v === '' ? undefined : v))
     .optional(),
-  steps: z.array(TestCaseStepSchema).max(100, 'Maximum 100 steps allowed').optional(),
-  priority: z.nativeEnum(TestCasePriority).optional(),
-  type: z.nativeEnum(TestCaseType).optional(),
-  automationFlag: z.boolean().optional(),
+  templateType: z.nativeEnum(TemplateType).optional(),
+  priority: z.nativeEnum(CasePriority).optional(),
+  type: z.nativeEnum(CaseType).optional(),
+  estimate: z.number().int().min(0).nullable().optional(),
+  references: z
+    .string()
+    .max(1000, 'References must be 1000 characters or less')
+    .nullable()
+    .optional(),
 });
 
 export const UpdateTestCaseSchema = z.object({
@@ -36,11 +67,24 @@ export const UpdateTestCaseSchema = z.object({
     .max(2000, 'Preconditions must be 2000 characters or less')
     .nullable()
     .optional(),
-  steps: z.array(TestCaseStepSchema).max(100, 'Maximum 100 steps allowed').optional(),
-  priority: z.nativeEnum(TestCasePriority).optional(),
-  type: z.nativeEnum(TestCaseType).optional(),
-  automationFlag: z.boolean().optional(),
+  templateType: z.nativeEnum(TemplateType).optional(),
+  priority: z.nativeEnum(CasePriority).optional(),
+  type: z.nativeEnum(CaseType).optional(),
+  estimate: z.number().int().min(0).nullable().optional(),
+  references: z
+    .string()
+    .max(1000, 'References must be 1000 characters or less')
+    .nullable()
+    .optional(),
+});
+
+export const CopyMoveTestCaseSchema = z.object({
+  targetSuiteId: z.string().min(1, 'Target suite ID is required'),
 });
 
 export type CreateTestCaseInput = z.infer<typeof CreateTestCaseSchema>;
 export type UpdateTestCaseInput = z.infer<typeof UpdateTestCaseSchema>;
+export type CreateTestCaseStepInput = z.infer<typeof CreateTestCaseStepSchema>;
+export type UpdateTestCaseStepInput = z.infer<typeof UpdateTestCaseStepSchema>;
+export type ReorderStepsInput = z.infer<typeof ReorderStepsSchema>;
+export type CopyMoveTestCaseInput = z.infer<typeof CopyMoveTestCaseSchema>;

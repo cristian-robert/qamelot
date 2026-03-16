@@ -35,9 +35,44 @@ enum TestResultStatus {
   UNTESTED
 }
 
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum TestCaseType {
+  FUNCTIONAL
+  REGRESSION
+  SMOKE
+  ACCEPTANCE
+  EXPLORATORY
+}
+
 enum MilestoneStatus {
   OPEN
   CLOSED
+}
+
+enum CasePriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum CaseType {
+  FUNCTIONAL
+  REGRESSION
+  SMOKE
+  EXPLORATORY
+  OTHER
+}
+
+enum TemplateType {
+  TEXT
+  STEPS
 }
 
 model User {
@@ -51,6 +86,7 @@ model User {
   updatedAt   DateTime     @updatedAt
   testRuns    TestRun[]
   testResults TestResult[]
+  attachments Attachment[]
 }
 
 model Project {
@@ -61,6 +97,7 @@ model Project {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   testSuites  TestSuite[]
+  testCases   TestCase[]
   testPlans   TestPlan[]
   testRuns    TestRun[]
   milestones  Milestone[]
@@ -76,13 +113,53 @@ model TestSuite {
   parentId     String?
   parent       TestSuite?    @relation("SuiteTree", fields: [parentId], references: [id])
   children     TestSuite[]   @relation("SuiteTree")
-  testRunCases TestRunCase[]
+  testCases    TestCase[]
   deletedAt    DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
   @@index([projectId])
   @@index([parentId])
+}
+
+model TestCase {
+  id            String         @id @default(cuid())
+  title         String
+  preconditions String?
+  templateType  TemplateType   @default(TEXT)
+  priority      CasePriority   @default(MEDIUM)
+  type          CaseType       @default(FUNCTIONAL)
+  estimate      Int?           // duration in seconds
+  references    String?        // comma-separated references
+  position      Int            @default(0)
+  suiteId       String
+  suite         TestSuite      @relation(fields: [suiteId], references: [id])
+  projectId     String
+  project       Project        @relation(fields: [projectId], references: [id])
+  steps         TestCaseStep[]
+  testRunCases  TestRunCase[]
+  deletedAt     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([suiteId])
+  @@index([projectId])
+  @@index([priority])
+  @@index([type])
+}
+
+model TestCaseStep {
+  id             String   @id @default(cuid())
+  caseId         String
+  testCase       TestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  stepNumber     Int
+  description    String
+  expectedResult String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([caseId, stepNumber])
+  @@index([caseId])
 }
 
 model TestPlan {
@@ -110,6 +187,9 @@ model TestRun {
   assignedToId String?
   assignedTo   User?         @relation(fields: [assignedToId], references: [id])
   status       TestRunStatus @default(PENDING)
+  sourceRunId  String?
+  sourceRun    TestRun?      @relation("RerunChain", fields: [sourceRunId], references: [id])
+  reruns       TestRun[]     @relation("RerunChain")
   deletedAt    DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -119,20 +199,21 @@ model TestRun {
   @@index([testPlanId])
   @@index([projectId])
   @@index([assignedToId])
+  @@index([sourceRunId])
 }
 
 model TestRunCase {
   id          String       @id @default(cuid())
   testRunId   String
   testRun     TestRun      @relation(fields: [testRunId], references: [id])
-  suiteId     String
-  suite       TestSuite    @relation(fields: [suiteId], references: [id])
+  testCaseId  String
+  testCase    TestCase     @relation(fields: [testCaseId], references: [id])
   createdAt   DateTime     @default(now())
   testResults TestResult[]
 
-  @@unique([testRunId, suiteId])
+  @@unique([testRunId, testCaseId])
   @@index([testRunId])
-  @@index([suiteId])
+  @@index([testCaseId])
 }
 
 model TestResult {
@@ -146,6 +227,7 @@ model TestResult {
   status        TestResultStatus @default(UNTESTED)
   comment       String?
   elapsed       Int?             // duration in seconds
+  defects       Defect[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
@@ -171,14 +253,39 @@ model Milestone {
 }
 
 model Defect {
-  id          String    @id @default(cuid())
-  reference   String
-  description String?
-  projectId   String
-  project     Project   @relation(fields: [projectId], references: [id])
-  deletedAt   DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String      @id @default(cuid())
+  reference    String
+  description  String?
+  projectId    String
+  project      Project     @relation(fields: [projectId], references: [id])
+  testResultId String?
+  testResult   TestResult? @relation(fields: [testResultId], references: [id])
+  deletedAt    DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   @@index([projectId])
+  @@index([testResultId])
+}
+
+enum AttachmentEntityType {
+  TEST_CASE
+  TEST_RESULT
+}
+
+model Attachment {
+  id           String               @id @default(cuid())
+  filename     String
+  mimeType     String
+  size         Int
+  path         String
+  entityType   AttachmentEntityType
+  entityId     String
+  uploadedById String
+  uploadedBy   User                 @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([uploadedById])
 }

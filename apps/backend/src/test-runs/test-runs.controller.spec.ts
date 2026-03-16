@@ -24,6 +24,8 @@ describe('TestRunsController', () => {
     findAllByPlan: jest.fn(),
     findOne: jest.fn(),
     update: jest.fn(),
+    closeRun: jest.fn(),
+    rerun: jest.fn(),
     softDelete: jest.fn(),
   };
 
@@ -41,23 +43,37 @@ describe('TestRunsController', () => {
 
     const result = await controller.create(PLAN_ID, {
       name: 'Smoke Test',
-      suiteIds: ['suite-1'],
+      caseIds: ['case-1'],
     });
 
     expect(mockService.create).toHaveBeenCalledWith(PLAN_ID, {
       name: 'Smoke Test',
-      suiteIds: ['suite-1'],
+      caseIds: ['case-1'],
     });
     expect(result).toEqual(mockRun);
   });
 
-  it('findAllByPlan delegates to service', async () => {
+  it('findAllByPlan delegates to service without filters', async () => {
     mockService.findAllByPlan.mockResolvedValue([mockRun]);
 
     const result = await controller.findAllByPlan(PLAN_ID);
 
-    expect(mockService.findAllByPlan).toHaveBeenCalledWith(PLAN_ID);
+    expect(mockService.findAllByPlan).toHaveBeenCalledWith(PLAN_ID, {
+      status: undefined,
+      assigneeId: undefined,
+    });
     expect(result).toEqual([mockRun]);
+  });
+
+  it('findAllByPlan passes status and assigneeId filters', async () => {
+    mockService.findAllByPlan.mockResolvedValue([]);
+
+    await controller.findAllByPlan(PLAN_ID, 'PENDING', 'user-1');
+
+    expect(mockService.findAllByPlan).toHaveBeenCalledWith(PLAN_ID, {
+      status: 'PENDING',
+      assigneeId: 'user-1',
+    });
   });
 
   it('findOne delegates to service', async () => {
@@ -77,6 +93,26 @@ describe('TestRunsController', () => {
 
     expect(mockService.update).toHaveBeenCalledWith('run-1', { name: 'Renamed' });
     expect(result).toEqual(updated);
+  });
+
+  it('close delegates to service', async () => {
+    const closed = { ...mockRun, status: 'COMPLETED' };
+    mockService.closeRun.mockResolvedValue(closed);
+
+    const result = await controller.close('run-1');
+
+    expect(mockService.closeRun).toHaveBeenCalledWith('run-1');
+    expect(result).toEqual(closed);
+  });
+
+  it('rerun delegates to service', async () => {
+    const rerun = { ...mockRun, id: 'run-2', sourceRunId: 'run-1' };
+    mockService.rerun.mockResolvedValue(rerun);
+
+    const result = await controller.rerun('run-1');
+
+    expect(mockService.rerun).toHaveBeenCalledWith('run-1');
+    expect(result).toEqual(rerun);
   });
 
   it('remove delegates to service', async () => {

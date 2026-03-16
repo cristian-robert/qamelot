@@ -1,0 +1,16 @@
+import { Module } from '@nestjs/common';
+import { MulterModule } from '@nestjs/platform-express';
+import { PrismaModule } from '../prisma/prisma.module';
+import { AttachmentsController } from './attachments.controller';
+import { AttachmentsService } from './attachments.service';
+
+@Module({
+  imports: [
+    PrismaModule,
+    MulterModule.register({ storage: undefined }), // memory storage (buffer)
+  ],
+  controllers: [AttachmentsController],
+  providers: [AttachmentsService],
+  exports: [AttachmentsService],
+})
+export class AttachmentsModule {}

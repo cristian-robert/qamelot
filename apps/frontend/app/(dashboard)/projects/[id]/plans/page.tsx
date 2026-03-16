@@ -7,7 +7,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CreateTestPlanSchema, type CreateTestPlanInput, type TestPlanStatus } from '@app/shared';
 import { useTestPlans } from '@/lib/test-plans/useTestPlans';
+import { useFilterParams } from '@/lib/useFilterParams';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { FilterBar, type FilterConfig } from '@/components/FilterBar';
 import { Button } from '@/components/ui/button';
 
 const STATUS_LABELS: Record<TestPlanStatus, string> = {
@@ -24,10 +26,27 @@ const STATUS_COLORS: Record<TestPlanStatus, string> = {
   ARCHIVED: 'bg-amber-100 text-amber-700',
 };
 
+const FILTER_KEYS = ['status'] as const;
+
+const PLAN_FILTERS: FilterConfig[] = [
+  {
+    type: 'select',
+    key: 'status',
+    label: 'All statuses',
+    options: [
+      { value: 'DRAFT', label: 'Draft' },
+      { value: 'ACTIVE', label: 'Active' },
+      { value: 'COMPLETED', label: 'Completed' },
+      { value: 'ARCHIVED', label: 'Archived' },
+    ],
+  },
+];
+
 export default function TestPlansPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { plans, isLoading, error, createPlan } = useTestPlans(projectId);
+  const { filters, activeCount, setFilter, clearAll } = useFilterParams(FILTER_KEYS);
+  const { plans, isLoading, error, createPlan } = useTestPlans(projectId, filters);
 
   const {
     register,
@@ -77,6 +96,14 @@ export default function TestPlansPage() {
         <Button onClick={openDialog}>New Plan</Button>
       </div>
 
+      <FilterBar
+        filters={PLAN_FILTERS}
+        values={filters}
+        activeCount={activeCount}
+        onChange={setFilter}
+        onClearAll={clearAll}
+      />
+
       {error ? (
         <p className="text-sm text-destructive">
           {error instanceof Error ? error.message : 'Failed to load test plans'}
@@ -85,7 +112,9 @@ export default function TestPlansPage() {
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : plans.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No test plans yet. Create your first plan to get started.
+          {activeCount > 0
+            ? 'No test plans match the current filters.'
+            : 'No test plans yet. Create your first plan to get started.'}
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

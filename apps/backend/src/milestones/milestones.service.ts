@@ -20,11 +20,18 @@ export class MilestonesService {
     });
   }
 
-  async findAllByProject(projectId: string) {
+  async findAllByProject(
+    projectId: string,
+    filters?: { status?: string },
+  ) {
     await this.verifyProject(projectId);
 
     return this.prisma.milestone.findMany({
-      where: { projectId, deletedAt: null },
+      where: {
+        projectId,
+        deletedAt: null,
+        ...(filters?.status && { status: filters.status as 'OPEN' | 'CLOSED' }),
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

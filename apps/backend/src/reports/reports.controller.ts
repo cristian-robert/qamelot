@@ -39,6 +39,16 @@ export class ReportsController {
     return this.reportsService.getActivity(projectId);
   }
 
+  @Get('projects/:projectId/reports/reference-coverage')
+  @Roles(Role.ADMIN, Role.LEAD)
+  @ApiOperation({ summary: 'Get reference coverage report — which requirements/tickets have passing tests' })
+  @ApiResponse({ status: 200, description: 'Reference coverage report with per-reference status breakdown' })
+  @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
+  @ApiResponse({ status: 404, description: 'Project not found' })
+  getReferenceCoverage(@Param('projectId') projectId: string) {
+    return this.reportsService.getReferenceCoverage(projectId);
+  }
+
   @Get('reports/summary')
   @Roles(Role.ADMIN, Role.LEAD)
   @ApiOperation({ summary: 'Get cross-project dashboard summary' })

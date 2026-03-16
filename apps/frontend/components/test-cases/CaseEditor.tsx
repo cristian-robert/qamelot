@@ -5,8 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   CreateTestCaseSchema,
-  TestCasePriority,
-  TestCaseType,
+  CasePriority,
+  CaseType,
   type CreateTestCaseInput,
   type TestCaseDto,
 } from '@app/shared';
@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -22,8 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { StepEditor } from './StepEditor';
 import { formatLabel } from '@/lib/format';
+import { ReferenceLinks } from '@/components/test-cases/ReferenceLinks';
 
 interface CaseEditorProps {
   testCase?: TestCaseDto;
@@ -32,29 +31,31 @@ interface CaseEditorProps {
   isPending: boolean;
 }
 
-const PRIORITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
-const TYPES = ['FUNCTIONAL', 'REGRESSION', 'SMOKE', 'ACCEPTANCE', 'EXPLORATORY'] as const;
+const PRIORITIES = Object.values(CasePriority);
+const TYPES = Object.values(CaseType);
 
 export function CaseEditor({ testCase, onSave, onCancel, isPending }: CaseEditorProps) {
   const {
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors },
   } = useForm<z.input<typeof CreateTestCaseSchema>>({
     resolver: zodResolver(CreateTestCaseSchema),
     defaultValues: {
       title: testCase?.title ?? '',
       preconditions: testCase?.preconditions ?? '',
-      steps: testCase?.steps ?? [],
-      priority: testCase?.priority ?? TestCasePriority.MEDIUM,
-      type: testCase?.type ?? TestCaseType.FUNCTIONAL,
-      automationFlag: testCase?.automationFlag ?? false,
+      priority: testCase?.priority ?? CasePriority.MEDIUM,
+      type: testCase?.type ?? CaseType.FUNCTIONAL,
+      references: testCase?.references ?? '',
     },
   });
 
+  const referencesValue = watch('references');
+
   return (
-    <form onSubmit={handleSubmit(onSave)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSave as Parameters<typeof handleSubmit>[0])} className="space-y-4">
       <div className="space-y-1">
         <Label htmlFor="title">Title</Label>
         <Input id="title" {...register('title')} placeholder="Test case title" />
@@ -82,7 +83,7 @@ export function CaseEditor({ testCase, onSave, onCancel, isPending }: CaseEditor
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger id="priority">
-                  <SelectValue formatter={formatLabel} />
+                  <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
                   {PRIORITIES.map((p) => (
@@ -104,7 +105,7 @@ export function CaseEditor({ testCase, onSave, onCancel, isPending }: CaseEditor
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger id="type">
-                  <SelectValue formatter={formatLabel} />
+                  <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
                   {TYPES.map((t) => (
@@ -119,32 +120,26 @@ export function CaseEditor({ testCase, onSave, onCancel, isPending }: CaseEditor
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Controller
-          control={control}
-          name="automationFlag"
-          render={({ field }) => (
-            <Checkbox
-              id="automationFlag"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-            />
-          )}
+      <div className="space-y-1">
+        <Label htmlFor="references">References</Label>
+        <Input
+          id="references"
+          {...register('references')}
+          placeholder="e.g. REQ-001, https://jira.example.com/PROJ-42"
         />
-        <Label htmlFor="automationFlag">Automated</Label>
-      </div>
-
-      <Controller
-        control={control}
-        name="steps"
-        render={({ field }) => (
-          <StepEditor steps={field.value ?? []} onChange={field.onChange} />
+        {errors.references && (
+          <p className="text-sm text-destructive">{errors.references.message}</p>
         )}
-      />
+        {referencesValue && (
+          <div className="mt-1">
+            <ReferenceLinks references={referencesValue} />
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={isPending}>
-          {isPending ? 'Saving…' : 'Save'}
+          {isPending ? 'Saving\u2026' : 'Save'}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel

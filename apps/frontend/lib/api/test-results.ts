@@ -4,7 +4,7 @@ import type {
   SubmitTestResultInput,
   UpdateTestResultInput,
 } from '@app/shared';
-import { apiFetch } from './client';
+import { apiFetch, apiDownload } from './client';
 
 export const testResultsApi = {
   listByRun: (runId: string) =>
@@ -24,4 +24,10 @@ export const testResultsApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+
+  exportCsv: (runId: string) =>
+    apiDownload(
+      `/runs/${runId}/results/export?format=csv`,
+      `run-results-${runId}.csv`,
+    ),
 };

@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SubmitTestResultInput, UpdateTestResultInput } from '@app/shared';
 import { testResultsApi } from '../api/test-results';
+import { testRunsApi } from '../api/test-runs';
 
 const POLLING_INTERVAL_MS = 5_000;
 
@@ -42,11 +43,27 @@ export function useTestExecution(runId: string, options?: UseTestExecutionOption
     },
   });
 
+  const closeRun = useMutation({
+    mutationFn: () => testRunsApi.close(runId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const rerunRun = useMutation({
+    mutationFn: () => testRunsApi.rerun(runId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
   return {
     execution,
     isLoading,
     error,
     submitResult,
     updateResult,
+    closeRun,
+    rerunRun,
   };
 }

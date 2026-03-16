@@ -1,89 +1,23 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import {
-  ClipboardList,
-  Flag,
-  Bug,
-  BarChart3,
-  ChevronRight,
-} from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { projectsApi } from '@/lib/api/projects';
 import { PROJECTS_QUERY_KEY } from '@/lib/projects/useProjects';
 import { useTestSuites } from '@/lib/test-suites/useTestSuites';
 import { SuiteTree } from '@/components/test-suites/SuiteTree';
 import { SuiteFormDialog } from '@/components/test-suites/SuiteFormDialog';
-import { Breadcrumb } from '@/components/Breadcrumb';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { CaseListPanel } from '@/components/test-cases/CaseListPanel';
+import { CaseEditorPanel } from '@/components/test-cases/CaseEditorPanel';
+import { CsvExportButton } from '@/components/test-cases/CsvExportButton';
+import { CsvImportWizard } from '@/components/test-cases/CsvImportWizard';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ProjectOverview, DetailSkeleton, ErrorState } from './ProjectOverview';
 import type { TreeNode } from '@/lib/test-suites/tree-utils';
-import type { CreateTestSuiteInput } from '@app/shared';
-
-interface NavCardProps {
-  href: string;
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}
-
-function NavCard({ href, icon, title, description }: NavCardProps) {
-  return (
-    <Link href={href} className="group">
-      <Card className="transition-all group-hover:-translate-y-0.5 group-hover:shadow-md">
-        <CardContent className="flex items-center gap-4">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-            {icon}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold group-hover:text-emerald-700 transition-colors">
-              {title}
-            </p>
-            <p className="text-sm text-muted-foreground">{description}</p>
-          </div>
-          <ChevronRight className="size-4 text-muted-foreground group-hover:text-emerald-600 transition-colors" />
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
-function DetailSkeleton() {
-  return (
-    <div className="p-6 space-y-6">
-      <div className="h-4 w-40 animate-pulse rounded bg-muted" />
-      <div className="h-8 w-64 animate-pulse rounded bg-muted" />
-      <div className="h-4 w-96 animate-pulse rounded bg-muted" />
-      <div className="grid gap-4 sm:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-20 animate-pulse rounded-xl bg-muted" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ErrorState() {
-  return (
-    <div className="p-6 space-y-4">
-      <Breadcrumb items={[{ label: 'Projects', href: '/projects' }, { label: 'Not Found' }]} />
-      <Card>
-        <CardContent className="flex flex-col items-center py-12 text-center">
-          <h3 className="text-lg font-semibold">Project not found</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            The project you are looking for does not exist or has been removed.
-          </p>
-          <Link href="/projects" className={buttonVariants({ variant: 'outline', className: 'mt-4' })}>
-            Back to Projects
-          </Link>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+import type { CreateTestSuiteInput, TestCaseDto } from '@app/shared';
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -101,12 +35,34 @@ export default function ProjectDetailPage() {
   const { tree, isLoading: suitesLoading, createSuite, updateSuite, deleteSuite } =
     useTestSuites(id);
 
+  const [selectedSuiteId, setSelectedSuiteId] = useState<string | null>(null);
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+
   const [dialogState, setDialogState] = useState<{
     open: boolean;
     mode: 'create' | 'rename';
     parentId?: string;
     node?: TreeNode;
   }>({ open: false, mode: 'create' });
+
+  const [importOpen, setImportOpen] = useState(false);
+
+  const handleSelectSuite = useCallback((suiteId: string) => {
+    setSelectedSuiteId(suiteId);
+    setSelectedCaseId(null);
+  }, []);
+
+  const handleSelectCase = useCallback((caseId: string) => {
+    setSelectedCaseId(caseId);
+  }, []);
+
+  const handleCloseEditor = useCallback(() => {
+    setSelectedCaseId(null);
+  }, []);
+
+  const handleCaseCreated = useCallback((tc: TestCaseDto) => {
+    setSelectedCaseId(tc.id);
+  }, []);
 
   const handleCreateRoot = () => {
     setDialogState({ open: true, mode: 'create' });
@@ -123,6 +79,10 @@ export default function ProjectDetailPage() {
   const handleDelete = (node: TreeNode) => {
     if (window.confirm(`Delete "${node.name}" and all its children?`)) {
       deleteSuite.mutate(node.id);
+      if (selectedSuiteId === node.id) {
+        setSelectedSuiteId(null);
+        setSelectedCaseId(null);
+      }
     }
   };
 
@@ -140,6 +100,18 @@ export default function ProjectDetailPage() {
     }
   };
 
+  // Keyboard shortcut: Escape to close the case editor
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedCaseId) {
+        e.preventDefault();
+        setSelectedCaseId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedCaseId]);
+
   if (projectLoading) {
     return <DetailSkeleton />;
   }
@@ -150,8 +122,8 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="flex h-full">
-      {/* Sidebar -- Suite Tree */}
-      <aside className="flex w-64 shrink-0 flex-col border-r">
+      {/* Pane 1: Suite Tree sidebar (~240px) */}
+      <aside className="flex w-60 shrink-0 flex-col border-r">
         <div className="flex items-center justify-between border-b px-3 py-2">
           <h2 className="text-sm font-semibold">Suites</h2>
           <Button size="sm" variant="ghost" onClick={handleCreateRoot}>
@@ -168,6 +140,8 @@ export default function ProjectDetailPage() {
           ) : (
             <SuiteTree
               tree={tree}
+              selectedId={selectedSuiteId}
+              onSelect={handleSelectSuite}
               onCreateChild={handleCreateChild}
               onRename={handleRename}
               onDelete={handleDelete}
@@ -176,54 +150,59 @@ export default function ProjectDetailPage() {
         </ScrollArea>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 p-6 space-y-6 overflow-y-auto">
-        <Breadcrumb
-          items={[
-            { label: 'Projects', href: '/projects' },
-            { label: project.name },
-          ]}
-        />
+      {/* Pane 2 & 3: Case list + Editor, or Project Overview */}
+      {selectedSuiteId ? (
+        <>
+          {/* Pane 2: Case List (~350px) */}
+          <div className="flex w-[350px] shrink-0 flex-col border-r">
+            <CaseListPanel
+              projectId={id}
+              suiteId={selectedSuiteId}
+              selectedCaseId={selectedCaseId}
+              onSelectCase={handleSelectCase}
+              onCaseCreated={handleCaseCreated}
+            />
+          </div>
 
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
-          {project.description && (
-            <p className="mt-1 text-muted-foreground">{project.description}</p>
+          {/* Pane 3: Case Editor (flex-1) */}
+          {selectedCaseId ? (
+            <div className="flex min-w-0 flex-1 flex-col">
+              <CaseEditorPanel
+                key={selectedCaseId}
+                projectId={id}
+                suiteId={selectedSuiteId}
+                caseId={selectedCaseId}
+                onClose={handleCloseEditor}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <p className="text-sm text-muted-foreground">
+                Select a test case to view or edit it.
+              </p>
+            </div>
           )}
+        </>
+      ) : (
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
+          <ProjectOverview
+            id={id}
+            name={project.name}
+            description={project.description}
+          />
+          <div className="flex items-center gap-2">
+            <CsvExportButton projectId={id} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+            >
+              <Upload className="mr-1.5 size-4" />
+              Import CSV
+            </Button>
+          </div>
         </div>
-
-        {/* Navigation cards */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <NavCard
-            href={`/projects/${id}/plans`}
-            icon={<ClipboardList className="size-5" />}
-            title="Test Plans"
-            description="Create and manage test plans for organized execution"
-          />
-          <NavCard
-            href={`/projects/${id}/milestones`}
-            icon={<Flag className="size-5" />}
-            title="Milestones"
-            description="Track progress toward release milestones"
-          />
-          <NavCard
-            href={`/projects/${id}/defects`}
-            icon={<Bug className="size-5" />}
-            title="Defects"
-            description="Log and track bugs found during testing"
-          />
-          <NavCard
-            href={`/projects/${id}/reports`}
-            icon={<BarChart3 className="size-5" />}
-            title="Reports"
-            description="View testing metrics and coverage reports"
-          />
-        </div>
-
-        <p className="text-sm text-muted-foreground">
-          Select a suite from the sidebar to view its test cases.
-        </p>
-      </main>
+      )}
 
       {/* Create / Rename dialog */}
       <SuiteFormDialog
@@ -239,6 +218,13 @@ export default function ProjectDetailPage() {
             ? { name: dialogState.node.name, description: dialogState.node.description ?? '' }
             : undefined
         }
+      />
+
+      {/* CSV Import Wizard */}
+      <CsvImportWizard
+        projectId={id}
+        open={importOpen}
+        onOpenChange={setImportOpen}
       />
     </div>
   );

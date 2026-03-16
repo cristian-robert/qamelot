@@ -1,13 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import { useDefects } from '@/lib/defects/useDefects';
+import { useFilterParams } from '@/lib/useFilterParams';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import { DefectFormDialog } from '@/components/defects/DefectFormDialog';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { FilterBar, type FilterConfig } from '@/components/FilterBar';
 import { Button } from '@/components/ui/button';
 import type { CreateDefectInput, DefectDto } from '@app/shared';
+
+const FILTER_KEYS = ['search'] as const;
+
+const DEFECT_FILTERS: FilterConfig[] = [
+  {
+    type: 'search',
+    key: 'search',
+    placeholder: 'Search defects...',
+  },
+];
 
 function DefectRow({
   defect,
@@ -48,8 +60,19 @@ function DefectRow({
 
 export default function DefectsPage() {
   const { id: projectId } = useParams<{ id: string }>();
+  const { filters, activeCount, setFilter, clearAll } = useFilterParams(FILTER_KEYS);
+
+  // Local search input state for immediate UI feedback
+  const [searchInput, setSearchInput] = useState(filters.search ?? '');
+  const debouncedSearch = useDebouncedValue(searchInput, 300);
+
+  // Sync debounced value to URL params
+  useEffect(() => {
+    setFilter('search', debouncedSearch || undefined);
+  }, [debouncedSearch, setFilter]);
+
   const { defects, isLoading, error, createDefect, deleteDefect } =
-    useDefects(projectId);
+    useDefects(projectId, { search: filters.search });
 
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -65,6 +88,11 @@ export default function DefectsPage() {
     }
   };
 
+  const handleClearAll = () => {
+    setSearchInput('');
+    clearAll();
+  };
+
   return (
     <div className="p-6 space-y-6">
       <Breadcrumb items={[
@@ -76,6 +104,16 @@ export default function DefectsPage() {
         <Button onClick={() => setDialogOpen(true)}>New Defect</Button>
       </div>
 
+      <FilterBar
+        filters={DEFECT_FILTERS}
+        values={filters}
+        activeCount={activeCount}
+        onChange={setFilter}
+        onClearAll={handleClearAll}
+        searchValue={searchInput}
+        onSearchChange={setSearchInput}
+      />
+
       {error ? (
         <p className="text-sm text-destructive">
           {error instanceof Error ? error.message : 'Failed to load defects'}
@@ -84,7 +122,9 @@ export default function DefectsPage() {
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : defects.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No defect references yet. Link external tickets to track issues.
+          {activeCount > 0
+            ? 'No defects match the current search.'
+            : 'No defect references yet. Link external tickets to track issues.'}
         </p>
       ) : (
         <div className="space-y-2">

@@ -173,7 +173,7 @@ export default function DashboardPage() {
                     <div key={result.id} className="flex items-center justify-between px-4 py-3">
                       <div className="space-y-0.5">
                         <p className="text-sm font-medium">
-                          {result.runName} / {result.suiteName}
+                          {result.runName} / {result.caseName}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           by {result.userName} &middot; {timeAgo(result.createdAt)}

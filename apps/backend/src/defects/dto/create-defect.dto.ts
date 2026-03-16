@@ -13,4 +13,10 @@ export class CreateDefectDto {
   @IsOptional()
   @MaxLength(1000)
   description?: string;
+
+  @ApiPropertyOptional({ example: 'result-abc123', description: 'Linked test result ID' })
+  @IsString()
+  @IsOptional()
+  @MinLength(1)
+  testResultId?: string;
 }

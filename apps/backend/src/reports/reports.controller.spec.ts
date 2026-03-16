@@ -6,6 +6,7 @@ import type {
   ProgressReportDto,
   ActivityReportDto,
   DashboardSummaryDto,
+  ReferenceCoverageDto,
 } from '@app/shared';
 import { TestResultStatus } from '@app/shared';
 
@@ -16,6 +17,7 @@ describe('ReportsController', () => {
     getCoverage: jest.fn(),
     getProgress: jest.fn(),
     getActivity: jest.fn(),
+    getReferenceCoverage: jest.fn(),
     getSummary: jest.fn(),
   };
 
@@ -72,6 +74,31 @@ describe('ReportsController', () => {
 
       expect(mockService.getActivity).toHaveBeenCalledWith('proj-1');
       expect(result).toEqual(activity);
+    });
+  });
+
+  describe('getReferenceCoverage', () => {
+    it('delegates to service and returns reference coverage report', async () => {
+      const refCoverage: ReferenceCoverageDto = {
+        references: [
+          {
+            reference: 'REQ-001',
+            totalCases: 3,
+            passed: 2,
+            failed: 1,
+            blocked: 0,
+            retest: 0,
+            untested: 0,
+            coveragePercent: 100,
+          },
+        ],
+      };
+      mockService.getReferenceCoverage.mockResolvedValue(refCoverage);
+
+      const result = await controller.getReferenceCoverage('proj-1');
+
+      expect(mockService.getReferenceCoverage).toHaveBeenCalledWith('proj-1');
+      expect(result).toEqual(refCoverage);
     });
   });
 

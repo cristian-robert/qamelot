@@ -3,6 +3,7 @@ import type {
   ProgressReportDto,
   ActivityReportDto,
   DashboardSummaryDto,
+  ReferenceCoverageDto,
 } from '@app/shared';
 import { apiFetch } from './client';
 
@@ -15,6 +16,9 @@ export const reportsApi = {
 
   getActivity: (projectId: string) =>
     apiFetch<ActivityReportDto>(`/projects/${projectId}/reports/activity`),
+
+  getReferenceCoverage: (projectId: string) =>
+    apiFetch<ReferenceCoverageDto>(`/projects/${projectId}/reports/reference-coverage`),
 
   getSummary: () =>
     apiFetch<DashboardSummaryDto>('/reports/summary'),

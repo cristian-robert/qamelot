@@ -50,13 +50,25 @@ describe('MilestonesController', () => {
   });
 
   describe('findAll', () => {
-    it('calls service.findAllByProject and returns the result', async () => {
+    it('calls service.findAllByProject without filters', async () => {
       mockService.findAllByProject.mockResolvedValue([testMilestone]);
 
       const result = await controller.findAll('proj-1');
 
-      expect(mockService.findAllByProject).toHaveBeenCalledWith('proj-1');
+      expect(mockService.findAllByProject).toHaveBeenCalledWith('proj-1', {
+        status: undefined,
+      });
       expect(result).toEqual([testMilestone]);
+    });
+
+    it('passes status filter to service', async () => {
+      mockService.findAllByProject.mockResolvedValue([]);
+
+      await controller.findAll('proj-1', 'CLOSED');
+
+      expect(mockService.findAllByProject).toHaveBeenCalledWith('proj-1', {
+        status: 'CLOSED',
+      });
     });
   });
 

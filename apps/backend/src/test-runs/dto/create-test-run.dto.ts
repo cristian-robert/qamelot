@@ -15,11 +15,11 @@ export class CreateTestRunDto {
   assignedToId?: string;
 
   @ApiProperty({
-    example: ['suite-1', 'suite-2'],
-    description: 'Suite IDs to include in the run',
+    example: ['case-1', 'case-2'],
+    description: 'Test case IDs to include in the run',
   })
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
-  suiteIds!: string[];
+  caseIds!: string[];
 }

@@ -2,16 +2,32 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import { useMilestones } from '@/lib/milestones/useMilestones';
+import { useFilterParams } from '@/lib/useFilterParams';
 import { MilestoneCard } from '@/components/milestones/MilestoneCard';
 import { MilestoneFormDialog } from '@/components/milestones/MilestoneFormDialog';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { FilterBar, type FilterConfig } from '@/components/FilterBar';
 import { Button } from '@/components/ui/button';
 import type { CreateMilestoneInput } from '@app/shared';
 
+const FILTER_KEYS = ['status'] as const;
+
+const MILESTONE_FILTERS: FilterConfig[] = [
+  {
+    type: 'select',
+    key: 'status',
+    label: 'All statuses',
+    options: [
+      { value: 'OPEN', label: 'Open' },
+      { value: 'CLOSED', label: 'Closed' },
+    ],
+  },
+];
+
 export default function MilestonesPage() {
   const { id: projectId } = useParams<{ id: string }>();
+  const { filters, activeCount, setFilter, clearAll } = useFilterParams(FILTER_KEYS);
   const {
     milestones,
     isLoading,
@@ -19,7 +35,7 @@ export default function MilestonesPage() {
     createMilestone,
     updateMilestone,
     deleteMilestone,
-  } = useMilestones(projectId);
+  } = useMilestones(projectId, filters);
 
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -50,6 +66,14 @@ export default function MilestonesPage() {
         <Button onClick={() => setDialogOpen(true)}>New Milestone</Button>
       </div>
 
+      <FilterBar
+        filters={MILESTONE_FILTERS}
+        values={filters}
+        activeCount={activeCount}
+        onChange={setFilter}
+        onClearAll={clearAll}
+      />
+
       {error ? (
         <p className="text-sm text-destructive">
           {error instanceof Error ? error.message : 'Failed to load milestones'}
@@ -58,7 +82,9 @@ export default function MilestonesPage() {
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : milestones.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No milestones yet. Create one to track deadlines for this project.
+          {activeCount > 0
+            ? 'No milestones match the current filters.'
+            : 'No milestones yet. Create one to track deadlines for this project.'}
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

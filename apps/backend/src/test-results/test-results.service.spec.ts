@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RunEventsService } from '../run-events/run-events.service';
+import { CsvService } from '../test-cases/csv.service';
 import { TestResultsService } from './test-results.service';
 import { TestResultStatus } from '@app/shared';
 
@@ -24,7 +25,7 @@ const mockRun = {
 const mockRunCase = {
   id: TRC_ID,
   testRunId: RUN_ID,
-  suiteId: 'suite-1',
+  testCaseId: 'case-1',
   createdAt: new Date(),
 };
 
@@ -66,6 +67,12 @@ describe('TestResultsService', () => {
     emitUpdate: jest.fn(),
   };
 
+  const mockCsvService = {
+    generateCasesCsv: jest.fn(),
+    generateResultsCsv: jest.fn(),
+    parseCasesCsv: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
@@ -73,6 +80,7 @@ describe('TestResultsService', () => {
         TestResultsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: RunEventsService, useValue: mockRunEventsService },
+        { provide: CsvService, useValue: mockCsvService },
       ],
     }).compile();
     service = module.get<TestResultsService>(TestResultsService);
@@ -132,6 +140,17 @@ describe('TestResultsService', () => {
           status: TestResultStatus.PASSED,
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws ConflictException when run is COMPLETED (closed)', async () => {
+      mockPrisma.testRun.findFirst.mockResolvedValue({ ...mockRun, status: 'COMPLETED' });
+
+      await expect(
+        service.submit(RUN_ID, USER_ID, {
+          testRunCaseId: TRC_ID,
+          status: TestResultStatus.PASSED,
+        }),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('sets run to IN_PROGRESS on first result when PENDING', async () => {
@@ -206,6 +225,7 @@ describe('TestResultsService', () => {
     it('updates a result status and emits SSE event', async () => {
       const updated = { ...mockResult, status: TestResultStatus.FAILED };
       mockPrisma.testResult.findUnique.mockResolvedValue(mockResult);
+      mockPrisma.testRun.findFirst.mockResolvedValue(mockRun);
       mockPrisma.testResult.update.mockResolvedValue(updated);
       mockPrisma.testRunCase.findMany.mockResolvedValue([
         { ...mockRunCase, testResults: [{ status: TestResultStatus.FAILED }] },
@@ -231,6 +251,7 @@ describe('TestResultsService', () => {
     it('updates a result comment', async () => {
       const updated = { ...mockResult, comment: 'New comment' };
       mockPrisma.testResult.findUnique.mockResolvedValue(mockResult);
+      mockPrisma.testRun.findFirst.mockResolvedValue(mockRun);
       mockPrisma.testResult.update.mockResolvedValue(updated);
       mockPrisma.testRunCase.findMany.mockResolvedValue([
         { ...mockRunCase, testResults: [{ status: TestResultStatus.PASSED }] },
@@ -250,6 +271,15 @@ describe('TestResultsService', () => {
         service.update('nonexistent', { status: TestResultStatus.FAILED }),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('throws ConflictException when run is COMPLETED (closed)', async () => {
+      mockPrisma.testResult.findUnique.mockResolvedValue(mockResult);
+      mockPrisma.testRun.findFirst.mockResolvedValue({ ...mockRun, status: 'COMPLETED' });
+
+      await expect(
+        service.update('result-1', { status: TestResultStatus.FAILED }),
+      ).rejects.toThrow(ConflictException);
+    });
   });
 
   describe('getRunWithSummary', () => {
@@ -261,15 +291,31 @@ describe('TestResultsService', () => {
         testRunCases: [
           {
             ...mockRunCase,
-            suite: { id: 'suite-1', name: 'Suite' },
+            testCase: {
+              id: 'case-1',
+              title: 'Login Test',
+              priority: 'MEDIUM',
+              type: 'FUNCTIONAL',
+              suiteId: 'suite-1',
+              suite: { id: 'suite-1', name: 'Suite' },
+              steps: [],
+            },
             testResults: [mockResult],
           },
           {
             id: 'trc-2',
             testRunId: RUN_ID,
-            suiteId: 'suite-2',
+            testCaseId: 'case-2',
             createdAt: new Date(),
-            suite: { id: 'suite-2', name: 'Suite 2' },
+            testCase: {
+              id: 'case-2',
+              title: 'Dashboard Test',
+              priority: 'HIGH',
+              type: 'FUNCTIONAL',
+              suiteId: 'suite-2',
+              suite: { id: 'suite-2', name: 'Suite 2' },
+              steps: [],
+            },
             testResults: [],
           },
         ],

@@ -10,6 +10,10 @@ export const CreateDefectSchema = z.object({
     .max(1000, 'Description must be 1000 characters or less')
     .transform((v) => (v === '' ? undefined : v))
     .optional(),
+  testResultId: z
+    .string()
+    .min(1)
+    .optional(),
 });
 
 export const UpdateDefectSchema = z.object({

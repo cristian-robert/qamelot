@@ -9,20 +9,37 @@ export class DefectsService {
   async create(projectId: string, data: CreateDefectInput) {
     await this.verifyProject(projectId);
 
+    if (data.testResultId) {
+      await this.verifyTestResult(data.testResultId);
+    }
+
     return this.prisma.defect.create({
       data: {
         reference: data.reference,
         ...(data.description !== undefined && { description: data.description }),
+        ...(data.testResultId !== undefined && { testResultId: data.testResultId }),
         projectId,
       },
     });
   }
 
-  async findAllByProject(projectId: string) {
+  async findAllByProject(
+    projectId: string,
+    filters?: { search?: string },
+  ) {
     await this.verifyProject(projectId);
 
     return this.prisma.defect.findMany({
-      where: { projectId, deletedAt: null },
+      where: {
+        projectId,
+        deletedAt: null,
+        ...(filters?.search && {
+          OR: [
+            { reference: { contains: filters.search, mode: 'insensitive' as const } },
+            { description: { contains: filters.search, mode: 'insensitive' as const } },
+          ],
+        }),
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -30,11 +47,36 @@ export class DefectsService {
   async findOne(id: string) {
     const defect = await this.prisma.defect.findFirst({
       where: { id, deletedAt: null },
+      include: {
+        testResult: {
+          select: {
+            id: true,
+            status: true,
+            comment: true,
+            testRunId: true,
+            testRunCase: {
+              select: {
+                testCase: { select: { id: true, title: true } },
+              },
+            },
+            testRun: {
+              select: { id: true, name: true },
+            },
+          },
+        },
+      },
     });
     if (!defect) {
       throw new NotFoundException('Defect not found');
     }
     return defect;
+  }
+
+  async findByTestResultId(testResultId: string) {
+    return this.prisma.defect.findMany({
+      where: { testResultId, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async update(id: string, data: UpdateDefectInput) {
@@ -68,6 +110,15 @@ export class DefectsService {
     });
     if (!project) {
       throw new NotFoundException('Project not found');
+    }
+  }
+
+  private async verifyTestResult(testResultId: string) {
+    const result = await this.prisma.testResult.findUnique({
+      where: { id: testResultId },
+    });
+    if (!result) {
+      throw new NotFoundException('Test result not found');
     }
   }
 }

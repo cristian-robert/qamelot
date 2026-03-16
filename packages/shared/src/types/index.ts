@@ -69,6 +69,7 @@ export interface TestRunDto extends BaseEntity {
   projectId: string;
   assignedToId: string | null;
   status: TestRunStatus;
+  sourceRunId: string | null;
   deletedAt: string | null;
 }
 
@@ -79,12 +80,20 @@ export interface TestRunDetailDto extends TestRunDto {
   testRunCases: TestRunCaseDto[];
 }
 
-// Junction between test run and suite
+// Junction between test run and test case
 export interface TestRunCaseDto {
   id: string;
   testRunId: string;
-  suiteId: string;
-  suite: { id: string; name: string };
+  testCaseId: string;
+  testCase: {
+    id: string;
+    title: string;
+    priority: CasePriority;
+    type: CaseType;
+    suiteId: string;
+    suite?: { id: string; name: string };
+    steps?: TestCaseStepDto[];
+  };
   createdAt: string;
 }
 
@@ -209,9 +218,101 @@ export interface RecentResultEntry {
   status: TestResultStatus;
   userName: string;
   runName: string;
-  suiteName: string;
+  caseName: string;
   createdAt: string;
 }
+
+// Test case priority enum
+export enum CasePriority {
+  CRITICAL = 'CRITICAL',
+  HIGH = 'HIGH',
+  MEDIUM = 'MEDIUM',
+  LOW = 'LOW',
+}
+
+// Test case type enum
+export enum CaseType {
+  FUNCTIONAL = 'FUNCTIONAL',
+  REGRESSION = 'REGRESSION',
+  SMOKE = 'SMOKE',
+  EXPLORATORY = 'EXPLORATORY',
+  OTHER = 'OTHER',
+}
+
+// Backward-compatible aliases
+export { CasePriority as TestCasePriority };
+export { CaseType as TestCaseType };
+
+// Template type enum — TEXT for rich-text body, STEPS for structured steps
+export enum TemplateType {
+  TEXT = 'TEXT',
+  STEPS = 'STEPS',
+}
+
+// Test case step shape returned by API
+export interface TestCaseStepDto {
+  id: string;
+  caseId: string;
+  stepNumber: number;
+  description: string;
+  expectedResult: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Test case shape returned by API
+export interface TestCaseDto extends BaseEntity {
+  title: string;
+  preconditions: string | null;
+  templateType: TemplateType;
+  priority: CasePriority;
+  type: CaseType;
+  estimate: number | null;
+  references: string | null;
+  position: number;
+  suiteId: string;
+  projectId: string;
+  deletedAt: string | null;
+}
+
+// Test case with steps included
+export interface TestCaseWithStepsDto extends TestCaseDto {
+  steps: TestCaseStepDto[];
+}
+
+// Paginated response wrapper
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+// Lightweight step shape for inline form editing (action + expected)
+export interface TestCaseStep {
+  action: string;
+  expected: string;
+}
+
+// Attachment entity type — polymorphic relation target
+export enum AttachmentEntityType {
+  TEST_CASE = 'TEST_CASE',
+  TEST_RESULT = 'TEST_RESULT',
+}
+
+// Attachment shape returned by API
+export interface AttachmentDto extends BaseEntity {
+  filename: string;
+  mimeType: string;
+  size: number;
+  path: string;
+  entityType: AttachmentEntityType;
+  entityId: string;
+  uploadedById: string;
+  uploadedBy: { id: string; name: string; email: string };
+}
+
 
 // JWT payload embedded in access/refresh tokens
 export interface JwtPayload {
@@ -242,5 +343,40 @@ export interface DefectDto extends BaseEntity {
   reference: string;
   description: string | null;
   projectId: string;
+  testResultId: string | null;
   deletedAt: string | null;
+}
+
+// Defect with linked test result context for detail view
+export interface DefectWithResultDto extends DefectDto {
+  testResult: {
+    id: string;
+    status: TestResultStatus;
+    comment: string | null;
+    testRunId: string;
+    testRunCase: {
+      suite: { id: string; name: string };
+    };
+    testRun: {
+      id: string;
+      name: string;
+    };
+  } | null;
+}
+
+/** Reference coverage: which references have passing/failing tests */
+export interface ReferenceCoverageDto {
+  references: ReferenceCoverageEntry[];
+}
+
+/** A single reference with its test status breakdown */
+export interface ReferenceCoverageEntry {
+  reference: string;
+  totalCases: number;
+  passed: number;
+  failed: number;
+  blocked: number;
+  retest: number;
+  untested: number;
+  coveragePercent: number;
 }

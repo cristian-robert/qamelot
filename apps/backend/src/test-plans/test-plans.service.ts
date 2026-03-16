@@ -18,11 +18,18 @@ export class TestPlansService {
     });
   }
 
-  async findAllByProject(projectId: string) {
+  async findAllByProject(
+    projectId: string,
+    filters?: { status?: string },
+  ) {
     await this.verifyProject(projectId);
 
     return this.prisma.testPlan.findMany({
-      where: { projectId, deletedAt: null },
+      where: {
+        projectId,
+        deletedAt: null,
+        ...(filters?.status && { status: filters.status as 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED' }),
+      },
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { testRuns: true } } },
     });

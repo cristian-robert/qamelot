@@ -86,6 +86,42 @@ describe('MilestonesService', () => {
       expect(result).toEqual([testMilestone]);
     });
 
+    it('filters by status OPEN when provided', async () => {
+      mockPrisma.milestone.findMany.mockResolvedValue([testMilestone]);
+
+      await service.findAllByProject('proj-1', { status: 'OPEN' });
+
+      expect(mockPrisma.milestone.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { projectId: 'proj-1', deletedAt: null, status: 'OPEN' },
+        }),
+      );
+    });
+
+    it('filters by status CLOSED when provided', async () => {
+      mockPrisma.milestone.findMany.mockResolvedValue([]);
+
+      await service.findAllByProject('proj-1', { status: 'CLOSED' });
+
+      expect(mockPrisma.milestone.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { projectId: 'proj-1', deletedAt: null, status: 'CLOSED' },
+        }),
+      );
+    });
+
+    it('does not add status filter when value is empty string', async () => {
+      mockPrisma.milestone.findMany.mockResolvedValue([]);
+
+      await service.findAllByProject('proj-1', { status: '' });
+
+      expect(mockPrisma.milestone.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { projectId: 'proj-1', deletedAt: null },
+        }),
+      );
+    });
+
     it('throws NotFoundException when project not found', async () => {
       mockPrisma.project.findFirst.mockResolvedValue(null);
 

@@ -32,6 +32,7 @@ describe('TestResultsController', () => {
     findAllByRun: jest.fn(),
     getRunWithSummary: jest.fn(),
     update: jest.fn(),
+    exportResultsCsv: jest.fn(),
   };
 
   const mockRunEventsService = {
@@ -90,6 +91,26 @@ describe('TestResultsController', () => {
       status: TestResultStatus.FAILED,
     });
     expect(result).toEqual(updated);
+  });
+
+  it('exportResults sends CSV response', async () => {
+    const csvContent = 'Suite,Status\nAuth,PASSED\n';
+    mockService.exportResultsCsv.mockResolvedValue(csvContent);
+
+    const mockRes = {
+      setHeader: jest.fn(),
+      send: jest.fn(),
+    };
+
+    await controller.exportResults(RUN_ID, mockRes as never);
+
+    expect(mockService.exportResultsCsv).toHaveBeenCalledWith(RUN_ID);
+    expect(mockRes.setHeader).toHaveBeenCalledWith('Content-Type', 'text/csv');
+    expect(mockRes.setHeader).toHaveBeenCalledWith(
+      'Content-Disposition',
+      `attachment; filename="run-results-${RUN_ID}.csv"`,
+    );
+    expect(mockRes.send).toHaveBeenCalledWith(csvContent);
   });
 
   describe('stream (SSE)', () => {

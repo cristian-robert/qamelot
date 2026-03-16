@@ -6,8 +6,9 @@ import {
   Delete,
   Body,
   Param,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Role } from '@app/shared';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { MilestonesService } from './milestones.service';
@@ -36,8 +37,12 @@ export class MilestonesController {
   @ApiOperation({ summary: 'List all milestones for a project' })
   @ApiResponse({ status: 200, description: 'Array of milestones' })
   @ApiResponse({ status: 404, description: 'Project not found' })
-  findAll(@Param('projectId') projectId: string) {
-    return this.milestonesService.findAllByProject(projectId);
+  @ApiQuery({ name: 'status', required: false, enum: ['OPEN', 'CLOSED'] })
+  findAll(
+    @Param('projectId') projectId: string,
+    @Query('status') status?: string,
+  ) {
+    return this.milestonesService.findAllByProject(projectId, { status });
   }
 
   @Get('milestones/:id')

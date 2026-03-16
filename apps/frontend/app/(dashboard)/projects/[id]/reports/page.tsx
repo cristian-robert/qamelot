@@ -1,7 +1,6 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { projectsApi } from '@/lib/api/projects';
 import { PROJECTS_QUERY_KEY } from '@/lib/projects/useProjects';
@@ -9,12 +8,13 @@ import {
   useCoverageReport,
   useProgressReport,
   useActivityReport,
+  useReferenceCoverageReport,
 } from '@/lib/reports/useReports';
 import { CoverageChart } from '@/components/reports/CoverageChart';
 import { ProgressChart } from '@/components/reports/ProgressChart';
 import { ActivityTable } from '@/components/reports/ActivityTable';
+import { ReferenceCoverageTable } from '@/components/reports/ReferenceCoverageTable';
 import { Breadcrumb } from '@/components/Breadcrumb';
-import { buttonVariants } from '@/components/ui/button';
 
 export default function ProjectReportsPage() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +28,7 @@ export default function ProjectReportsPage() {
   const { data: coverage, isLoading: coverageLoading } = useCoverageReport(id);
   const { data: progress, isLoading: progressLoading } = useProgressReport(id);
   const { data: activity, isLoading: activityLoading } = useActivityReport(id);
+  const { data: refCoverage, isLoading: refCoverageLoading } = useReferenceCoverageReport(id);
 
   if (projectLoading) {
     return <div className="p-6 text-muted-foreground">Loading...</div>;
@@ -37,7 +38,7 @@ export default function ProjectReportsPage() {
     return <div className="p-6 text-destructive">Project not found.</div>;
   }
 
-  const isLoading = coverageLoading || progressLoading || activityLoading;
+  const isLoading = coverageLoading || progressLoading || activityLoading || refCoverageLoading;
 
   return (
     <div className="space-y-6 p-6">
@@ -63,6 +64,7 @@ export default function ProjectReportsPage() {
             {coverage && <CoverageChart data={coverage} />}
             {progress && <ProgressChart data={progress} />}
           </div>
+          {refCoverage && <ReferenceCoverageTable data={refCoverage} />}
           {activity && <ActivityTable data={activity} />}
         </div>
       )}

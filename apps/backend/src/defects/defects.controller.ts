@@ -6,8 +6,9 @@ import {
   Delete,
   Body,
   Param,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Role } from '@app/shared';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { DefectsService } from './defects.service';
@@ -36,13 +37,24 @@ export class DefectsController {
   @ApiOperation({ summary: 'List all defect references for a project' })
   @ApiResponse({ status: 200, description: 'Array of defects' })
   @ApiResponse({ status: 404, description: 'Project not found' })
-  findAll(@Param('projectId') projectId: string) {
-    return this.defectsService.findAllByProject(projectId);
+  @ApiQuery({ name: 'search', required: false, description: 'Search by reference or description' })
+  findAll(
+    @Param('projectId') projectId: string,
+    @Query('search') search?: string,
+  ) {
+    return this.defectsService.findAllByProject(projectId, { search });
+  }
+
+  @Get('results/:resultId/defects')
+  @ApiOperation({ summary: 'List defects linked to a specific test result' })
+  @ApiResponse({ status: 200, description: 'Array of defects linked to the result' })
+  findByTestResult(@Param('resultId') resultId: string) {
+    return this.defectsService.findByTestResultId(resultId);
   }
 
   @Get('defects/:id')
   @ApiOperation({ summary: 'Get a defect by ID' })
-  @ApiResponse({ status: 200, description: 'The defect' })
+  @ApiResponse({ status: 200, description: 'The defect with linked test result context' })
   @ApiResponse({ status: 404, description: 'Defect not found' })
   findOne(@Param('id') id: string) {
     return this.defectsService.findOne(id);

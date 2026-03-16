@@ -13,6 +13,8 @@ import { RunEventsModule } from './run-events/run-events.module';
 import { MilestonesModule } from './milestones/milestones.module';
 import { DefectsModule } from './defects/defects.module';
 import { ReportsModule } from './reports/reports.module';
+import { TestCasesModule } from './test-cases/test-cases.module';
+import { AttachmentsModule } from './attachments/attachments.module';
 
 @Module({
   imports: [
@@ -22,12 +24,14 @@ import { ReportsModule } from './reports/reports.module';
     AuthModule,
     ProjectsModule,
     TestSuitesModule,
+    TestCasesModule,
     TestPlansModule,
     TestRunsModule,
     TestResultsModule,
     MilestonesModule,
     DefectsModule,
     ReportsModule,
+    AttachmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

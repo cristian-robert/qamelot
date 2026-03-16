@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TestRunsService } from './test-runs.service';
+import { TestResultStatus } from '@app/shared';
 
 const PLAN_ID = 'plan-1';
 const PROJECT_ID = 'proj-1';
@@ -33,7 +34,19 @@ const mockRunWithRelations = {
   testPlan: { id: PLAN_ID, name: 'Sprint 1 Plan' },
   assignedTo: null,
   testRunCases: [
-    { id: 'rc-1', testRunId: 'run-1', suiteId: 'suite-1', suite: { id: 'suite-1', name: 'Login' } },
+    {
+      id: 'rc-1',
+      testRunId: 'run-1',
+      testCaseId: 'case-1',
+      testCase: {
+        id: 'case-1',
+        title: 'Login Test',
+        priority: 'MEDIUM',
+        type: 'FUNCTIONAL',
+        suiteId: 'suite-1',
+        suite: { id: 'suite-1', name: 'Login' },
+      },
+    },
   ],
 };
 
@@ -50,7 +63,7 @@ describe('TestRunsService', () => {
     testPlan: {
       findFirst: jest.fn(),
     },
-    testSuite: {
+    testCase: {
       findMany: jest.fn(),
     },
     user: {
@@ -70,14 +83,14 @@ describe('TestRunsService', () => {
   });
 
   describe('create', () => {
-    it('creates a test run with suite cases', async () => {
+    it('creates a test run with case entries', async () => {
       mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
-      mockPrisma.testSuite.findMany.mockResolvedValue([{ id: 'suite-1' }]);
+      mockPrisma.testCase.findMany.mockResolvedValue([{ id: 'case-1' }]);
       mockPrisma.testRun.create.mockResolvedValue(mockRunWithRelations);
 
       const result = await service.create(PLAN_ID, {
         name: 'Smoke Test',
-        suiteIds: ['suite-1'],
+        caseIds: ['case-1'],
       });
 
       expect(mockPrisma.testRun.create).toHaveBeenCalledWith({
@@ -86,7 +99,7 @@ describe('TestRunsService', () => {
           testPlanId: PLAN_ID,
           projectId: PROJECT_ID,
           testRunCases: {
-            create: [{ suiteId: 'suite-1' }],
+            create: [{ testCaseId: 'case-1' }],
           },
         },
         include: expect.objectContaining({
@@ -100,7 +113,7 @@ describe('TestRunsService', () => {
 
     it('creates a run with assignedToId', async () => {
       mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
-      mockPrisma.testSuite.findMany.mockResolvedValue([{ id: 'suite-1' }]);
+      mockPrisma.testCase.findMany.mockResolvedValue([{ id: 'case-1' }]);
       mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1' });
       mockPrisma.testRun.create.mockResolvedValue({
         ...mockRunWithRelations,
@@ -109,7 +122,7 @@ describe('TestRunsService', () => {
 
       const result = await service.create(PLAN_ID, {
         name: 'Smoke Test',
-        suiteIds: ['suite-1'],
+        caseIds: ['case-1'],
         assignedToId: 'user-1',
       });
 
@@ -121,28 +134,28 @@ describe('TestRunsService', () => {
       mockPrisma.testPlan.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.create(PLAN_ID, { name: 'Run', suiteIds: ['s1'] }),
+        service.create(PLAN_ID, { name: 'Run', caseIds: ['c1'] }),
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('throws BadRequestException when suites not found', async () => {
+    it('throws BadRequestException when cases not found', async () => {
       mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
-      mockPrisma.testSuite.findMany.mockResolvedValue([]);
+      mockPrisma.testCase.findMany.mockResolvedValue([]);
 
       await expect(
-        service.create(PLAN_ID, { name: 'Run', suiteIds: ['nonexistent'] }),
+        service.create(PLAN_ID, { name: 'Run', caseIds: ['nonexistent'] }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('throws NotFoundException when assigned user not found', async () => {
       mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
-      mockPrisma.testSuite.findMany.mockResolvedValue([{ id: 'suite-1' }]);
+      mockPrisma.testCase.findMany.mockResolvedValue([{ id: 'case-1' }]);
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
       await expect(
         service.create(PLAN_ID, {
           name: 'Run',
-          suiteIds: ['suite-1'],
+          caseIds: ['case-1'],
           assignedToId: 'nonexistent',
         }),
       ).rejects.toThrow(NotFoundException);
@@ -166,6 +179,63 @@ describe('TestRunsService', () => {
         },
       });
       expect(result).toEqual([runWithCount]);
+    });
+
+    it('filters by status when provided', async () => {
+      mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
+      mockPrisma.testRun.findMany.mockResolvedValue([]);
+
+      await service.findAllByPlan(PLAN_ID, { status: 'PENDING' });
+
+      expect(mockPrisma.testRun.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { testPlanId: PLAN_ID, deletedAt: null, status: 'PENDING' },
+        }),
+      );
+    });
+
+    it('filters by assigneeId when provided', async () => {
+      mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
+      mockPrisma.testRun.findMany.mockResolvedValue([]);
+
+      await service.findAllByPlan(PLAN_ID, { assigneeId: 'user-1' });
+
+      expect(mockPrisma.testRun.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { testPlanId: PLAN_ID, deletedAt: null, assignedToId: 'user-1' },
+        }),
+      );
+    });
+
+    it('filters by both status and assigneeId', async () => {
+      mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
+      mockPrisma.testRun.findMany.mockResolvedValue([]);
+
+      await service.findAllByPlan(PLAN_ID, { status: 'IN_PROGRESS', assigneeId: 'user-1' });
+
+      expect(mockPrisma.testRun.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            testPlanId: PLAN_ID,
+            deletedAt: null,
+            status: 'IN_PROGRESS',
+            assignedToId: 'user-1',
+          },
+        }),
+      );
+    });
+
+    it('does not add filter when value is empty string', async () => {
+      mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
+      mockPrisma.testRun.findMany.mockResolvedValue([]);
+
+      await service.findAllByPlan(PLAN_ID, { status: '', assigneeId: '' });
+
+      expect(mockPrisma.testRun.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { testPlanId: PLAN_ID, deletedAt: null },
+        }),
+      );
     });
 
     it('throws NotFoundException when plan not found', async () => {
@@ -234,6 +304,130 @@ describe('TestRunsService', () => {
       await expect(service.update('nonexistent', { name: 'X' })).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('closeRun', () => {
+    it('marks run as COMPLETED', async () => {
+      const closed = { ...mockRunWithRelations, status: 'COMPLETED' };
+      mockPrisma.testRun.findFirst.mockResolvedValue(mockRun);
+      mockPrisma.testRun.update.mockResolvedValue(closed);
+
+      const result = await service.closeRun('run-1');
+
+      expect(mockPrisma.testRun.update).toHaveBeenCalledWith({
+        where: { id: 'run-1' },
+        data: { status: 'COMPLETED' },
+        include: expect.objectContaining({
+          testPlan: expect.any(Object),
+          assignedTo: expect.any(Object),
+          testRunCases: expect.any(Object),
+        }),
+      });
+      expect(result.status).toBe('COMPLETED');
+    });
+
+    it('throws ConflictException when run is already COMPLETED', async () => {
+      mockPrisma.testRun.findFirst.mockResolvedValue({ ...mockRun, status: 'COMPLETED' });
+
+      await expect(service.closeRun('run-1')).rejects.toThrow(ConflictException);
+    });
+
+    it('throws NotFoundException when run not found', async () => {
+      mockPrisma.testRun.findFirst.mockResolvedValue(null);
+
+      await expect(service.closeRun('nonexistent')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('rerun', () => {
+    const completedRunWithCases = {
+      ...mockRun,
+      status: 'COMPLETED',
+      assignedToId: 'user-1',
+      testRunCases: [
+        {
+          id: 'trc-1',
+          testRunId: 'run-1',
+          testCaseId: 'case-1',
+          testResults: [{ status: TestResultStatus.FAILED }],
+        },
+        {
+          id: 'trc-2',
+          testRunId: 'run-1',
+          testCaseId: 'case-2',
+          testResults: [{ status: TestResultStatus.PASSED }],
+        },
+        {
+          id: 'trc-3',
+          testRunId: 'run-1',
+          testCaseId: 'case-3',
+          testResults: [],
+        },
+      ],
+    };
+
+    it('creates a new run with failed and untested cases from the source run', async () => {
+      mockPrisma.testRun.findFirst.mockResolvedValue(completedRunWithCases);
+      const newRun = {
+        ...mockRunWithRelations,
+        id: 'run-2',
+        name: 'Smoke Test (Rerun)',
+        sourceRunId: 'run-1',
+      };
+      mockPrisma.testRun.create.mockResolvedValue(newRun);
+
+      const result = await service.rerun('run-1');
+
+      expect(mockPrisma.testRun.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          name: 'Smoke Test (Rerun)',
+          testPlanId: PLAN_ID,
+          projectId: PROJECT_ID,
+          assignedToId: 'user-1',
+          sourceRunId: 'run-1',
+          testRunCases: {
+            create: [{ testCaseId: 'case-1' }, { testCaseId: 'case-3' }],
+          },
+        }),
+        include: expect.objectContaining({
+          testRunCases: expect.any(Object),
+          assignedTo: expect.any(Object),
+          testPlan: expect.any(Object),
+        }),
+      });
+      expect(result.sourceRunId).toBe('run-1');
+    });
+
+    it('throws NotFoundException when source run not found', async () => {
+      mockPrisma.testRun.findFirst.mockResolvedValue(null);
+
+      await expect(service.rerun('nonexistent')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws BadRequestException when run is not completed', async () => {
+      mockPrisma.testRun.findFirst.mockResolvedValue({
+        ...completedRunWithCases,
+        status: 'IN_PROGRESS',
+      });
+
+      await expect(service.rerun('run-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when no failed or untested cases exist', async () => {
+      mockPrisma.testRun.findFirst.mockResolvedValue({
+        ...completedRunWithCases,
+        testRunCases: [
+          {
+            id: 'trc-1',
+            testRunId: 'run-1',
+            testCaseId: 'case-1',
+            testResults: [{ status: TestResultStatus.PASSED }],
+          },
+        ],
+      });
+
+      await expect(service.rerun('run-1')).rejects.toThrow(BadRequestException);
     });
   });
 

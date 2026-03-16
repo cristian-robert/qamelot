@@ -91,19 +91,21 @@ model User {
 }
 
 model Project {
-  id          String       @id @default(cuid())
-  name        String
-  description String?
-  deletedAt   DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  testSuites  TestSuite[]
-  testCases   TestCase[]
-  testPlans   TestPlan[]
-  testRuns    TestRun[]
-  milestones  Milestone[]
-  defects     Defect[]
-  sharedSteps SharedStep[]
+  id                     String                  @id @default(cuid())
+  name                   String
+  description            String?
+  deletedAt              DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  testSuites             TestSuite[]
+  testCases              TestCase[]
+  testPlans              TestPlan[]
+  testRuns               TestRun[]
+  milestones             Milestone[]
+  defects                Defect[]
+  sharedSteps            SharedStep[]
+  configGroups           ConfigGroup[]
+  customFieldDefinitions CustomFieldDefinition[]
 }
 
 model TestSuite {
@@ -206,6 +208,7 @@ model TestRun {
   assignedToId String?
   assignedTo   User?         @relation(fields: [assignedToId], references: [id])
   status       TestRunStatus @default(PENDING)
+  configLabel  String?
   sourceRunId  String?
   sourceRun    TestRun?      @relation("RerunChain", fields: [sourceRunId], references: [id])
   reruns       TestRun[]     @relation("RerunChain")
@@ -309,6 +312,19 @@ model Defect {
   @@index([testResultId])
 }
 
+enum CustomFieldType {
+  STRING
+  NUMBER
+  DROPDOWN
+  CHECKBOX
+  DATE
+}
+
+enum CustomFieldEntityType {
+  TEST_CASE
+  TEST_RESULT
+}
+
 enum AttachmentEntityType {
   TEST_CASE
   TEST_RESULT
@@ -329,6 +345,40 @@ model Attachment {
 
   @@index([entityType, entityId])
   @@index([uploadedById])
+}
+
+model CustomFieldDefinition {
+  id         String              @id @default(cuid())
+  name       String
+  fieldType  CustomFieldType
+  options    Json?               // JSON array of strings for DROPDOWN type
+  required   Boolean             @default(false)
+  entityType CustomFieldEntityType
+  projectId  String
+  project    Project             @relation(fields: [projectId], references: [id])
+  position   Int                 @default(0)
+  deletedAt  DateTime?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  values     CustomFieldValue[]
+
+  @@index([projectId])
+  @@index([entityType])
+}
+
+model CustomFieldValue {
+  id           String                @id @default(cuid())
+  definitionId String
+  definition   CustomFieldDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
+  entityType   CustomFieldEntityType
+  entityId     String
+  value        String
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@unique([definitionId, entityId])
+  @@index([definitionId])
+  @@index([entityType, entityId])
 }
 
 model SharedStep {
@@ -356,4 +406,29 @@ model SharedStepItem {
 
   @@unique([sharedStepId, stepNumber])
   @@index([sharedStepId])
+}
+
+model ConfigGroup {
+  id        String       @id @default(cuid())
+  name      String
+  projectId String
+  project   Project      @relation(fields: [projectId], references: [id])
+  items     ConfigItem[]
+  deletedAt DateTime?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([projectId])
+}
+
+model ConfigItem {
+  id        String      @id @default(cuid())
+  name      String
+  groupId   String
+  group     ConfigGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  deletedAt DateTime?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([groupId])
 }

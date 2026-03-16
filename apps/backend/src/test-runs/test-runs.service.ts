@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import type { CreateTestRunInput, UpdateTestRunInput } from '@app/shared';
+import type { CreateTestRunInput, UpdateTestRunInput, CreateMatrixRunsInput } from '@app/shared';
 import { TestRunStatus, TestResultStatus } from '@app/shared';
 
 /** Shared include shape for testRunCases with testCase relation */
@@ -189,6 +189,63 @@ export class TestRunsService {
 
     this.logger.log(`Rerun created: ${newRun.id} from source run ${sourceRunId}`);
     return newRun;
+  }
+
+  async createMatrixRuns(planId: string, data: CreateMatrixRunsInput) {
+    const plan = await this.verifyPlan(planId);
+    await this.verifyCasesExist(data.caseIds, plan.projectId);
+
+    if (data.assignedToId) {
+      await this.verifyUser(data.assignedToId);
+    }
+
+    // Resolve item IDs to names, grouped by their config group
+    const uniqueItemIds = [...new Set(data.configItemIds.flat())];
+    const items = await this.prisma.configItem.findMany({
+      where: { id: { in: uniqueItemIds }, deletedAt: null },
+      include: { group: { select: { id: true, name: true } } },
+    });
+
+    if (items.length !== uniqueItemIds.length) {
+      throw new BadRequestException('One or more config items not found');
+    }
+
+    const itemMap = new Map(items.map((item) => [item.id, item]));
+
+    // Each entry in configItemIds is a combination (one item per group)
+    const runs = [];
+    for (const combination of data.configItemIds) {
+      const labels = combination.map((itemId) => {
+        const item = itemMap.get(itemId);
+        return item ? item.name : 'Unknown';
+      });
+      const configLabel = labels.join(' / ');
+
+      const run = await this.prisma.testRun.create({
+        data: {
+          name: `${data.name} [${configLabel}]`,
+          testPlanId: planId,
+          projectId: plan.projectId,
+          configLabel,
+          ...(data.assignedToId && { assignedToId: data.assignedToId }),
+          testRunCases: {
+            create: data.caseIds.map((testCaseId) => ({ testCaseId })),
+          },
+        },
+        include: {
+          testRunCases: { include: TEST_RUN_CASE_INCLUDE },
+          assignedTo: { select: { id: true, name: true, email: true } },
+          testPlan: { select: { id: true, name: true } },
+        },
+      });
+
+      runs.push(run);
+    }
+
+    this.logger.log(
+      `Matrix runs created: ${runs.length} runs for plan ${planId}`,
+    );
+    return runs;
   }
 
   async softDelete(id: string) {

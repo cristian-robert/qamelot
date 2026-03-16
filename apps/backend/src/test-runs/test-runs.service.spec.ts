@@ -69,6 +69,9 @@ describe('TestRunsService', () => {
     user: {
       findUnique: jest.fn(),
     },
+    configItem: {
+      findMany: jest.fn(),
+    },
   };
 
   beforeEach(async () => {
@@ -428,6 +431,87 @@ describe('TestRunsService', () => {
       });
 
       await expect(service.rerun('run-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('createMatrixRuns', () => {
+    const mockItems = [
+      {
+        id: 'item-chrome',
+        name: 'Chrome',
+        groupId: 'group-browser',
+        deletedAt: null,
+        group: { id: 'group-browser', name: 'Browser' },
+      },
+      {
+        id: 'item-windows',
+        name: 'Windows 10',
+        groupId: 'group-os',
+        deletedAt: null,
+        group: { id: 'group-os', name: 'OS' },
+      },
+      {
+        id: 'item-firefox',
+        name: 'Firefox',
+        groupId: 'group-browser',
+        deletedAt: null,
+        group: { id: 'group-browser', name: 'Browser' },
+      },
+    ];
+
+    it('creates one run per config combination', async () => {
+      mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
+      mockPrisma.testCase.findMany.mockResolvedValue([{ id: 'case-1' }]);
+      mockPrisma.configItem.findMany.mockResolvedValue([mockItems[0], mockItems[1], mockItems[2]]);
+      mockPrisma.testRun.create.mockResolvedValue(mockRunWithRelations);
+
+      const result = await service.createMatrixRuns(PLAN_ID, {
+        name: 'Run',
+        caseIds: ['case-1'],
+        configItemIds: [
+          ['item-chrome', 'item-windows'],
+          ['item-firefox', 'item-windows'],
+        ],
+      });
+
+      expect(mockPrisma.testRun.create).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(2);
+
+      // First call should create run with Chrome / Windows 10
+      expect(mockPrisma.testRun.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            name: 'Run [Chrome / Windows 10]',
+            configLabel: 'Chrome / Windows 10',
+          }),
+        }),
+      );
+    });
+
+    it('throws NotFoundException when plan not found', async () => {
+      mockPrisma.testPlan.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.createMatrixRuns(PLAN_ID, {
+          name: 'Run',
+          caseIds: ['case-1'],
+          configItemIds: [['item-1']],
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws BadRequestException when config items not found', async () => {
+      mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
+      mockPrisma.testCase.findMany.mockResolvedValue([{ id: 'case-1' }]);
+      mockPrisma.configItem.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.createMatrixRuns(PLAN_ID, {
+          name: 'Run',
+          caseIds: ['case-1'],
+          configItemIds: [['nonexistent']],
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

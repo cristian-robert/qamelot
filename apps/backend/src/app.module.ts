@@ -16,6 +16,8 @@ import { ReportsModule } from './reports/reports.module';
 import { TestCasesModule } from './test-cases/test-cases.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { SharedStepsModule } from './shared-steps/shared-steps.module';
+import { ConfigsModule } from './configs/configs.module';
+import { CustomFieldsModule } from './custom-fields/custom-fields.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { SharedStepsModule } from './shared-steps/shared-steps.module';
     ReportsModule,
     AttachmentsModule,
     SharedStepsModule,
+    ConfigsModule,
+    CustomFieldsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

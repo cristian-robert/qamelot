@@ -14,6 +14,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { TestRunsService } from './test-runs.service';
 import { CreateTestRunDto } from './dto/create-test-run.dto';
 import { UpdateTestRunDto } from './dto/update-test-run.dto';
+import { CreateMatrixRunsDto } from './dto/create-matrix-runs.dto';
 
 @ApiTags('test-runs')
 @Controller()
@@ -30,6 +31,19 @@ export class TestRunsController {
     @Body() dto: CreateTestRunDto,
   ) {
     return this.testRunsService.create(planId, dto);
+  }
+
+  @Post('plans/:planId/runs/matrix')
+  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @ApiOperation({ summary: 'Create matrix test runs — one per config combination' })
+  @ApiResponse({ status: 201, description: 'Matrix runs created' })
+  @ApiResponse({ status: 400, description: 'Invalid config items' })
+  @ApiResponse({ status: 404, description: 'Plan, cases, or config items not found' })
+  createMatrixRuns(
+    @Param('planId') planId: string,
+    @Body() dto: CreateMatrixRunsDto,
+  ) {
+    return this.testRunsService.createMatrixRuns(planId, dto);
   }
 
   @Get('plans/:planId/runs')

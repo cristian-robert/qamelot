@@ -11,8 +11,9 @@ describe('ReportsService', () => {
     project: { findFirst: jest.fn(), count: jest.fn() },
     testCase: { findMany: jest.fn() },
     testRunCase: { findMany: jest.fn() },
-    testRun: { findMany: jest.fn(), count: jest.fn() },
+    testRun: { findMany: jest.fn(), count: jest.fn(), findFirst: jest.fn() },
     testResult: { findMany: jest.fn(), count: jest.fn() },
+    defect: { findMany: jest.fn() },
   };
 
   beforeEach(async () => {
@@ -151,6 +152,27 @@ describe('ReportsService', () => {
         ]),
       );
     });
+
+    it('applies date range filter when provided', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.testResult.findMany.mockResolvedValue([]);
+
+      await service.getActivity('p1', {
+        startDate: '2026-01-01',
+        endDate: '2026-06-30',
+      });
+
+      expect(mockPrisma.testResult.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: {
+              gte: new Date('2026-01-01'),
+              lte: new Date('2026-06-30'),
+            },
+          }),
+        }),
+      );
+    });
   });
 
   describe('getReferenceCoverage', () => {
@@ -178,8 +200,9 @@ describe('ReportsService', () => {
         { id: 'c3', references: 'REQ-002', suiteId: 's2' },
       ]);
       mockPrisma.testRunCase.findMany.mockResolvedValue([
-        { suiteId: 's1', testResults: [{ status: TestResultStatus.PASSED }] },
-        { suiteId: 's2', testResults: [] },
+        { testCaseId: 'c1', testResults: [{ status: TestResultStatus.PASSED }] },
+        { testCaseId: 'c2', testResults: [{ status: TestResultStatus.PASSED }] },
+        { testCaseId: 'c3', testResults: [] },
       ]);
 
       const result = await service.getReferenceCoverage('p1');
@@ -212,7 +235,7 @@ describe('ReportsService', () => {
         { id: 'c1', references: 'https://jira.example.com/PROJ-42', suiteId: 's1' },
       ]);
       mockPrisma.testRunCase.findMany.mockResolvedValue([
-        { suiteId: 's1', testResults: [{ status: TestResultStatus.FAILED }] },
+        { testCaseId: 'c1', testResults: [{ status: TestResultStatus.FAILED }] },
       ]);
 
       const result = await service.getReferenceCoverage('p1');
@@ -235,6 +258,240 @@ describe('ReportsService', () => {
 
       expect(result.references[0].reference).toBe('ALPHA-01');
       expect(result.references[1].reference).toBe('ZEBRA-01');
+    });
+  });
+
+  describe('getComparison', () => {
+    it('throws NotFoundException when project does not exist', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.getComparison('bad-id', 'r1', 'r2'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when run A does not exist', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.testRun.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 'r2', name: 'Run 2', createdAt: new Date() });
+
+      await expect(
+        service.getComparison('p1', 'bad-run', 'r2'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('identifies regressions when passed becomes failed', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.testRun.findFirst
+        .mockResolvedValueOnce({ id: 'r1', name: 'Run 1', createdAt: new Date('2026-01-01') })
+        .mockResolvedValueOnce({ id: 'r2', name: 'Run 2', createdAt: new Date('2026-01-15') });
+
+      mockPrisma.testRunCase.findMany
+        .mockResolvedValueOnce([
+          { testCaseId: 'c1', testCase: { title: 'Login Test' }, testResults: [{ status: TestResultStatus.PASSED }] },
+        ])
+        .mockResolvedValueOnce([
+          { testCaseId: 'c1', testCase: { title: 'Login Test' }, testResults: [{ status: TestResultStatus.FAILED }] },
+        ]);
+
+      const result = await service.getComparison('p1', 'r1', 'r2');
+
+      expect(result.regressions).toHaveLength(1);
+      expect(result.regressions[0].testCaseTitle).toBe('Login Test');
+      expect(result.regressions[0].statusInA).toBe(TestResultStatus.PASSED);
+      expect(result.regressions[0].statusInB).toBe(TestResultStatus.FAILED);
+    });
+
+    it('identifies fixed cases when failed becomes passed', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.testRun.findFirst
+        .mockResolvedValueOnce({ id: 'r1', name: 'Run 1', createdAt: new Date('2026-01-01') })
+        .mockResolvedValueOnce({ id: 'r2', name: 'Run 2', createdAt: new Date('2026-01-15') });
+
+      mockPrisma.testRunCase.findMany
+        .mockResolvedValueOnce([
+          { testCaseId: 'c1', testCase: { title: 'Auth Test' }, testResults: [{ status: TestResultStatus.FAILED }] },
+        ])
+        .mockResolvedValueOnce([
+          { testCaseId: 'c1', testCase: { title: 'Auth Test' }, testResults: [{ status: TestResultStatus.PASSED }] },
+        ]);
+
+      const result = await service.getComparison('p1', 'r1', 'r2');
+
+      expect(result.fixed).toHaveLength(1);
+      expect(result.fixed[0].testCaseTitle).toBe('Auth Test');
+    });
+
+    it('counts unchanged cases correctly', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.testRun.findFirst
+        .mockResolvedValueOnce({ id: 'r1', name: 'Run 1', createdAt: new Date('2026-01-01') })
+        .mockResolvedValueOnce({ id: 'r2', name: 'Run 2', createdAt: new Date('2026-01-15') });
+
+      mockPrisma.testRunCase.findMany
+        .mockResolvedValueOnce([
+          { testCaseId: 'c1', testCase: { title: 'Test 1' }, testResults: [{ status: TestResultStatus.PASSED }] },
+          { testCaseId: 'c2', testCase: { title: 'Test 2' }, testResults: [{ status: TestResultStatus.FAILED }] },
+        ])
+        .mockResolvedValueOnce([
+          { testCaseId: 'c1', testCase: { title: 'Test 1' }, testResults: [{ status: TestResultStatus.PASSED }] },
+          { testCaseId: 'c2', testCase: { title: 'Test 2' }, testResults: [{ status: TestResultStatus.FAILED }] },
+        ]);
+
+      const result = await service.getComparison('p1', 'r1', 'r2');
+
+      expect(result.unchanged).toBe(2);
+      expect(result.regressions).toHaveLength(0);
+      expect(result.fixed).toHaveLength(0);
+    });
+  });
+
+  describe('getDefectSummary', () => {
+    it('throws NotFoundException when project does not exist', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(null);
+
+      await expect(service.getDefectSummary('bad-id')).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns empty defects when none exist', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.defect.findMany.mockResolvedValue([]);
+
+      const result = await service.getDefectSummary('p1');
+
+      expect(result.totalDefects).toBe(0);
+      expect(result.defects).toEqual([]);
+      expect(result.byAge).toEqual([]);
+    });
+
+    it('returns defects with age and linked test info', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      const createdAt = new Date();
+      createdAt.setDate(createdAt.getDate() - 5);
+
+      mockPrisma.defect.findMany.mockResolvedValue([
+        {
+          id: 'd1',
+          reference: 'BUG-001',
+          description: 'Login fails',
+          testResultId: 'tr1',
+          createdAt,
+          testResult: {
+            id: 'tr1',
+            status: TestResultStatus.FAILED,
+            testRunCase: { testCase: { title: 'Login Test' } },
+            testRun: { name: 'Smoke Run' },
+          },
+        },
+      ]);
+
+      const result = await service.getDefectSummary('p1');
+
+      expect(result.totalDefects).toBe(1);
+      expect(result.defects[0].reference).toBe('BUG-001');
+      expect(result.defects[0].testCaseTitle).toBe('Login Test');
+      expect(result.defects[0].testRunName).toBe('Smoke Run');
+      expect(result.defects[0].ageInDays).toBeGreaterThanOrEqual(4);
+      expect(result.defects[0].ageInDays).toBeLessThanOrEqual(6);
+      expect(result.byAge).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ bucket: '0-7 days', count: 1 }),
+        ]),
+      );
+    });
+
+    it('applies date range filter when provided', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.defect.findMany.mockResolvedValue([]);
+
+      await service.getDefectSummary('p1', {
+        startDate: '2026-01-01',
+        endDate: '2026-06-30',
+      });
+
+      expect(mockPrisma.defect.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: {
+              gte: new Date('2026-01-01'),
+              lte: new Date('2026-06-30'),
+            },
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('getUserWorkload', () => {
+    it('throws NotFoundException when project does not exist', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(null);
+
+      await expect(service.getUserWorkload('bad-id')).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns empty users when no results exist', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.testResult.findMany.mockResolvedValue([]);
+
+      const result = await service.getUserWorkload('p1');
+
+      expect(result.users).toEqual([]);
+    });
+
+    it('aggregates results by user with completion rates', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.testResult.findMany.mockResolvedValue([
+        { status: TestResultStatus.PASSED, executedBy: { id: 'u1', name: 'Alice' } },
+        { status: TestResultStatus.FAILED, executedBy: { id: 'u1', name: 'Alice' } },
+        { status: TestResultStatus.PASSED, executedBy: { id: 'u2', name: 'Bob' } },
+        { status: TestResultStatus.UNTESTED, executedBy: { id: 'u2', name: 'Bob' } },
+      ]);
+
+      const result = await service.getUserWorkload('p1');
+
+      expect(result.users).toHaveLength(2);
+
+      const alice = result.users.find((u) => u.userName === 'Alice');
+      expect(alice).toEqual({
+        userId: 'u1',
+        userName: 'Alice',
+        totalAssigned: 2,
+        passed: 1,
+        failed: 1,
+        blocked: 0,
+        retest: 0,
+        untested: 0,
+        completionPercent: 100,
+      });
+
+      const bob = result.users.find((u) => u.userName === 'Bob');
+      expect(bob).toEqual({
+        userId: 'u2',
+        userName: 'Bob',
+        totalAssigned: 2,
+        passed: 1,
+        failed: 0,
+        blocked: 0,
+        retest: 0,
+        untested: 1,
+        completionPercent: 50,
+      });
+    });
+
+    it('sorts users by total assigned descending', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: 'p1' });
+      mockPrisma.testResult.findMany.mockResolvedValue([
+        { status: TestResultStatus.PASSED, executedBy: { id: 'u1', name: 'Alice' } },
+        { status: TestResultStatus.PASSED, executedBy: { id: 'u2', name: 'Bob' } },
+        { status: TestResultStatus.FAILED, executedBy: { id: 'u2', name: 'Bob' } },
+        { status: TestResultStatus.PASSED, executedBy: { id: 'u2', name: 'Bob' } },
+      ]);
+
+      const result = await service.getUserWorkload('p1');
+
+      expect(result.users[0].userName).toBe('Bob');
+      expect(result.users[1].userName).toBe('Alice');
     });
   });
 

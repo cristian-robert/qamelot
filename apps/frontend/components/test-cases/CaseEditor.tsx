@@ -23,9 +23,12 @@ import {
 } from '@/components/ui/select';
 import { formatLabel } from '@/lib/format';
 import { ReferenceLinks } from '@/components/test-cases/ReferenceLinks';
+import { CustomFieldsSection } from '@/components/custom-fields/CustomFieldsSection';
+import { CustomFieldEntityType } from '@app/shared';
 
 interface CaseEditorProps {
   testCase?: TestCaseDto;
+  projectId?: string;
   onSave: (data: CreateTestCaseInput) => void;
   onCancel: () => void;
   isPending: boolean;
@@ -35,7 +38,7 @@ interface CaseEditorProps {
 const PRIORITIES = Object.values(CasePriority);
 const TYPES = Object.values(CaseType);
 
-export function CaseEditor({ testCase, onSave, onCancel, isPending, onInsertSharedSteps }: CaseEditorProps) {
+export function CaseEditor({ testCase, projectId, onSave, onCancel, isPending, onInsertSharedSteps }: CaseEditorProps) {
   const {
     register,
     handleSubmit,
@@ -137,6 +140,14 @@ export function CaseEditor({ testCase, onSave, onCancel, isPending, onInsertShar
           </div>
         )}
       </div>
+
+      {projectId && testCase && (
+        <CustomFieldsSection
+          projectId={projectId}
+          entityType={CustomFieldEntityType.TEST_CASE}
+          entityId={testCase.id}
+        />
+      )}
 
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={isPending}>

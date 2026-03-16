@@ -10,6 +10,10 @@ import type {
   RunProgressEntry,
   ReferenceCoverageDto,
   ReferenceCoverageEntry,
+  ComparisonReportDto,
+  DefectSummaryReportDto,
+  UserWorkloadReportDto,
+  DateRangeFilter,
 } from '@app/shared';
 
 @Injectable()
@@ -111,16 +115,15 @@ export class ReportsService {
     return { runs: entries };
   }
 
-  async getActivity(projectId: string): Promise<ActivityReportDto> {
+  async getActivity(projectId: string, dateRange?: DateRangeFilter): Promise<ActivityReportDto> {
     await this.verifyProject(projectId);
 
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dateFilter = this.buildDateFilter(dateRange);
 
     const results = await this.prisma.testResult.findMany({
       where: {
         testRun: { projectId, deletedAt: null },
-        createdAt: { gte: thirtyDaysAgo },
+        createdAt: dateFilter,
       },
       select: {
         createdAt: true,
@@ -290,6 +293,290 @@ export class ReportsService {
     references.sort((a, b) => a.reference.localeCompare(b.reference));
 
     return { references };
+  }
+
+  async getComparison(
+    projectId: string,
+    runIdA: string,
+    runIdB: string,
+  ): Promise<ComparisonReportDto> {
+    await this.verifyProject(projectId);
+
+    const [runA, runB] = await Promise.all([
+      this.prisma.testRun.findFirst({
+        where: { id: runIdA, projectId, deletedAt: null },
+        select: { id: true, name: true, createdAt: true },
+      }),
+      this.prisma.testRun.findFirst({
+        where: { id: runIdB, projectId, deletedAt: null },
+        select: { id: true, name: true, createdAt: true },
+      }),
+    ]);
+
+    if (!runA) throw new NotFoundException(`Test run ${runIdA} not found`);
+    if (!runB) throw new NotFoundException(`Test run ${runIdB} not found`);
+
+    const [casesA, casesB] = await Promise.all([
+      this.getRunCaseStatuses(runIdA),
+      this.getRunCaseStatuses(runIdB),
+    ]);
+
+    const newPasses: ComparisonReportDto['newPasses'] = [];
+    const newFailures: ComparisonReportDto['newFailures'] = [];
+    const fixed: ComparisonReportDto['fixed'] = [];
+    const regressions: ComparisonReportDto['regressions'] = [];
+    let unchanged = 0;
+
+    const allCaseIds = new Set([...casesA.keys(), ...casesB.keys()]);
+
+    for (const caseId of allCaseIds) {
+      const entryA = casesA.get(caseId);
+      const entryB = casesB.get(caseId);
+      const statusA = entryA?.status ?? TestResultStatus.UNTESTED;
+      const statusB = entryB?.status ?? TestResultStatus.UNTESTED;
+      const title = entryB?.title ?? entryA?.title ?? 'Unknown';
+
+      if (statusA === statusB) {
+        unchanged++;
+        continue;
+      }
+
+      const entry = { testCaseId: caseId, testCaseTitle: title, statusInA: statusA, statusInB: statusB };
+
+      if (statusA === TestResultStatus.FAILED && statusB === TestResultStatus.PASSED) {
+        fixed.push(entry);
+      } else if (statusA === TestResultStatus.PASSED && statusB === TestResultStatus.FAILED) {
+        regressions.push(entry);
+      } else if (statusB === TestResultStatus.PASSED && statusA !== TestResultStatus.PASSED) {
+        newPasses.push(entry);
+      } else if (statusB === TestResultStatus.FAILED && statusA !== TestResultStatus.FAILED) {
+        newFailures.push(entry);
+      } else {
+        unchanged++;
+      }
+    }
+
+    const countByStatus = (cases: Map<string, { status: TestResultStatus }>, status: TestResultStatus) =>
+      Array.from(cases.values()).filter((c) => c.status === status).length;
+
+    return {
+      runA: {
+        id: runA.id,
+        name: runA.name,
+        createdAt: runA.createdAt.toISOString(),
+        total: casesA.size,
+        passed: countByStatus(casesA, TestResultStatus.PASSED),
+        failed: countByStatus(casesA, TestResultStatus.FAILED),
+      },
+      runB: {
+        id: runB.id,
+        name: runB.name,
+        createdAt: runB.createdAt.toISOString(),
+        total: casesB.size,
+        passed: countByStatus(casesB, TestResultStatus.PASSED),
+        failed: countByStatus(casesB, TestResultStatus.FAILED),
+      },
+      newPasses,
+      newFailures,
+      fixed,
+      regressions,
+      unchanged,
+    };
+  }
+
+  async getDefectSummary(
+    projectId: string,
+    dateRange?: DateRangeFilter,
+  ): Promise<DefectSummaryReportDto> {
+    await this.verifyProject(projectId);
+
+    const dateFilter = this.buildDateFilter(dateRange);
+
+    const defects = await this.prisma.defect.findMany({
+      where: {
+        projectId,
+        deletedAt: null,
+        createdAt: dateFilter,
+      },
+      include: {
+        testResult: {
+          select: {
+            id: true,
+            status: true,
+            testRunCase: {
+              select: { testCase: { select: { title: true } } },
+            },
+            testRun: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const now = new Date();
+    const entries = defects.map((d: {
+      id: string;
+      reference: string;
+      description: string | null;
+      testResultId: string | null;
+      createdAt: Date;
+      testResult: {
+        id: string;
+        status: string;
+        testRunCase: { testCase: { title: string } };
+        testRun: { name: string };
+      } | null;
+    }) => {
+      const ageInDays = Math.floor(
+        (now.getTime() - d.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      return {
+        id: d.id,
+        reference: d.reference,
+        description: d.description,
+        testResultId: d.testResultId,
+        testCaseTitle: d.testResult?.testRunCase.testCase.title ?? null,
+        testRunName: d.testResult?.testRun.name ?? null,
+        resultStatus: (d.testResult?.status as TestResultStatus) ?? null,
+        createdAt: d.createdAt.toISOString(),
+        ageInDays,
+      };
+    });
+
+    const ageBuckets = this.buildAgeBuckets(entries.map((e) => e.ageInDays));
+
+    return {
+      totalDefects: entries.length,
+      defects: entries,
+      byAge: ageBuckets,
+    };
+  }
+
+  async getUserWorkload(
+    projectId: string,
+    dateRange?: DateRangeFilter,
+  ): Promise<UserWorkloadReportDto> {
+    await this.verifyProject(projectId);
+
+    const dateFilter = this.buildDateFilter(dateRange);
+
+    const results = await this.prisma.testResult.findMany({
+      where: {
+        testRun: { projectId, deletedAt: null },
+        createdAt: dateFilter,
+      },
+      select: {
+        status: true,
+        executedBy: { select: { id: true, name: true } },
+      },
+    });
+
+    const userMap = new Map<string, {
+      userName: string;
+      total: number;
+      passed: number;
+      failed: number;
+      blocked: number;
+      retest: number;
+      untested: number;
+    }>();
+
+    for (const r of results) {
+      const existing = userMap.get(r.executedBy.id) ?? {
+        userName: r.executedBy.name,
+        total: 0,
+        passed: 0,
+        failed: 0,
+        blocked: 0,
+        retest: 0,
+        untested: 0,
+      };
+      existing.total++;
+
+      switch (r.status as TestResultStatus) {
+        case TestResultStatus.PASSED: existing.passed++; break;
+        case TestResultStatus.FAILED: existing.failed++; break;
+        case TestResultStatus.BLOCKED: existing.blocked++; break;
+        case TestResultStatus.RETEST: existing.retest++; break;
+        default: existing.untested++; break;
+      }
+
+      userMap.set(r.executedBy.id, existing);
+    }
+
+    const users = Array.from(userMap.entries()).map(([userId, data]) => ({
+      userId,
+      userName: data.userName,
+      totalAssigned: data.total,
+      passed: data.passed,
+      failed: data.failed,
+      blocked: data.blocked,
+      retest: data.retest,
+      untested: data.untested,
+      completionPercent: data.total > 0
+        ? Math.round(((data.total - data.untested) / data.total) * 10000) / 100
+        : 0,
+    }));
+
+    users.sort((a, b) => b.totalAssigned - a.totalAssigned);
+
+    return { users };
+  }
+
+  private buildDateFilter(
+    dateRange?: DateRangeFilter,
+  ): { gte?: Date; lte?: Date } | undefined {
+    if (!dateRange?.startDate && !dateRange?.endDate) {
+      // Default to last 30 days if no range specified
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      return { gte: thirtyDaysAgo };
+    }
+
+    const filter: { gte?: Date; lte?: Date } = {};
+    if (dateRange.startDate) filter.gte = new Date(dateRange.startDate);
+    if (dateRange.endDate) filter.lte = new Date(dateRange.endDate);
+    return filter;
+  }
+
+  private async getRunCaseStatuses(
+    runId: string,
+  ): Promise<Map<string, { status: TestResultStatus; title: string }>> {
+    const runCases = await this.prisma.testRunCase.findMany({
+      where: { testRunId: runId },
+      select: {
+        testCaseId: true,
+        testCase: { select: { title: true } },
+        testResults: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { status: true },
+        },
+      },
+    });
+
+    const map = new Map<string, { status: TestResultStatus; title: string }>();
+    for (const rc of runCases) {
+      const status = (rc.testResults[0]?.status as TestResultStatus) ?? TestResultStatus.UNTESTED;
+      map.set(rc.testCaseId, { status, title: rc.testCase.title });
+    }
+    return map;
+  }
+
+  private buildAgeBuckets(ages: number[]): { bucket: string; count: number }[] {
+    const buckets = [
+      { bucket: '0-7 days', min: 0, max: 7 },
+      { bucket: '8-30 days', min: 8, max: 30 },
+      { bucket: '31-90 days', min: 31, max: 90 },
+      { bucket: '90+ days', min: 91, max: Infinity },
+    ];
+
+    return buckets
+      .map((b) => ({
+        bucket: b.bucket,
+        count: ages.filter((a) => a >= b.min && a <= b.max).length,
+      }))
+      .filter((b) => b.count > 0);
   }
 
   private async calculateOverallPassRate(): Promise<number> {

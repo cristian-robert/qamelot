@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -13,12 +13,15 @@ import {
   type CreateTestRunInput,
   type TestRunStatus,
   type TestPlanStatus,
+  type ConfigGroupWithItemsDto,
 } from '@app/shared';
 import { testPlansApi } from '@/lib/api/test-plans';
 import { testPlansQueryKey } from '@/lib/test-plans/useTestPlans';
 import { useTestRuns } from '@/lib/test-runs/useTestRuns';
 import { useTestSuites } from '@/lib/test-suites/useTestSuites';
 import { useTestCases } from '@/lib/test-cases/useTestCases';
+import { useConfigs } from '@/lib/configs/useConfigs';
+import { cartesian } from '@/lib/configs/cartesian';
 import { useFilterParams } from '@/lib/useFilterParams';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -62,6 +65,8 @@ export default function PlanDetailPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCaseIds, setSelectedCaseIds] = useState<string[]>([]);
   const [activeSuiteId, setActiveSuiteId] = useState<string | null>(null);
+  const [useMatrix, setUseMatrix] = useState(false);
+  const [selectedConfigItems, setSelectedConfigItems] = useState<Record<string, string[]>>({});
 
   const { filters, activeCount, setFilter, clearAll } = useFilterParams(FILTER_KEYS);
 
@@ -71,9 +76,38 @@ export default function PlanDetailPage() {
     enabled: !!projectId && !!planId,
   });
 
-  const { runs, isLoading: runsLoading, createRun } = useTestRuns(planId, filters);
+  const { runs, isLoading: runsLoading, createRun, createMatrixRuns } = useTestRuns(planId, filters);
   const { suites } = useTestSuites(projectId);
   const { cases } = useTestCases(projectId, activeSuiteId);
+  const { groups: configGroups } = useConfigs(projectId);
+
+  const hasConfigGroups = configGroups.length > 0;
+
+  // Build the matrix combinations from selected config items
+  const matrixCombinations = useMemo(() => {
+    if (!useMatrix) return [];
+    const groupsWithSelection = configGroups.filter(
+      (g) => (selectedConfigItems[g.id] ?? []).length > 0,
+    );
+    if (groupsWithSelection.length === 0) return [];
+
+    const itemArrays = groupsWithSelection.map((g) => selectedConfigItems[g.id]);
+    return cartesian(itemArrays);
+  }, [useMatrix, configGroups, selectedConfigItems]);
+
+  // Build label previews for the combinations
+  const comboLabels = useMemo(() => {
+    if (matrixCombinations.length === 0) return [];
+    const itemMap = new Map<string, string>();
+    for (const g of configGroups) {
+      for (const item of g.items) {
+        itemMap.set(item.id, item.name);
+      }
+    }
+    return matrixCombinations.map((combo) =>
+      combo.map((id) => itemMap.get(id) ?? 'Unknown').join(' / '),
+    );
+  }, [matrixCombinations, configGroups]);
 
   const {
     register,
@@ -94,20 +128,19 @@ export default function PlanDetailPage() {
     if (!dialogOpen) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        setDialogOpen(false);
-        reset();
-        setSelectedCaseIds([]);
-        setActiveSuiteId(null);
+        closeDialog();
       }
     }
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [dialogOpen, reset]);
+  }, [dialogOpen]);
 
   function openDialog() {
     reset();
     setSelectedCaseIds([]);
     setActiveSuiteId(null);
+    setUseMatrix(false);
+    setSelectedConfigItems({});
     setDialogOpen(true);
   }
 
@@ -116,6 +149,8 @@ export default function PlanDetailPage() {
     reset();
     setSelectedCaseIds([]);
     setActiveSuiteId(null);
+    setUseMatrix(false);
+    setSelectedConfigItems({});
   }
 
   function toggleCase(caseId: string) {
@@ -132,11 +167,36 @@ export default function PlanDetailPage() {
     });
   }
 
-  function onSubmit(data: CreateTestRunInput) {
-    createRun.mutate(data, {
-      onSuccess: () => closeDialog(),
+  function toggleConfigItem(groupId: string, itemId: string) {
+    setSelectedConfigItems((prev) => {
+      const groupItems = prev[groupId] ?? [];
+      const updated = groupItems.includes(itemId)
+        ? groupItems.filter((id) => id !== itemId)
+        : [...groupItems, itemId];
+      return { ...prev, [groupId]: updated };
     });
   }
+
+  function onSubmit(data: CreateTestRunInput) {
+    if (useMatrix && matrixCombinations.length > 0) {
+      createMatrixRuns.mutate(
+        {
+          name: data.name,
+          caseIds: data.caseIds,
+          assignedToId: data.assignedToId,
+          configItemIds: matrixCombinations,
+        },
+        { onSuccess: () => closeDialog() },
+      );
+    } else {
+      createRun.mutate(data, {
+        onSuccess: () => closeDialog(),
+      });
+    }
+  }
+
+  const isPending = createRun.isPending || createMatrixRuns.isPending;
+  const mutationError = createRun.error ?? createMatrixRuns.error;
 
   if (planLoading) {
     return <div className="p-6">Loading...</div>;
@@ -198,6 +258,11 @@ export default function PlanDetailPage() {
                 <p className="text-sm text-muted-foreground">
                   {run._count.testRunCases} case{run._count.testRunCases !== 1 ? 's' : ''}
                   {run.assignedTo && ` · Assigned to ${run.assignedTo.name}`}
+                  {run.configLabel && (
+                    <span className="ml-2 inline-flex items-center rounded bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-700">
+                      {run.configLabel}
+                    </span>
+                  )}
                 </p>
               </div>
               <span
@@ -219,7 +284,7 @@ export default function PlanDetailPage() {
           onClick={closeDialog}
         >
           <div
-            className="w-full max-w-lg rounded-lg border bg-card p-6 shadow-lg space-y-4"
+            className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-lg border bg-card p-6 shadow-lg space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold">New Test Run</h2>
@@ -242,85 +307,47 @@ export default function PlanDetailPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Select test cases
-                </label>
+              <CaseSelector
+                suites={suites}
+                cases={cases}
+                activeSuiteId={activeSuiteId}
+                selectedCaseIds={selectedCaseIds}
+                onSetActiveSuiteId={setActiveSuiteId}
+                onToggleCase={toggleCase}
+                onSelectAllInSuite={selectAllInSuite}
+                register={register}
+                errors={errors}
+              />
 
-                {suites.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    No suites available. Create suites and cases first.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex gap-2 flex-wrap">
-                      {suites.map((suite) => (
-                        <Button
-                          key={suite.id}
-                          type="button"
-                          size="sm"
-                          variant={activeSuiteId === suite.id ? 'default' : 'outline'}
-                          onClick={() => setActiveSuiteId(suite.id)}
-                        >
-                          {suite.name}
-                        </Button>
-                      ))}
-                    </div>
+              {/* Config Matrix Section */}
+              {hasConfigGroups && (
+                <div className="space-y-2 border-t pt-3">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <Checkbox
+                      checked={useMatrix}
+                      onCheckedChange={(checked) => {
+                        setUseMatrix(!!checked);
+                        if (!checked) setSelectedConfigItems({});
+                      }}
+                    />
+                    Use configuration matrix
+                  </label>
 
-                    {activeSuiteId && (
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">
-                            Cases in selected suite
-                          </span>
-                          <Button type="button" size="sm" variant="ghost" onClick={selectAllInSuite}>
-                            Select all
-                          </Button>
-                        </div>
-                        <div className="max-h-40 overflow-y-auto rounded-md border p-2 space-y-1">
-                          {cases.length === 0 ? (
-                            <p className="text-xs text-muted-foreground py-2">
-                              No cases in this suite.
-                            </p>
-                          ) : (
-                            cases.map((tc) => (
-                              <label
-                                key={tc.id}
-                                className="flex items-center gap-2 text-sm"
-                              >
-                                <Checkbox
-                                  checked={selectedCaseIds.includes(tc.id)}
-                                  onCheckedChange={() => toggleCase(tc.id)}
-                                />
-                                {tc.title}
-                                <span className="ml-auto text-xs text-muted-foreground">
-                                  {tc.priority}
-                                </span>
-                              </label>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  {useMatrix && (
+                    <ConfigMatrixSelector
+                      groups={configGroups}
+                      selectedConfigItems={selectedConfigItems}
+                      onToggleItem={toggleConfigItem}
+                      comboLabels={comboLabels}
+                    />
+                  )}
+                </div>
+              )}
 
-                {selectedCaseIds.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {selectedCaseIds.length} case{selectedCaseIds.length !== 1 ? 's' : ''} selected
-                  </p>
-                )}
-
-                <input type="hidden" {...register('caseIds')} />
-                {errors.caseIds && (
-                  <p className="text-xs text-destructive">{errors.caseIds.message}</p>
-                )}
-              </div>
-
-              {createRun.error && (
+              {mutationError && (
                 <p className="text-sm text-destructive">
-                  {createRun.error instanceof Error
-                    ? createRun.error.message
+                  {mutationError instanceof Error
+                    ? mutationError.message
                     : 'Failed to create run'}
                 </p>
               )}
@@ -329,12 +356,169 @@ export default function PlanDetailPage() {
                 <Button type="button" variant="outline" onClick={closeDialog}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createRun.isPending}>
-                  {createRun.isPending ? 'Creating...' : 'Create'}
+                <Button type="submit" disabled={isPending}>
+                  {isPending
+                    ? 'Creating...'
+                    : useMatrix && matrixCombinations.length > 0
+                      ? `Create ${matrixCombinations.length} Run${matrixCombinations.length !== 1 ? 's' : ''}`
+                      : 'Create'}
                 </Button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Extracted Sub-Components ──
+
+interface CaseSelectorProps {
+  suites: { id: string; name: string }[];
+  cases: { id: string; title: string; priority: string }[];
+  activeSuiteId: string | null;
+  selectedCaseIds: string[];
+  onSetActiveSuiteId: (id: string) => void;
+  onToggleCase: (id: string) => void;
+  onSelectAllInSuite: () => void;
+  register: ReturnType<typeof useForm<CreateTestRunInput>>['register'];
+  errors: ReturnType<typeof useForm<CreateTestRunInput>>['formState']['errors'];
+}
+
+function CaseSelector({
+  suites,
+  cases,
+  activeSuiteId,
+  selectedCaseIds,
+  onSetActiveSuiteId,
+  onToggleCase,
+  onSelectAllInSuite,
+  register,
+  errors,
+}: CaseSelectorProps) {
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">Select test cases</label>
+
+      {suites.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No suites available. Create suites and cases first.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex gap-2 flex-wrap">
+            {suites.map((suite) => (
+              <Button
+                key={suite.id}
+                type="button"
+                size="sm"
+                variant={activeSuiteId === suite.id ? 'default' : 'outline'}
+                onClick={() => onSetActiveSuiteId(suite.id)}
+              >
+                {suite.name}
+              </Button>
+            ))}
+          </div>
+
+          {activeSuiteId && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  Cases in selected suite
+                </span>
+                <Button type="button" size="sm" variant="ghost" onClick={onSelectAllInSuite}>
+                  Select all
+                </Button>
+              </div>
+              <div className="max-h-40 overflow-y-auto rounded-md border p-2 space-y-1">
+                {cases.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2">
+                    No cases in this suite.
+                  </p>
+                ) : (
+                  cases.map((tc) => (
+                    <label key={tc.id} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={selectedCaseIds.includes(tc.id)}
+                        onCheckedChange={() => onToggleCase(tc.id)}
+                      />
+                      {tc.title}
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {tc.priority}
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {selectedCaseIds.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {selectedCaseIds.length} case{selectedCaseIds.length !== 1 ? 's' : ''} selected
+        </p>
+      )}
+
+      <input type="hidden" {...register('caseIds')} />
+      {errors.caseIds && (
+        <p className="text-xs text-destructive">{errors.caseIds.message}</p>
+      )}
+    </div>
+  );
+}
+
+interface ConfigMatrixSelectorProps {
+  groups: ConfigGroupWithItemsDto[];
+  selectedConfigItems: Record<string, string[]>;
+  onToggleItem: (groupId: string, itemId: string) => void;
+  comboLabels: string[];
+}
+
+function ConfigMatrixSelector({
+  groups,
+  selectedConfigItems,
+  onToggleItem,
+  comboLabels,
+}: ConfigMatrixSelectorProps) {
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Select values from each config group. A run will be created for every
+        combination.
+      </p>
+      {groups.map((group) => (
+        <div key={group.id} className="space-y-1">
+          <span className="text-xs font-medium">{group.name}</span>
+          <div className="flex gap-2 flex-wrap">
+            {group.items.map((item) => {
+              const isSelected = (selectedConfigItems[group.id] ?? []).includes(item.id);
+              return (
+                <label key={item.id} className="flex items-center gap-1.5 text-sm">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => onToggleItem(group.id, item.id)}
+                  />
+                  {item.name}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {comboLabels.length > 0 && (
+        <div className="rounded-md bg-muted/50 p-2 space-y-1">
+          <p className="text-xs font-medium">
+            {comboLabels.length} run{comboLabels.length !== 1 ? 's' : ''} will be created:
+          </p>
+          <ul className="text-xs text-muted-foreground space-y-0.5 max-h-24 overflow-y-auto">
+            {comboLabels.map((label, i) => (
+              <li key={i}>{label}</li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

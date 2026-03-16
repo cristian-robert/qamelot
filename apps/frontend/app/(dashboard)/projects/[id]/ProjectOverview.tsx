@@ -6,7 +6,9 @@ import {
   Flag,
   Bug,
   BarChart3,
+  Settings2,
   ChevronRight,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { buttonVariants } from '@/components/ui/button';
@@ -125,6 +127,18 @@ export function ProjectOverview({ id, name, description }: ProjectOverviewProps)
           icon={<BarChart3 className="size-5" />}
           title="Reports"
           description="View testing metrics and coverage reports"
+        />
+        <NavCard
+          href={`/projects/${id}/configs`}
+          icon={<Settings2 className="size-5" />}
+          title="Configurations"
+          description="Define Browser, OS, and other config groups for matrix testing"
+        />
+        <NavCard
+          href={`/projects/${id}/custom-fields`}
+          icon={<SlidersHorizontal className="size-5" />}
+          title="Custom Fields"
+          description="Define custom fields for test cases and results"
         />
       </div>
       <p className="text-sm text-muted-foreground">

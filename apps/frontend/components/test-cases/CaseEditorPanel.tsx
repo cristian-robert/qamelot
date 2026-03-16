@@ -105,6 +105,7 @@ export function CaseEditorPanel({ projectId, suiteId, caseId, onClose }: CaseEdi
               <CaseEditor
                 key={testCase.id}
                 testCase={testCase}
+                projectId={projectId}
                 onSave={handleSave}
                 onCancel={onClose}
                 isPending={updateMutation.isPending}

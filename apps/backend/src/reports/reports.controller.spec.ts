@@ -7,6 +7,9 @@ import type {
   ActivityReportDto,
   DashboardSummaryDto,
   ReferenceCoverageDto,
+  ComparisonReportDto,
+  DefectSummaryReportDto,
+  UserWorkloadReportDto,
 } from '@app/shared';
 import { TestResultStatus } from '@app/shared';
 
@@ -18,6 +21,9 @@ describe('ReportsController', () => {
     getProgress: jest.fn(),
     getActivity: jest.fn(),
     getReferenceCoverage: jest.fn(),
+    getComparison: jest.fn(),
+    getDefectSummary: jest.fn(),
+    getUserWorkload: jest.fn(),
     getSummary: jest.fn(),
   };
 
@@ -66,13 +72,14 @@ describe('ReportsController', () => {
   });
 
   describe('getActivity', () => {
-    it('delegates to service and returns activity report', async () => {
+    it('delegates to service with date range and returns activity report', async () => {
       const activity: ActivityReportDto = { entries: [] };
       mockService.getActivity.mockResolvedValue(activity);
 
-      const result = await controller.getActivity('proj-1');
+      const dateRange = { startDate: '2026-01-01', endDate: '2026-06-30' };
+      const result = await controller.getActivity('proj-1', dateRange);
 
-      expect(mockService.getActivity).toHaveBeenCalledWith('proj-1');
+      expect(mockService.getActivity).toHaveBeenCalledWith('proj-1', dateRange);
       expect(result).toEqual(activity);
     });
   });
@@ -99,6 +106,68 @@ describe('ReportsController', () => {
 
       expect(mockService.getReferenceCoverage).toHaveBeenCalledWith('proj-1');
       expect(result).toEqual(refCoverage);
+    });
+  });
+
+  describe('getComparison', () => {
+    it('delegates to service with run IDs', async () => {
+      const comparison: ComparisonReportDto = {
+        runA: { id: 'r1', name: 'Run 1', createdAt: '2026-01-01T00:00:00.000Z', total: 5, passed: 3, failed: 2 },
+        runB: { id: 'r2', name: 'Run 2', createdAt: '2026-01-15T00:00:00.000Z', total: 5, passed: 4, failed: 1 },
+        newPasses: [],
+        newFailures: [],
+        fixed: [{ testCaseId: 'c1', testCaseTitle: 'Test', statusInA: TestResultStatus.FAILED, statusInB: TestResultStatus.PASSED }],
+        regressions: [],
+        unchanged: 4,
+      };
+      mockService.getComparison.mockResolvedValue(comparison);
+
+      const result = await controller.getComparison('proj-1', { runIdA: 'r1', runIdB: 'r2' });
+
+      expect(mockService.getComparison).toHaveBeenCalledWith('proj-1', 'r1', 'r2');
+      expect(result).toEqual(comparison);
+    });
+  });
+
+  describe('getDefectSummary', () => {
+    it('delegates to service with date range', async () => {
+      const summary: DefectSummaryReportDto = {
+        totalDefects: 0,
+        defects: [],
+        byAge: [],
+      };
+      mockService.getDefectSummary.mockResolvedValue(summary);
+
+      const dateRange = { startDate: '2026-01-01' };
+      const result = await controller.getDefectSummary('proj-1', dateRange);
+
+      expect(mockService.getDefectSummary).toHaveBeenCalledWith('proj-1', dateRange);
+      expect(result).toEqual(summary);
+    });
+  });
+
+  describe('getUserWorkload', () => {
+    it('delegates to service with date range', async () => {
+      const workload: UserWorkloadReportDto = {
+        users: [{
+          userId: 'u1',
+          userName: 'Alice',
+          totalAssigned: 10,
+          passed: 7,
+          failed: 2,
+          blocked: 1,
+          retest: 0,
+          untested: 0,
+          completionPercent: 100,
+        }],
+      };
+      mockService.getUserWorkload.mockResolvedValue(workload);
+
+      const dateRange = {};
+      const result = await controller.getUserWorkload('proj-1', dateRange);
+
+      expect(mockService.getUserWorkload).toHaveBeenCalledWith('proj-1', dateRange);
+      expect(result).toEqual(workload);
     });
   });
 

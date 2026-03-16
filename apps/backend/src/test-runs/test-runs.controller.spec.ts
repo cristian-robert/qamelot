@@ -21,6 +21,7 @@ describe('TestRunsController', () => {
 
   const mockService = {
     create: jest.fn(),
+    createMatrixRuns: jest.fn(),
     findAllByPlan: jest.fn(),
     findOne: jest.fn(),
     update: jest.fn(),
@@ -51,6 +52,21 @@ describe('TestRunsController', () => {
       caseIds: ['case-1'],
     });
     expect(result).toEqual(mockRun);
+  });
+
+  it('createMatrixRuns delegates to service', async () => {
+    const matrixRuns = [{ ...mockRun, configLabel: 'Chrome / Windows' }];
+    mockService.createMatrixRuns.mockResolvedValue(matrixRuns);
+
+    const dto = {
+      name: 'Matrix Run',
+      caseIds: ['case-1'],
+      configItemIds: [['item-1', 'item-2']],
+    };
+    const result = await controller.createMatrixRuns(PLAN_ID, dto);
+
+    expect(mockService.createMatrixRuns).toHaveBeenCalledWith(PLAN_ID, dto);
+    expect(result).toEqual(matrixRuns);
   });
 
   it('findAllByPlan delegates to service without filters', async () => {

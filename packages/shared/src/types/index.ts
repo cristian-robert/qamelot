@@ -69,6 +69,7 @@ export interface TestRunDto extends BaseEntity {
   projectId: string;
   assignedToId: string | null;
   status: TestRunStatus;
+  configLabel: string | null;
   sourceRunId: string | null;
   deletedAt: string | null;
 }
@@ -366,6 +367,49 @@ export interface AttachmentDto extends BaseEntity {
 }
 
 
+// Custom field type enum
+export enum CustomFieldType {
+  STRING = 'STRING',
+  NUMBER = 'NUMBER',
+  DROPDOWN = 'DROPDOWN',
+  CHECKBOX = 'CHECKBOX',
+  DATE = 'DATE',
+}
+
+// Custom field entity type — which entity the field applies to
+export enum CustomFieldEntityType {
+  TEST_CASE = 'TEST_CASE',
+  TEST_RESULT = 'TEST_RESULT',
+}
+
+// Custom field definition shape returned by API
+export interface CustomFieldDefinitionDto extends BaseEntity {
+  name: string;
+  fieldType: CustomFieldType;
+  options: string[] | null;
+  required: boolean;
+  entityType: CustomFieldEntityType;
+  projectId: string;
+  position: number;
+  deletedAt: string | null;
+}
+
+// Custom field value shape returned by API
+export interface CustomFieldValueDto {
+  id: string;
+  definitionId: string;
+  entityType: CustomFieldEntityType;
+  entityId: string;
+  value: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Custom field value with definition info for display
+export interface CustomFieldValueWithDefinitionDto extends CustomFieldValueDto {
+  definition: CustomFieldDefinitionDto;
+}
+
 // JWT payload embedded in access/refresh tokens
 export interface JwtPayload {
   sub: string;   // user id (cuid)
@@ -446,4 +490,101 @@ export interface ReferenceCoverageEntry {
   retest: number;
   untested: number;
   coveragePercent: number;
+}
+
+// ── Configuration (Matrix Testing) DTOs ──
+
+/** Config item shape returned by API */
+export interface ConfigItemDto extends BaseEntity {
+  name: string;
+  groupId: string;
+  deletedAt: string | null;
+}
+
+/** Config group shape returned by API */
+export interface ConfigGroupDto extends BaseEntity {
+  name: string;
+  projectId: string;
+  deletedAt: string | null;
+}
+
+/** Config group with its items included */
+export interface ConfigGroupWithItemsDto extends ConfigGroupDto {
+  items: ConfigItemDto[];
+}
+
+// ── Additional Report DTOs ──
+
+/** Comparison report: delta between two test runs */
+export interface ComparisonReportDto {
+  runA: ComparisonRunInfo;
+  runB: ComparisonRunInfo;
+  newPasses: ComparisonCaseEntry[];
+  newFailures: ComparisonCaseEntry[];
+  fixed: ComparisonCaseEntry[];
+  regressions: ComparisonCaseEntry[];
+  unchanged: number;
+}
+
+export interface ComparisonRunInfo {
+  id: string;
+  name: string;
+  createdAt: string;
+  total: number;
+  passed: number;
+  failed: number;
+}
+
+export interface ComparisonCaseEntry {
+  testCaseId: string;
+  testCaseTitle: string;
+  statusInA: TestResultStatus;
+  statusInB: TestResultStatus;
+}
+
+/** Defect summary report: defects grouped by severity/age with linked results */
+export interface DefectSummaryReportDto {
+  totalDefects: number;
+  defects: DefectSummaryEntry[];
+  byAge: DefectAgeBucket[];
+}
+
+export interface DefectSummaryEntry {
+  id: string;
+  reference: string;
+  description: string | null;
+  testResultId: string | null;
+  testCaseTitle: string | null;
+  testRunName: string | null;
+  resultStatus: TestResultStatus | null;
+  createdAt: string;
+  ageInDays: number;
+}
+
+export interface DefectAgeBucket {
+  bucket: string;
+  count: number;
+}
+
+/** User workload report: cases assigned per user with completion rates */
+export interface UserWorkloadReportDto {
+  users: UserWorkloadEntry[];
+}
+
+export interface UserWorkloadEntry {
+  userId: string;
+  userName: string;
+  totalAssigned: number;
+  passed: number;
+  failed: number;
+  blocked: number;
+  retest: number;
+  untested: number;
+  completionPercent: number;
+}
+
+/** Date range filter parameters used across reports */
+export interface DateRangeFilter {
+  startDate?: string;
+  endDate?: string;
 }

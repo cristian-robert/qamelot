@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { CreateTestRunInput, UpdateTestRunInput } from '@app/shared';
+import type { CreateTestRunInput, UpdateTestRunInput, CreateMatrixRunsInput } from '@app/shared';
 import { testRunsApi, type TestRunFilters } from '../api/test-runs';
 
 export function testRunsQueryKey(planId: string, filters?: TestRunFilters) {
@@ -40,6 +40,14 @@ export function useTestRuns(planId: string, filters?: TestRunFilters) {
     },
   });
 
+  const createMatrixRuns = useMutation({
+    mutationFn: (data: CreateMatrixRunsInput) =>
+      testRunsApi.createMatrixRuns(planId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plans', planId, 'runs'] });
+    },
+  });
+
   return {
     runs: runs ?? [],
     isLoading,
@@ -47,5 +55,6 @@ export function useTestRuns(planId: string, filters?: TestRunFilters) {
     createRun,
     updateRun,
     deleteRun,
+    createMatrixRuns,
   };
 }

@@ -14,3 +14,5 @@ export * from './schemas/user';
 export * from './schemas/attachment';
 export * from './schemas/case-history';
 export * from './schemas/shared-step';
+export * from './schemas/config';
+export * from './schemas/custom-field';

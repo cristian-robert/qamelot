@@ -3,10 +3,11 @@ import type {
   TestRunDetailDto,
   CreateTestRunInput,
   UpdateTestRunInput,
+  CreateMatrixRunsInput,
 } from '@app/shared';
 import { apiFetch } from './client';
 
-/** Run list item includes assignedTo relation and case count */
+/** Run list item includes assignedTo relation, case count, and optional configLabel */
 export interface TestRunListItem extends TestRunDto {
   assignedTo: { id: string; name: string; email: string } | null;
   _count: { testRunCases: number };
@@ -53,4 +54,10 @@ export const testRunsApi = {
 
   remove: (id: string) =>
     apiFetch<TestRunDto>(`/runs/${id}`, { method: 'DELETE' }),
+
+  createMatrixRuns: (planId: string, data: CreateMatrixRunsInput) =>
+    apiFetch<TestRunDetailDto[]>(`/plans/${planId}/runs/matrix`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };

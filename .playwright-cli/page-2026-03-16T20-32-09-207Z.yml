@@ -1,0 +1,27 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e4]:
+      - img [ref=e6]
+      - heading "Qamelot" [level=1] [ref=e8]
+      - paragraph [ref=e9]: Your precision test management platform. Organize, execute, and track quality with confidence.
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - heading "Sign in" [level=1] [ref=e13]
+        - paragraph [ref=e14]: Enter your credentials to continue
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - text: Email
+          - textbox "Email" [ref=e17]:
+            - /placeholder: you@example.com
+        - generic [ref=e18]:
+          - text: Password
+          - textbox "Password" [ref=e19]:
+            - /placeholder: ••••••••
+        - button "Sign in" [ref=e20]
+      - paragraph [ref=e21]:
+        - text: No account?
+        - link "Register" [ref=e22] [cursor=pointer]:
+          - /url: /register
+  - button "Open Next.js Dev Tools" [ref=e28] [cursor=pointer]:
+    - img [ref=e29]
+  - alert [ref=e32]

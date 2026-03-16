@@ -1,0 +1,64 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e5]
+        - generic [ref=e7]: Qamelot
+      - navigation [ref=e8]:
+        - paragraph [ref=e9]: Main
+        - link [ref=e54] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e11]
+          - text: Dashboard
+        - link [ref=e55] [cursor=pointer]:
+          - /url: /projects
+          - img [ref=e17]
+          - text: Projects
+      - generic [ref=e19]:
+        - link [ref=e56] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e21]
+          - text: Settings
+        - generic [ref=e24]:
+          - generic [ref=e25]: R
+          - generic [ref=e26]:
+            - paragraph [ref=e27]: roby248
+            - paragraph [ref=e28]: TESTER
+          - button [ref=e57]:
+            - img
+    - main [ref=e30]:
+      - generic [ref=e32]:
+        - generic [ref=e33]:
+          - heading [level=1] [ref=e58]: Projects
+          - button [ref=e59]:
+            - img
+            - text: New Project
+        - generic [ref=e37]:
+          - img [ref=e39]
+          - heading [level=3] [ref=e60]: No projects yet
+          - paragraph [ref=e42]: Create your first project to start organizing test suites and tracking results.
+          - button [ref=e61]:
+            - img
+            - text: Create Project
+  - button "Open Next.js Dev Tools" [ref=e49] [cursor=pointer]:
+    - img [ref=e50]
+  - alert [ref=e53]
+  - dialog "New Project" [ref=e65]:
+    - generic [ref=e66]:
+      - heading "New Project" [level=2] [ref=e67]
+      - paragraph [ref=e68]: Create a new project to organize your test suites and cases.
+    - generic [ref=e69]:
+      - generic [ref=e70]:
+        - text: Project name
+        - textbox "Project name" [active] [ref=e71]:
+          - /placeholder: My project
+      - generic [ref=e72]:
+        - generic [ref=e73]: Description (optional)
+        - textbox "Description (optional)" [ref=e74]:
+          - /placeholder: A short description...
+      - generic [ref=e75]:
+        - button "Cancel" [ref=e76]
+        - button "Create" [ref=e77]
+    - button "Close" [ref=e78]:
+      - img
+      - generic [ref=e79]: Close

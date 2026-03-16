@@ -11,8 +11,29 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/useAuth';
 import { useProjects } from '@/lib/projects/useProjects';
+import { useDashboardSummary } from '@/lib/reports/useReports';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import type { TestResultStatus } from '@app/shared';
+
+const STATUS_COLORS: Record<TestResultStatus, string> = {
+  PASSED: 'bg-green-100 text-green-800',
+  FAILED: 'bg-red-100 text-red-800',
+  BLOCKED: 'bg-yellow-100 text-yellow-800',
+  RETEST: 'bg-orange-100 text-orange-800',
+  UNTESTED: 'bg-gray-100 text-gray-800',
+};
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString('en-US', {
@@ -91,6 +112,7 @@ function EmptyState() {
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { projects, isLoading: projectsLoading } = useProjects();
+  const { data: summary, isLoading: summaryLoading } = useDashboardSummary();
 
   const isLoading = authLoading || projectsLoading;
 
@@ -115,41 +137,65 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           icon={<FolderKanban className="size-5" />}
-          value={projectCount}
+          value={summary?.totalProjects ?? projectCount}
           label="Projects"
+          loading={summaryLoading}
         />
         <KpiCard
           icon={<Play className="size-5" />}
-          value={0}
+          value={summary?.activeRuns ?? 0}
           label="Active Runs"
+          loading={summaryLoading}
         />
         <KpiCard
           icon={<CheckCircle2 className="size-5" />}
-          value="--"
+          value={summary ? `${summary.overallPassRate}%` : '--'}
           label="Pass Rate"
+          loading={summaryLoading}
         />
         <KpiCard
           icon={<Activity className="size-5" />}
-          value={0}
+          value={summary?.recentActivityCount ?? 0}
           label="Recent Activity"
+          loading={summaryLoading}
         />
       </div>
 
       {hasData ? (
         <>
-          {/* Recent Results placeholder */}
+          {/* Recent Results */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Recent Results</h2>
-            </div>
-            <Card>
-              <CardContent className="flex flex-col items-center py-8 text-center">
-                <Activity className="size-8 text-muted-foreground/50 mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  No test runs yet. Create a test plan and execute runs to see results here.
-                </p>
-              </CardContent>
-            </Card>
+            <h2 className="text-lg font-semibold">Recent Results</h2>
+            {summary?.recentResults && summary.recentResults.length > 0 ? (
+              <Card>
+                <CardContent className="divide-y p-0">
+                  {summary.recentResults.map((result) => (
+                    <div key={result.id} className="flex items-center justify-between px-4 py-3">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium">
+                          {result.runName} / {result.suiteName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          by {result.userName} &middot; {timeAgo(result.createdAt)}
+                        </p>
+                      </div>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[result.status]}`}>
+                        {result.status}
+                      </span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center py-8 text-center">
+                  <Activity className="size-8 text-muted-foreground/50 mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    No test results yet. Create a test plan and execute runs to see activity here.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Quick Actions */}

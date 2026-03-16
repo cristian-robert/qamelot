@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { projectsApi } from '@/lib/api/projects';
@@ -110,8 +111,19 @@ export default function ProjectDetailPage() {
         {project.description && (
           <p className="mt-2 text-muted-foreground">{project.description}</p>
         )}
-        <div className="mt-8 text-muted-foreground">
-          Select a suite from the sidebar to view its test cases.
+        <div className="mt-8 space-y-4">
+          <Link
+            href={`/projects/${id}/plans`}
+            className="block rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow"
+          >
+            <h2 className="font-medium">Test Plans</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage test plans and runs for this project.
+            </p>
+          </Link>
+          <p className="text-muted-foreground">
+            Select a suite from the sidebar to view its test cases.
+          </p>
         </div>
       </main>
 

@@ -14,14 +14,28 @@ enum Role {
   VIEWER
 }
 
+enum TestPlanStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum TestRunStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String    @id @default(cuid())
+  email     String    @unique
   name      String
   password  String
-  role      Role     @default(TESTER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      Role      @default(TESTER)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  testRuns  TestRun[]
 }
 
 model Project {
@@ -32,21 +46,72 @@ model Project {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   testSuites  TestSuite[]
+  testPlans   TestPlan[]
+  testRuns    TestRun[]
 }
 
 model TestSuite {
-  id          String      @id @default(cuid())
-  name        String
-  description String?
-  projectId   String
-  project     Project     @relation(fields: [projectId], references: [id])
-  parentId    String?
-  parent      TestSuite?  @relation("SuiteTree", fields: [parentId], references: [id])
-  children    TestSuite[] @relation("SuiteTree")
-  deletedAt   DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id           String        @id @default(cuid())
+  name         String
+  description  String?
+  projectId    String
+  project      Project       @relation(fields: [projectId], references: [id])
+  parentId     String?
+  parent       TestSuite?    @relation("SuiteTree", fields: [parentId], references: [id])
+  children     TestSuite[]   @relation("SuiteTree")
+  testRunCases TestRunCase[]
+  deletedAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@index([projectId])
   @@index([parentId])
+}
+
+model TestPlan {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  projectId   String
+  project     Project        @relation(fields: [projectId], references: [id])
+  status      TestPlanStatus @default(DRAFT)
+  deletedAt   DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  testRuns    TestRun[]
+
+  @@index([projectId])
+}
+
+model TestRun {
+  id           String        @id @default(cuid())
+  name         String
+  testPlanId   String
+  testPlan     TestPlan      @relation(fields: [testPlanId], references: [id])
+  projectId    String
+  project      Project       @relation(fields: [projectId], references: [id])
+  assignedToId String?
+  assignedTo   User?         @relation(fields: [assignedToId], references: [id])
+  status       TestRunStatus @default(PENDING)
+  deletedAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  testRunCases TestRunCase[]
+
+  @@index([testPlanId])
+  @@index([projectId])
+  @@index([assignedToId])
+}
+
+model TestRunCase {
+  id         String   @id @default(cuid())
+  testRunId  String
+  testRun    TestRun  @relation(fields: [testRunId], references: [id])
+  suiteId    String
+  suite      TestSuite @relation(fields: [suiteId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([testRunId, suiteId])
+  @@index([testRunId])
+  @@index([suiteId])
 }

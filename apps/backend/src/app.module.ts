@@ -9,6 +9,7 @@ import { TestSuitesModule } from './test-suites/test-suites.module';
 import { TestPlansModule } from './test-plans/test-plans.module';
 import { TestRunsModule } from './test-runs/test-runs.module';
 import { TestResultsModule } from './test-results/test-results.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { TestResultsModule } from './test-results/test-results.module';
     TestPlansModule,
     TestRunsModule,
     TestResultsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

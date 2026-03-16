@@ -138,6 +138,69 @@ export interface TestRunExecutionDto extends TestRunDto {
   summary: TestRunResultSummary;
 }
 
+// ── Report DTOs ──
+
+/** Coverage breakdown: how many test run cases have each status */
+export interface CoverageReportDto {
+  totalCases: number;
+  covered: number;
+  coveragePercent: number;
+  byStatus: StatusCount[];
+}
+
+/** A single status count bucket */
+export interface StatusCount {
+  status: TestResultStatus;
+  count: number;
+}
+
+/** Progress: pass/fail/blocked per test run, ordered by run creation date */
+export interface ProgressReportDto {
+  runs: RunProgressEntry[];
+}
+
+export interface RunProgressEntry {
+  runId: string;
+  runName: string;
+  createdAt: string;
+  passed: number;
+  failed: number;
+  blocked: number;
+  retest: number;
+  untested: number;
+  total: number;
+}
+
+/** Activity: results submitted per user per day */
+export interface ActivityReportDto {
+  entries: ActivityEntry[];
+}
+
+export interface ActivityEntry {
+  date: string;
+  userId: string;
+  userName: string;
+  count: number;
+}
+
+/** Cross-project summary for the dashboard home page */
+export interface DashboardSummaryDto {
+  totalProjects: number;
+  activeRuns: number;
+  overallPassRate: number;
+  recentActivityCount: number;
+  recentResults: RecentResultEntry[];
+}
+
+export interface RecentResultEntry {
+  id: string;
+  status: TestResultStatus;
+  userName: string;
+  runName: string;
+  suiteName: string;
+  createdAt: string;
+}
+
 // JWT payload embedded in access/refresh tokens
 export interface JwtPayload {
   sub: string;   // user id (cuid)

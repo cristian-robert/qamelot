@@ -121,6 +121,15 @@ export default function ProjectDetailPage() {
               Manage test plans and runs for this project.
             </p>
           </Link>
+          <Link
+            href={`/projects/${id}/reports`}
+            className="block rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow"
+          >
+            <h2 className="font-medium">Reports</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Coverage, progress, and team activity charts.
+            </p>
+          </Link>
           <p className="text-muted-foreground">
             Select a suite from the sidebar to view its test cases.
           </p>

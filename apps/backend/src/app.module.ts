@@ -12,6 +12,7 @@ import { TestResultsModule } from './test-results/test-results.module';
 import { RunEventsModule } from './run-events/run-events.module';
 import { MilestonesModule } from './milestones/milestones.module';
 import { DefectsModule } from './defects/defects.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { DefectsModule } from './defects/defects.module';
     TestResultsModule,
     MilestonesModule,
     DefectsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

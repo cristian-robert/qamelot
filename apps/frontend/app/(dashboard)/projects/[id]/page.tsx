@@ -130,6 +130,12 @@ export default function ProjectDetailPage() {
           >
             Defects
           </Link>
+          <Link
+            href={`/projects/${id}/reports`}
+            className="rounded-lg border bg-card px-4 py-2 text-sm font-medium shadow-sm hover:shadow-md transition-shadow"
+          >
+            Reports
+          </Link>
         </div>
         <div className="mt-8 text-muted-foreground">
           Select a suite from the sidebar to view its test cases.

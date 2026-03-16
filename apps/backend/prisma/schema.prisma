@@ -27,15 +27,24 @@ enum TestRunStatus {
   COMPLETED
 }
 
+enum TestResultStatus {
+  PASSED
+  FAILED
+  BLOCKED
+  RETEST
+  UNTESTED
+}
+
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  name      String
-  password  String
-  role      Role      @default(TESTER)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  testRuns  TestRun[]
+  id          String       @id @default(cuid())
+  email       String       @unique
+  name        String
+  password    String
+  role        Role         @default(TESTER)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  testRuns    TestRun[]
+  testResults TestResult[]
 }
 
 model Project {
@@ -97,6 +106,7 @@ model TestRun {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   testRunCases TestRunCase[]
+  testResults  TestResult[]
 
   @@index([testPlanId])
   @@index([projectId])
@@ -104,14 +114,34 @@ model TestRun {
 }
 
 model TestRunCase {
-  id         String   @id @default(cuid())
-  testRunId  String
-  testRun    TestRun  @relation(fields: [testRunId], references: [id])
-  suiteId    String
-  suite      TestSuite @relation(fields: [suiteId], references: [id])
-  createdAt  DateTime @default(now())
+  id          String       @id @default(cuid())
+  testRunId   String
+  testRun     TestRun      @relation(fields: [testRunId], references: [id])
+  suiteId     String
+  suite       TestSuite    @relation(fields: [suiteId], references: [id])
+  createdAt   DateTime     @default(now())
+  testResults TestResult[]
 
   @@unique([testRunId, suiteId])
   @@index([testRunId])
   @@index([suiteId])
+}
+
+model TestResult {
+  id            String           @id @default(cuid())
+  testRunCaseId String
+  testRunCase   TestRunCase      @relation(fields: [testRunCaseId], references: [id])
+  testRunId     String
+  testRun       TestRun          @relation(fields: [testRunId], references: [id])
+  executedById  String
+  executedBy    User             @relation(fields: [executedById], references: [id])
+  status        TestResultStatus @default(UNTESTED)
+  comment       String?
+  elapsed       Int?             // duration in seconds
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([testRunCaseId])
+  @@index([testRunId])
+  @@index([executedById])
 }

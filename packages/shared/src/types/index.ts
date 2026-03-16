@@ -92,6 +92,52 @@ export interface TestPlanWithRunCountDto extends TestPlanDto {
   _count: { testRuns: number };
 }
 
+// Test result status enum
+export enum TestResultStatus {
+  PASSED = 'PASSED',
+  FAILED = 'FAILED',
+  BLOCKED = 'BLOCKED',
+  RETEST = 'RETEST',
+  UNTESTED = 'UNTESTED',
+}
+
+// Test result shape returned by API
+export interface TestResultDto {
+  id: string;
+  testRunCaseId: string;
+  testRunId: string;
+  executedById: string;
+  executedBy: { id: string; name: string; email: string };
+  status: TestResultStatus;
+  comment: string | null;
+  elapsed: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Test run case with its latest result for the execution view
+export interface TestRunCaseWithResultDto extends TestRunCaseDto {
+  latestResult: TestResultDto | null;
+}
+
+// Summary counts for a test run's results
+export interface TestRunResultSummary {
+  total: number;
+  passed: number;
+  failed: number;
+  blocked: number;
+  retest: number;
+  untested: number;
+}
+
+// Test run detail with result summary for the execution view
+export interface TestRunExecutionDto extends TestRunDto {
+  testPlan: { id: string; name: string };
+  assignedTo: { id: string; name: string; email: string } | null;
+  testRunCases: TestRunCaseWithResultDto[];
+  summary: TestRunResultSummary;
+}
+
 // JWT payload embedded in access/refresh tokens
 export interface JwtPayload {
   sub: string;   // user id (cuid)

@@ -21,8 +21,10 @@ export interface BulkOperationResult {
 }
 
 export const testCasesApi = {
-  listBySuite: (projectId: string, suiteId: string) =>
-    apiFetch<TestCaseDto[]>(`/projects/${projectId}/suites/${suiteId}/cases`),
+  listBySuite: async (projectId: string, suiteId: string) => {
+    const res = await apiFetch<{ data: TestCaseDto[] }>(`/projects/${projectId}/suites/${suiteId}/cases`);
+    return res.data;
+  },
 
   getById: (projectId: string, id: string) =>
     apiFetch<TestCaseDto>(`/projects/${projectId}/cases/${id}`),

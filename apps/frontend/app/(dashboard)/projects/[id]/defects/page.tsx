@@ -1,114 +1,71 @@
 'use client';
 
-import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { useDefects } from '@/lib/defects/useDefects';
-import { DefectFormDialog } from '@/components/defects/DefectFormDialog';
+import { useQuery } from '@tanstack/react-query';
+import { Bug, Plus } from 'lucide-react';
+import { projectsApi } from '@/lib/api/projects';
+import { PROJECTS_QUERY_KEY } from '@/lib/projects/useProjects';
+import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/ui/button';
-import type { CreateDefectInput, DefectDto } from '@app/shared';
+import { Card, CardContent } from '@/components/ui/card';
 
-function DefectRow({
-  defect,
-  onDelete,
-}: {
-  defect: DefectDto;
-  onDelete: (id: string) => void;
-}) {
-  const isUrl = defect.reference.startsWith('http://') || defect.reference.startsWith('https://');
-
+function DefectsSkeleton() {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3">
-      <div className="min-w-0 flex-1">
-        {isUrl ? (
-          <a
-            href={defect.reference}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-primary underline underline-offset-2"
-          >
-            {defect.reference}
-          </a>
-        ) : (
-          <span className="font-medium">{defect.reference}</span>
-        )}
-        {defect.description && (
-          <p className="mt-0.5 text-sm text-muted-foreground truncate">
-            {defect.description}
-          </p>
-        )}
+    <div className="p-6 space-y-6">
+      <div className="h-4 w-56 animate-pulse rounded bg-muted" />
+      <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-20 animate-pulse rounded-xl bg-muted" />
+        ))}
       </div>
-      <Button size="sm" variant="destructive" onClick={() => onDelete(defect.id)}>
-        Delete
-      </Button>
     </div>
   );
 }
 
 export default function DefectsPage() {
-  const { id: projectId } = useParams<{ id: string }>();
-  const { defects, isLoading, error, createDefect, deleteDefect } =
-    useDefects(projectId);
+  const { id } = useParams<{ id: string }>();
 
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const { data: project, isLoading } = useQuery({
+    queryKey: [...PROJECTS_QUERY_KEY, id],
+    queryFn: () => projectsApi.getById(id),
+    enabled: !!id,
+  });
 
-  const handleCreate = (data: CreateDefectInput) => {
-    createDefect.mutate(data, {
-      onSuccess: () => setDialogOpen(false),
-    });
-  };
-
-  const handleDelete = (defectId: string) => {
-    if (window.confirm('Delete this defect reference?')) {
-      deleteDefect.mutate(defectId);
-    }
-  };
+  if (isLoading) {
+    return <DefectsSkeleton />;
+  }
 
   return (
     <div className="p-6 space-y-6">
+      <Breadcrumb
+        items={[
+          { label: 'Projects', href: '/projects' },
+          { label: project?.name ?? 'Project', href: `/projects/${id}` },
+          { label: 'Defects' },
+        ]}
+      />
+
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/projects/${projectId}`}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Project
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-2xl font-semibold tracking-tight">Defects</h1>
-        </div>
-        <Button onClick={() => setDialogOpen(true)}>New Defect</Button>
+        <h1 className="text-2xl font-bold tracking-tight">Defects</h1>
+        <Button disabled>
+          <Plus className="size-4" />
+          New Defect
+        </Button>
       </div>
 
-      {error ? (
-        <p className="text-sm text-destructive">
-          {error instanceof Error ? error.message : 'Failed to load defects'}
-        </p>
-      ) : isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : defects.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No defect references yet. Link external tickets to track issues.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {defects.map((defect) => (
-            <DefectRow
-              key={defect.id}
-              defect={defect}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
-      )}
-
-      <DefectFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSubmit={handleCreate}
-        isPending={createDefect.isPending}
-        title="Add Defect Reference"
-      />
+      <Card>
+        <CardContent className="flex flex-col items-center py-12 text-center">
+          <div className="flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mb-4">
+            <Bug className="size-7" />
+          </div>
+          <h3 className="text-lg font-semibold">No defects logged</h3>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            Track bugs and issues found during testing. Defects can be linked
+            to test runs and milestones.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

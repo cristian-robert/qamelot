@@ -1,120 +1,172 @@
 'use client';
 
 import Link from 'next/link';
-import { useDashboardSummary } from '@/lib/reports/useReports';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  FolderKanban,
+  Play,
+  CheckCircle2,
+  Activity,
+  Plus,
+  ArrowRight,
+} from 'lucide-react';
+import { useAuth } from '@/lib/auth/useAuth';
+import { useProjects } from '@/lib/projects/useProjects';
 import { buttonVariants } from '@/components/ui/button';
-import type { TestResultStatus } from '@app/shared';
+import { Card, CardContent } from '@/components/ui/card';
 
-const STATUS_COLORS: Record<TestResultStatus, string> = {
-  PASSED: 'bg-green-100 text-green-800',
-  FAILED: 'bg-red-100 text-red-800',
-  BLOCKED: 'bg-yellow-100 text-yellow-800',
-  RETEST: 'bg-orange-100 text-orange-800',
-  UNTESTED: 'bg-gray-100 text-gray-800',
-};
+function formatDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
 
-export default function DashboardPage() {
-  const { data: summary, isLoading, error } = useDashboardSummary();
+interface KpiCardProps {
+  icon: React.ReactNode;
+  value: string | number;
+  label: string;
+  loading?: boolean;
+}
 
-  if (isLoading) {
-    return <div className="p-8 text-muted-foreground">Loading dashboard...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="p-8 text-destructive">
-        {error instanceof Error ? error.message : 'Failed to load dashboard'}
-      </div>
-    );
-  }
-
-  if (!summary) {
-    return <div className="p-8 text-muted-foreground">No data available.</div>;
-  }
-
+function KpiCard({ icon, value, label, loading }: KpiCardProps) {
   return (
-    <div className="space-y-8 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <Link href="/projects" className={buttonVariants({ variant: 'outline' })}>
-          View all projects
-        </Link>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard title="Total Projects" value={summary.totalProjects} />
-        <SummaryCard title="Active Runs" value={summary.activeRuns} />
-        <SummaryCard
-          title="Overall Pass Rate"
-          value={`${summary.overallPassRate}%`}
-        />
-        <SummaryCard
-          title="Recent Activity (30d)"
-          value={summary.recentActivityCount}
-        />
-      </div>
-
-      {/* Recent results */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Results</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {summary.recentResults.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No test results yet. Create a test run and submit results to see
-              activity here.
-            </p>
+    <Card>
+      <CardContent className="flex items-center gap-4">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+          {icon}
+        </div>
+        <div className="min-w-0">
+          {loading ? (
+            <div className="h-7 w-16 animate-pulse rounded bg-muted" />
           ) : (
-            <ul className="space-y-3">
-              {summary.recentResults.map((result) => (
-                <li
-                  key={result.id}
-                  className="flex items-center justify-between rounded-md border px-4 py-3"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">
-                      {result.runName} / {result.suiteName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      by {result.userName} &middot;{' '}
-                      {new Date(result.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[result.status]}`}
-                  >
-                    {result.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-2xl font-bold tracking-tight">{value}</p>
           )}
-        </CardContent>
-      </Card>
+          <p className="text-sm text-muted-foreground">{label}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="p-6 space-y-6">
+      <div className="space-y-1">
+        <div className="h-8 w-64 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-48 animate-pulse rounded bg-muted" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />
+        ))}
+      </div>
+      <div className="h-48 animate-pulse rounded-xl bg-muted" />
     </div>
   );
 }
 
-function SummaryCard({
-  title,
-  value,
-}: {
-  title: string;
-  value: string | number;
-}) {
+function EmptyState() {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-3xl font-bold">{value}</p>
+      <CardContent className="flex flex-col items-center py-12 text-center">
+        <div className="flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mb-4">
+          <FolderKanban className="size-7" />
+        </div>
+        <h3 className="text-lg font-semibold">Welcome to Qamelot</h3>
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+          Get started by creating your first project. Organize test suites,
+          write test cases, and track your testing progress.
+        </p>
+        <Link href="/projects" className={buttonVariants({ className: 'mt-6' })}>
+          <Plus className="size-4" />
+          Create Your First Project
+        </Link>
       </CardContent>
     </Card>
+  );
+}
+
+export default function DashboardPage() {
+  const { user, isLoading: authLoading } = useAuth();
+  const { projects, isLoading: projectsLoading } = useProjects();
+
+  const isLoading = authLoading || projectsLoading;
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  const projectCount = projects.length;
+  const hasData = projectCount > 0;
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Welcome header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Welcome back{user?.name ? `, ${user.name}` : ''}
+        </h1>
+        <p className="text-sm text-muted-foreground">{formatDate(new Date())}</p>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          icon={<FolderKanban className="size-5" />}
+          value={projectCount}
+          label="Projects"
+        />
+        <KpiCard
+          icon={<Play className="size-5" />}
+          value={0}
+          label="Active Runs"
+        />
+        <KpiCard
+          icon={<CheckCircle2 className="size-5" />}
+          value="--"
+          label="Pass Rate"
+        />
+        <KpiCard
+          icon={<Activity className="size-5" />}
+          value={0}
+          label="Recent Activity"
+        />
+      </div>
+
+      {hasData ? (
+        <>
+          {/* Recent Results placeholder */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Recent Results</h2>
+            </div>
+            <Card>
+              <CardContent className="flex flex-col items-center py-8 text-center">
+                <Activity className="size-8 text-muted-foreground/50 mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  No test runs yet. Create a test plan and execute runs to see results here.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex flex-wrap gap-3">
+            <Link href="/projects" className={buttonVariants()}>
+              <Plus className="size-4" />
+              New Project
+            </Link>
+            <Link href="/projects" className={buttonVariants({ variant: 'outline' })}>
+              View All Projects
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        </>
+      ) : (
+        <EmptyState />
+      )}
+    </div>
   );
 }

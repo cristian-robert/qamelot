@@ -54,9 +54,9 @@ describe('ProjectDetailPage', () => {
     mockGetById.mockReturnValue(new Promise(() => {}));
     mockListSuites.mockReturnValue(new Promise(() => {}));
 
-    renderWithProviders(React.createElement(ProjectDetailPage));
+    const { container } = renderWithProviders(React.createElement(ProjectDetailPage));
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(container.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
   it('renders project name and description', async () => {
@@ -85,7 +85,7 @@ describe('ProjectDetailPage', () => {
     renderWithProviders(React.createElement(ProjectDetailPage));
 
     await waitFor(() => {
-      expect(screen.getByText('Project not found.')).toBeInTheDocument();
+      expect(screen.getByText('Project not found')).toBeInTheDocument();
     });
   });
 
@@ -103,7 +103,7 @@ describe('ProjectDetailPage', () => {
     renderWithProviders(React.createElement(ProjectDetailPage));
 
     await waitFor(() => {
-      expect(screen.getByText('Alpha Project')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Alpha Project' })).toBeInTheDocument();
     });
     expect(screen.getByText(/no suites/i)).toBeInTheDocument();
   });

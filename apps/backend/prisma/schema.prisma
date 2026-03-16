@@ -32,6 +32,8 @@ model Project {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   testSuites  TestSuite[]
+  milestones  Milestone[]
+  defects     Defect[]
 }
 
 model TestSuite {
@@ -49,4 +51,38 @@ model TestSuite {
 
   @@index([projectId])
   @@index([parentId])
+}
+
+enum MilestoneStatus {
+  OPEN
+  CLOSED
+}
+
+model Milestone {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  projectId   String
+  project     Project         @relation(fields: [projectId], references: [id])
+  startDate   DateTime?
+  dueDate     DateTime?
+  status      MilestoneStatus @default(OPEN)
+  deletedAt   DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([projectId])
+}
+
+model Defect {
+  id          String    @id @default(cuid())
+  reference   String
+  description String?
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id])
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId])
 }

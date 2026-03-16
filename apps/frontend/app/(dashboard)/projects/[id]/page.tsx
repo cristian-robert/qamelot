@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { projectsApi } from '@/lib/api/projects';
 import { PROJECTS_QUERY_KEY } from '@/lib/projects/useProjects';
@@ -110,6 +111,20 @@ export default function ProjectDetailPage() {
         {project.description && (
           <p className="mt-2 text-muted-foreground">{project.description}</p>
         )}
+        <div className="mt-6 flex gap-3">
+          <Link
+            href={`/projects/${id}/milestones`}
+            className="rounded-lg border bg-card px-4 py-2 text-sm font-medium shadow-sm hover:shadow-md transition-shadow"
+          >
+            Milestones
+          </Link>
+          <Link
+            href={`/projects/${id}/defects`}
+            className="rounded-lg border bg-card px-4 py-2 text-sm font-medium shadow-sm hover:shadow-md transition-shadow"
+          >
+            Defects
+          </Link>
+        </div>
         <div className="mt-8 text-muted-foreground">
           Select a suite from the sidebar to view its test cases.
         </div>

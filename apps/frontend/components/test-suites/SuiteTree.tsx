@@ -11,12 +11,14 @@ import type { TreeNode } from '@/lib/test-suites/tree-utils';
 
 interface SuiteTreeProps {
   tree: TreeNode[];
+  selectedId?: string | null;
+  onSelect?: (suiteId: string) => void;
   onCreateChild: (parentId: string) => void;
   onRename: (node: TreeNode) => void;
   onDelete: (node: TreeNode) => void;
 }
 
-export function SuiteTree({ tree, onCreateChild, onRename, onDelete }: SuiteTreeProps) {
+export function SuiteTree({ tree, selectedId, onSelect, onCreateChild, onRename, onDelete }: SuiteTreeProps) {
   if (tree.length === 0) {
     return (
       <p className="px-3 py-4 text-sm text-muted-foreground">
@@ -32,6 +34,8 @@ export function SuiteTree({ tree, onCreateChild, onRename, onDelete }: SuiteTree
           key={node.id}
           node={node}
           depth={0}
+          selectedId={selectedId}
+          onSelect={onSelect}
           onCreateChild={onCreateChild}
           onRename={onRename}
           onDelete={onDelete}
@@ -44,12 +48,14 @@ export function SuiteTree({ tree, onCreateChild, onRename, onDelete }: SuiteTree
 interface SuiteTreeNodeProps {
   node: TreeNode;
   depth: number;
+  selectedId?: string | null;
+  onSelect?: (suiteId: string) => void;
   onCreateChild: (parentId: string) => void;
   onRename: (node: TreeNode) => void;
   onDelete: (node: TreeNode) => void;
 }
 
-function SuiteTreeNode({ node, depth, onCreateChild, onRename, onDelete }: SuiteTreeNodeProps) {
+function SuiteTreeNode({ node, depth, selectedId, onSelect, onCreateChild, onRename, onDelete }: SuiteTreeNodeProps) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.children.length > 0;
 
@@ -58,7 +64,9 @@ function SuiteTreeNode({ node, depth, onCreateChild, onRename, onDelete }: Suite
       <ContextMenu>
         <ContextMenuTrigger>
           <div
-            className="flex items-center gap-1 rounded px-2 py-1 text-sm hover:bg-accent cursor-pointer"
+            className={`flex items-center gap-1 rounded px-2 py-1 text-sm hover:bg-accent cursor-pointer ${
+              selectedId === node.id ? 'bg-accent font-semibold' : ''
+            }`}
             style={{ paddingLeft: `${depth * 16 + 8}px` }}
           >
             {hasChildren ? (
@@ -75,7 +83,16 @@ function SuiteTreeNode({ node, depth, onCreateChild, onRename, onDelete }: Suite
             ) : (
               <span className="h-5 w-5 shrink-0" />
             )}
-            <span className="truncate">{node.name}</span>
+            <button
+              type="button"
+              className="truncate text-left hover:underline"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect?.(node.id);
+              }}
+            >
+              {node.name}
+            </button>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
@@ -101,6 +118,8 @@ function SuiteTreeNode({ node, depth, onCreateChild, onRename, onDelete }: Suite
               key={child.id}
               node={child}
               depth={depth + 1}
+              selectedId={selectedId}
+              onSelect={onSelect}
               onCreateChild={onCreateChild}
               onRename={onRename}
               onDelete={onDelete}

@@ -48,6 +48,6 @@ pnpm --filter backend exec prisma migrate deploy
 
 echo ""
 echo "✅ Qamelot is ready! Run: pnpm dev"
-echo "   Frontend: http://localhost:3000"
-echo "   Backend:  http://localhost:3001"
-echo "   API docs: http://localhost:3001/api/docs"
+echo "   Frontend: http://localhost:5003"
+echo "   Backend:  http://localhost:5002"
+echo "   API docs: http://localhost:5002/api/docs"

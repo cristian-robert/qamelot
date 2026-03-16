@@ -14,7 +14,7 @@ async function bootstrap() {
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
 
-  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5003';
   app.enableCors({ origin: frontendUrl, credentials: true });
 
   const config = new DocumentBuilder()
@@ -26,7 +26,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT ?? 3001;
+  const port = process.env.PORT ?? 5002;
   await app.listen(port, '0.0.0.0');
   logger.log(`Backend running on http://0.0.0.0:${port}`);
   logger.log(`Swagger docs at http://0.0.0.0:${port}/api/docs`);

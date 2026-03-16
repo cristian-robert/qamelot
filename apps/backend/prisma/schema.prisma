@@ -35,6 +35,11 @@ enum TestResultStatus {
   UNTESTED
 }
 
+enum MilestoneStatus {
+  OPEN
+  CLOSED
+}
+
 model User {
   id          String       @id @default(cuid())
   email       String       @unique
@@ -57,6 +62,8 @@ model Project {
   testSuites  TestSuite[]
   testPlans   TestPlan[]
   testRuns    TestRun[]
+  milestones  Milestone[]
+  defects     Defect[]
 }
 
 model TestSuite {
@@ -144,4 +151,33 @@ model TestResult {
   @@index([testRunCaseId])
   @@index([testRunId])
   @@index([executedById])
+}
+
+model Milestone {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  projectId   String
+  project     Project         @relation(fields: [projectId], references: [id])
+  startDate   DateTime?
+  dueDate     DateTime?
+  status      MilestoneStatus @default(OPEN)
+  deletedAt   DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([projectId])
+}
+
+model Defect {
+  id          String    @id @default(cuid())
+  reference   String
+  description String?
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id])
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId])
 }

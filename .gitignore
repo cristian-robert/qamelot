@@ -37,5 +37,11 @@ coverage/
 
 # Turbo
 .turbo/
-apps/frontend/tsconfig.tsbuildinfo
+*.tsbuildinfo
 .worktrees/
+
+# Build artifacts in source dirs
+packages/shared/src/**/*.js
+packages/shared/src/**/*.js.map
+packages/shared/src/**/*.d.ts
+packages/shared/src/**/*.d.ts.map

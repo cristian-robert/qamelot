@@ -5,7 +5,7 @@
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
-    "start": "node dist/main",
+    "start": "node dist/apps/backend/src/main",
     "lint": "eslint \"{src,test}/**/*.ts\" --ext .ts",
     "test": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json",

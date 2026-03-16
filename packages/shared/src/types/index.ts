@@ -155,3 +155,28 @@ export interface JwtPayload {
   email: string;
   role: Role;
 }
+
+// Milestone status — open or closed
+export enum MilestoneStatus {
+  OPEN = 'OPEN',
+  CLOSED = 'CLOSED',
+}
+
+// Milestone shape returned by API
+export interface MilestoneDto extends BaseEntity {
+  name: string;
+  description: string | null;
+  projectId: string;
+  startDate: string | null;
+  dueDate: string | null;
+  status: MilestoneStatus;
+  deletedAt: string | null;
+}
+
+// Defect reference shape returned by API
+export interface DefectDto extends BaseEntity {
+  reference: string;
+  description: string | null;
+  projectId: string;
+  deletedAt: string | null;
+}

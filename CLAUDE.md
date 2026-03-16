@@ -9,7 +9,7 @@ Colleagues discover and access the app over the local network via this machine's
 - **Backend**: `apps/backend` — NestJS + Prisma ORM + PostgreSQL (Homebrew)
 - **Frontend**: `apps/frontend` — Next.js 16 App Router + shadcn/ui + Tailwind v4
 - **Shared**: `packages/shared` — TypeScript types, DTOs, Zod schemas (used by both apps)
-- **Network**: Backend binds `0.0.0.0:3001` · Frontend binds `0.0.0.0:3000`
+- **Network**: Backend binds `0.0.0.0:5002` · Frontend binds `0.0.0.0:5003`
 
 ## HOW — Key Commands
 ```bash

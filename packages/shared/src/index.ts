@@ -6,3 +6,5 @@ export * from './schemas/test-suite';
 export * from './schemas/test-plan';
 export * from './schemas/test-run';
 export * from './schemas/test-result';
+export * from './schemas/milestone';
+export * from './schemas/defect';

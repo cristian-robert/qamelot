@@ -10,6 +10,8 @@ import { TestPlansModule } from './test-plans/test-plans.module';
 import { TestRunsModule } from './test-runs/test-runs.module';
 import { TestResultsModule } from './test-results/test-results.module';
 import { RunEventsModule } from './run-events/run-events.module';
+import { MilestonesModule } from './milestones/milestones.module';
+import { DefectsModule } from './defects/defects.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { RunEventsModule } from './run-events/run-events.module';
     TestPlansModule,
     TestRunsModule,
     TestResultsModule,
+    MilestonesModule,
+    DefectsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -18,6 +18,7 @@ export const CreateMilestoneSchema = z.object({
     .max(500, 'Description must be 500 characters or less')
     .transform((v) => (v === '' ? undefined : v))
     .optional(),
+  parentId: z.string().nullable().optional(),
   startDate: dateField.optional(),
   dueDate: dateField.optional(),
 });

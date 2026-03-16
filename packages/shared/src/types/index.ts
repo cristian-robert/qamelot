@@ -90,6 +90,7 @@ export interface TestRunCaseDto {
     title: string;
     priority: CasePriority;
     type: CaseType;
+    templateType?: TemplateType;
     suiteId: string;
     suite?: { id: string; name: string };
     steps?: TestCaseStepDto[];
@@ -111,6 +112,17 @@ export enum TestResultStatus {
   UNTESTED = 'UNTESTED',
 }
 
+// Step-level result shape returned by API
+export interface TestStepResultDto {
+  id: string;
+  testResultId: string;
+  testCaseStepId: string;
+  status: TestResultStatus;
+  actualResult: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Test result shape returned by API
 export interface TestResultDto {
   id: string;
@@ -119,8 +131,10 @@ export interface TestResultDto {
   executedById: string;
   executedBy: { id: string; name: string; email: string };
   status: TestResultStatus;
+  statusOverride: boolean;
   comment: string | null;
   elapsed: number | null;
+  stepResults?: TestStepResultDto[];
   createdAt: string;
   updatedAt: string;
 }
@@ -280,6 +294,44 @@ export interface TestCaseWithStepsDto extends TestCaseDto {
   steps: TestCaseStepDto[];
 }
 
+// Shared step item shape returned by API
+export interface SharedStepItemDto {
+  id: string;
+  sharedStepId: string;
+  stepNumber: number;
+  description: string;
+  expectedResult: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Shared step shape returned by API (without items)
+export interface SharedStepDto {
+  id: string;
+  title: string;
+  projectId: string;
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Shared step with items included
+export interface SharedStepWithItemsDto extends SharedStepDto {
+  items: SharedStepItemDto[];
+}
+
+// Case history entry for the audit trail
+export interface CaseHistoryDto {
+  id: string;
+  caseId: string;
+  userId: string;
+  user: { id: string; name: string; email: string };
+  field: string;
+  oldValue: string | null;
+  newValue: string | null;
+  createdAt: string;
+}
+
 // Paginated response wrapper
 export interface PaginatedResponse<T> {
   data: T[];
@@ -332,10 +384,25 @@ export interface MilestoneDto extends BaseEntity {
   name: string;
   description: string | null;
   projectId: string;
+  parentId: string | null;
   startDate: string | null;
   dueDate: string | null;
   status: MilestoneStatus;
   deletedAt: string | null;
+}
+
+// Milestone tree node with nested children and aggregated progress
+export interface MilestoneTreeNode extends MilestoneDto {
+  children: MilestoneTreeNode[];
+  progress: MilestoneProgress;
+}
+
+// Aggregated progress for a milestone (own + children)
+export interface MilestoneProgress {
+  open: number;
+  closed: number;
+  total: number;
+  percent: number;
 }
 
 // Defect reference shape returned by API

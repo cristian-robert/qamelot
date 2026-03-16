@@ -113,9 +113,13 @@ export class TestCasesService {
     return testCase;
   }
 
-  async update(projectId: string, id: string, data: UpdateTestCaseInput) {
+  async update(projectId: string, id: string, data: UpdateTestCaseInput, userId?: string) {
     await this.verifyProject(projectId);
-    await this.verifyCaseInProject(id, projectId);
+    const existing = await this.verifyCaseInProject(id, projectId);
+
+    if (userId) {
+      await this.recordHistory(id, userId, existing, data);
+    }
 
     return this.prisma.testCase.update({
       where: { id },
@@ -132,6 +136,19 @@ export class TestCasesService {
     });
   }
 
+  async findHistory(projectId: string, caseId: string) {
+    await this.verifyProject(projectId);
+    await this.verifyCaseInProject(caseId, projectId);
+
+    return this.prisma.caseHistory.findMany({
+      where: { caseId },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async softDelete(projectId: string, id: string) {
     await this.verifyProject(projectId);
     await this.verifyCaseInProject(id, projectId);
@@ -140,6 +157,79 @@ export class TestCasesService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  // ── Bulk Operations ──
+
+  async bulkUpdate(
+    projectId: string,
+    caseIds: string[],
+    fields: { priority?: CasePriority; type?: CaseType },
+  ) {
+    await this.verifyProject(projectId);
+    await this.verifyCasesInProject(caseIds, projectId);
+
+    if (!fields.priority && !fields.type) {
+      throw new BadRequestException('At least one field must be provided');
+    }
+
+    const data: Record<string, unknown> = {};
+    if (fields.priority) data.priority = fields.priority;
+    if (fields.type) data.type = fields.type;
+
+    const result = await this.prisma.testCase.updateMany({
+      where: { id: { in: caseIds }, projectId, deletedAt: null },
+      data,
+    });
+
+    this.logger.log(
+      `Bulk updated ${result.count} cases in project ${projectId}`,
+    );
+
+    return { updated: result.count };
+  }
+
+  async bulkMove(projectId: string, caseIds: string[], targetSuiteId: string) {
+    await this.verifyProject(projectId);
+    await this.verifyCasesInProject(caseIds, projectId);
+    await this.verifySuiteInProject(targetSuiteId, projectId);
+
+    const maxPosition = await this.prisma.testCase.aggregate({
+      where: { suiteId: targetSuiteId, deletedAt: null },
+      _max: { position: true },
+    });
+    let nextPosition = (maxPosition._max.position ?? -1) + 1;
+
+    await this.prisma.$transaction(
+      caseIds.map((id) =>
+        this.prisma.testCase.update({
+          where: { id },
+          data: { suiteId: targetSuiteId, position: nextPosition++ },
+        }),
+      ),
+    );
+
+    this.logger.log(
+      `Bulk moved ${caseIds.length} cases to suite ${targetSuiteId}`,
+    );
+
+    return { moved: caseIds.length };
+  }
+
+  async bulkDelete(projectId: string, caseIds: string[]) {
+    await this.verifyProject(projectId);
+    await this.verifyCasesInProject(caseIds, projectId);
+
+    const result = await this.prisma.testCase.updateMany({
+      where: { id: { in: caseIds }, projectId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+
+    this.logger.log(
+      `Bulk soft-deleted ${result.count} cases in project ${projectId}`,
+    );
+
+    return { deleted: result.count };
   }
 
   // ── Copy / Move ──
@@ -459,5 +549,68 @@ export class TestCasesService {
       throw new NotFoundException('Test case not found');
     }
     return testCase;
+  }
+
+  private async verifyCasesInProject(caseIds: string[], projectId: string) {
+    const found = await this.prisma.testCase.findMany({
+      where: { id: { in: caseIds }, projectId, deletedAt: null },
+      select: { id: true },
+    });
+    if (found.length !== caseIds.length) {
+      const foundIds = new Set(found.map((c: { id: string }) => c.id));
+      const missing = caseIds.filter((id) => !foundIds.has(id));
+      throw new NotFoundException(
+        `Test cases not found: ${missing.join(', ')}`,
+      );
+    }
+  }
+
+  private async recordHistory(
+    caseId: string,
+    userId: string,
+    existing: Record<string, unknown>,
+    data: UpdateTestCaseInput,
+  ) {
+    const trackedFields = [
+      'title',
+      'preconditions',
+      'templateType',
+      'priority',
+      'type',
+      'estimate',
+      'references',
+    ] as const;
+
+    const entries: Array<{
+      caseId: string;
+      userId: string;
+      field: string;
+      oldValue: string | null;
+      newValue: string | null;
+    }> = [];
+
+    for (const field of trackedFields) {
+      if (data[field] === undefined) continue;
+
+      const oldVal = existing[field];
+      const newVal = data[field];
+
+      const oldStr = oldVal == null ? null : String(oldVal);
+      const newStr = newVal == null ? null : String(newVal);
+
+      if (oldStr === newStr) continue;
+
+      entries.push({
+        caseId,
+        userId,
+        field,
+        oldValue: oldStr,
+        newValue: newStr,
+      });
+    }
+
+    if (entries.length > 0) {
+      await this.prisma.caseHistory.createMany({ data: entries });
+    }
   }
 }

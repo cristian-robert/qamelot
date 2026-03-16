@@ -1,4 +1,9 @@
-import type { MilestoneDto, CreateMilestoneInput, UpdateMilestoneInput } from '@app/shared';
+import type {
+  MilestoneDto,
+  MilestoneTreeNode,
+  CreateMilestoneInput,
+  UpdateMilestoneInput,
+} from '@app/shared';
 import { apiFetch } from './client';
 
 export interface MilestoneFilters {
@@ -16,6 +21,9 @@ function buildQueryString(filters?: MilestoneFilters): string {
 export const milestonesApi = {
   listByProject: (projectId: string, filters?: MilestoneFilters) =>
     apiFetch<MilestoneDto[]>(`/projects/${projectId}/milestones${buildQueryString(filters)}`),
+
+  treeByProject: (projectId: string) =>
+    apiFetch<MilestoneTreeNode[]>(`/projects/${projectId}/milestones/tree`),
 
   getById: (id: string) =>
     apiFetch<MilestoneDto>(`/milestones/${id}`),

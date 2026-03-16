@@ -21,6 +21,13 @@ const mockCase: TestCaseDto = {
   updatedAt: '2026-01-01T00:00:00Z',
 };
 
+const mockCase2: TestCaseDto = {
+  ...mockCase,
+  id: 'case-2',
+  title: 'Verify logout',
+  position: 1,
+};
+
 describe('CaseList', () => {
   const mockOnSelect = vi.fn();
   const mockOnCreate = vi.fn();
@@ -137,5 +144,107 @@ describe('CaseList', () => {
 
     expect(mockOnDelete).toHaveBeenCalledWith('case-1');
     expect(mockOnSelect).not.toHaveBeenCalled();
+  });
+
+  // ── Selection / Checkbox tests ──
+
+  it('renders checkboxes when onToggleSelect is provided', () => {
+    render(
+      <CaseList
+        cases={[mockCase]}
+        selectedId={null}
+        onSelect={mockOnSelect}
+        onCreate={mockOnCreate}
+        onDelete={mockOnDelete}
+        selectedIds={new Set()}
+        onToggleSelect={vi.fn()}
+        onToggleAll={vi.fn()}
+        isAllSelected={false}
+        isSomeSelected={false}
+      />,
+    );
+
+    expect(screen.getByLabelText('Select all test cases')).toBeInTheDocument();
+    expect(screen.getByLabelText(/select verify login/i)).toBeInTheDocument();
+  });
+
+  it('does not render checkboxes without onToggleSelect', () => {
+    render(
+      <CaseList
+        cases={[mockCase]}
+        selectedId={null}
+        onSelect={mockOnSelect}
+        onCreate={mockOnCreate}
+        onDelete={mockOnDelete}
+      />,
+    );
+
+    expect(screen.queryByLabelText('Select all test cases')).not.toBeInTheDocument();
+  });
+
+  it('calls onToggleSelect when case checkbox is clicked', async () => {
+    const user = userEvent.setup();
+    const mockToggle = vi.fn();
+    render(
+      <CaseList
+        cases={[mockCase]}
+        selectedId={null}
+        onSelect={mockOnSelect}
+        onCreate={mockOnCreate}
+        onDelete={mockOnDelete}
+        selectedIds={new Set()}
+        onToggleSelect={mockToggle}
+        onToggleAll={vi.fn()}
+        isAllSelected={false}
+        isSomeSelected={false}
+      />,
+    );
+
+    await user.click(screen.getByLabelText(/select verify login/i));
+
+    expect(mockToggle).toHaveBeenCalledWith('case-1', false);
+  });
+
+  it('calls onToggleAll when select all checkbox is clicked', async () => {
+    const user = userEvent.setup();
+    const mockToggleAll = vi.fn();
+    render(
+      <CaseList
+        cases={[mockCase, mockCase2]}
+        selectedId={null}
+        onSelect={mockOnSelect}
+        onCreate={mockOnCreate}
+        onDelete={mockOnDelete}
+        selectedIds={new Set()}
+        onToggleSelect={vi.fn()}
+        onToggleAll={mockToggleAll}
+        isAllSelected={false}
+        isSomeSelected={false}
+      />,
+    );
+
+    await user.click(screen.getByLabelText('Select all test cases'));
+
+    expect(mockToggleAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies selected highlight to checked cases', () => {
+    render(
+      <CaseList
+        cases={[mockCase]}
+        selectedId={null}
+        onSelect={mockOnSelect}
+        onCreate={mockOnCreate}
+        onDelete={mockOnDelete}
+        selectedIds={new Set(['case-1'])}
+        onToggleSelect={vi.fn()}
+        onToggleAll={vi.fn()}
+        isAllSelected={true}
+        isSomeSelected={false}
+      />,
+    );
+
+    const checkbox = screen.getByLabelText(/select verify login/i) as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
   });
 });

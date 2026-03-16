@@ -82,9 +82,43 @@ export const CopyMoveTestCaseSchema = z.object({
   targetSuiteId: z.string().min(1, 'Target suite ID is required'),
 });
 
+// ── Bulk operation schemas ──
+
+export const BulkUpdateCasesSchema = z.object({
+  caseIds: z
+    .array(z.string().min(1))
+    .min(1, 'At least one case ID is required')
+    .max(200, 'Cannot update more than 200 cases at once'),
+  fields: z.object({
+    priority: z.nativeEnum(CasePriority).optional(),
+    type: z.nativeEnum(CaseType).optional(),
+  }).refine(
+    (f) => f.priority !== undefined || f.type !== undefined,
+    { message: 'At least one field must be provided' },
+  ),
+});
+
+export const BulkMoveCasesSchema = z.object({
+  caseIds: z
+    .array(z.string().min(1))
+    .min(1, 'At least one case ID is required')
+    .max(200, 'Cannot move more than 200 cases at once'),
+  targetSuiteId: z.string().min(1, 'Target suite ID is required'),
+});
+
+export const BulkDeleteCasesSchema = z.object({
+  caseIds: z
+    .array(z.string().min(1))
+    .min(1, 'At least one case ID is required')
+    .max(200, 'Cannot delete more than 200 cases at once'),
+});
+
 export type CreateTestCaseInput = z.infer<typeof CreateTestCaseSchema>;
 export type UpdateTestCaseInput = z.infer<typeof UpdateTestCaseSchema>;
 export type CreateTestCaseStepInput = z.infer<typeof CreateTestCaseStepSchema>;
 export type UpdateTestCaseStepInput = z.infer<typeof UpdateTestCaseStepSchema>;
 export type ReorderStepsInput = z.infer<typeof ReorderStepsSchema>;
 export type CopyMoveTestCaseInput = z.infer<typeof CopyMoveTestCaseSchema>;
+export type BulkUpdateCasesInput = z.infer<typeof BulkUpdateCasesSchema>;
+export type BulkMoveCasesInput = z.infer<typeof BulkMoveCasesSchema>;
+export type BulkDeleteCasesInput = z.infer<typeof BulkDeleteCasesSchema>;

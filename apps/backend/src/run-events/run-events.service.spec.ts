@@ -19,6 +19,7 @@ const makeEvent = (runId: string): RunProgressEvent => ({
       executedById: 'user-1',
       executedBy: { id: 'user-1', name: 'Tester', email: 'test@example.com' },
       status: 'PASSED' as never,
+      statusOverride: false,
       comment: null,
       elapsed: null,
       createdAt: '2026-01-01T00:00:00.000Z',

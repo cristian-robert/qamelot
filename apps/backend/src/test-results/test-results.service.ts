@@ -5,12 +5,20 @@ import { CsvService } from '../test-cases/csv.service';
 import type { UpdateTestResultInput, TestRunResultSummary } from '@app/shared';
 import { TestResultStatus, TestRunStatus } from '@app/shared';
 
-/** Input shape for submitting a result -- accepts the full enum for DTO compatibility */
+interface StepResultData {
+  testCaseStepId: string;
+  status: TestResultStatus;
+  actualResult?: string;
+}
+
+/** Input shape for submitting a result */
 interface SubmitResultData {
   testRunCaseId: string;
   status: TestResultStatus;
+  statusOverride?: boolean;
   comment?: string;
   elapsed?: number;
+  stepResults?: StepResultData[];
 }
 
 @Injectable()
@@ -28,17 +36,32 @@ export class TestResultsService {
     this.rejectIfClosed(run);
     await this.verifyRunCaseBelongsToRun(data.testRunCaseId, runId);
 
+    const derivedStatus = data.stepResults?.length && !data.statusOverride
+      ? this.deriveStatusFromSteps(data.stepResults)
+      : data.status;
+
     const result = await this.prisma.testResult.create({
       data: {
         testRunCaseId: data.testRunCaseId,
         testRunId: runId,
         executedById,
-        status: data.status,
+        status: derivedStatus,
+        statusOverride: data.statusOverride ?? false,
         ...(data.comment !== undefined && { comment: data.comment }),
         ...(data.elapsed !== undefined && { elapsed: data.elapsed }),
+        ...(data.stepResults?.length && {
+          testStepResults: {
+            create: data.stepResults.map((sr) => ({
+              testCaseStepId: sr.testCaseStepId,
+              status: sr.status,
+              ...(sr.actualResult !== undefined && { actualResult: sr.actualResult }),
+            })),
+          },
+        }),
       },
       include: {
         executedBy: { select: { id: true, name: true, email: true } },
+        testStepResults: true,
       },
     });
 
@@ -46,24 +69,75 @@ export class TestResultsService {
 
     this.logger.log(`Result submitted for run ${runId}, case ${data.testRunCaseId}`);
 
-    await this.emitProgressEvent(runId, data.testRunCaseId, result);
+    const resultForEvent = {
+      ...result,
+      stepResults: result.testStepResults,
+      testStepResults: undefined,
+    };
 
-    return result;
+    await this.emitProgressEvent(runId, data.testRunCaseId, resultForEvent);
+
+    return resultForEvent;
+  }
+
+  async bulkSubmit(
+    runId: string,
+    executedById: string,
+    data: { testRunCaseIds: string[]; status: TestResultStatus; comment?: string },
+  ) {
+    const run = await this.verifyRun(runId);
+    this.rejectIfClosed(run);
+
+    for (const trcId of data.testRunCaseIds) {
+      await this.verifyRunCaseBelongsToRun(trcId, runId);
+    }
+
+    const results = await this.prisma.$transaction(
+      data.testRunCaseIds.map((trcId) =>
+        this.prisma.testResult.create({
+          data: {
+            testRunCaseId: trcId,
+            testRunId: runId,
+            executedById,
+            status: data.status,
+            ...(data.comment !== undefined && { comment: data.comment }),
+          },
+          include: {
+            executedBy: { select: { id: true, name: true, email: true } },
+          },
+        }),
+      ),
+    );
+
+    await this.updateRunStatus(runId, run.status);
+
+    this.logger.log(
+      `Bulk submitted ${results.length} results for run ${runId}`,
+    );
+
+    return { submitted: results.length };
   }
 
   async findAllByRun(runId: string) {
     await this.verifyRun(runId);
 
-    return this.prisma.testResult.findMany({
+    const results = await this.prisma.testResult.findMany({
       where: { testRunId: runId },
       orderBy: { createdAt: 'desc' },
       include: {
         executedBy: { select: { id: true, name: true, email: true } },
+        testStepResults: true,
       },
     });
+
+    return results.map((r) => ({
+      ...r,
+      stepResults: r.testStepResults,
+      testStepResults: undefined,
+    }));
   }
 
-  async update(resultId: string, data: UpdateTestResultInput) {
+  async update(resultId: string, data: UpdateTestResultInput & { stepResults?: StepResultData[] }) {
     const result = await this.prisma.testResult.findUnique({
       where: { id: resultId },
     });
@@ -74,23 +148,45 @@ export class TestResultsService {
     const run = await this.verifyRun(result.testRunId);
     this.rejectIfClosed(run);
 
+    const derivedStatus = data.stepResults?.length && !data.statusOverride
+      ? this.deriveStatusFromSteps(data.stepResults)
+      : data.status;
+
     const updated = await this.prisma.testResult.update({
       where: { id: resultId },
       data: {
-        ...(data.status !== undefined && { status: data.status }),
+        ...(derivedStatus !== undefined && { status: derivedStatus }),
+        ...(data.statusOverride !== undefined && { statusOverride: data.statusOverride }),
         ...(data.comment !== undefined && { comment: data.comment }),
         ...(data.elapsed !== undefined && { elapsed: data.elapsed }),
+        ...(data.stepResults?.length && {
+          testStepResults: {
+            deleteMany: {},
+            create: data.stepResults.map((sr) => ({
+              testCaseStepId: sr.testCaseStepId,
+              status: sr.status,
+              ...(sr.actualResult !== undefined && { actualResult: sr.actualResult }),
+            })),
+          },
+        }),
       },
       include: {
         executedBy: { select: { id: true, name: true, email: true } },
+        testStepResults: true,
       },
     });
 
     await this.updateRunStatus(result.testRunId);
 
-    await this.emitProgressEvent(result.testRunId, result.testRunCaseId, updated);
+    const updatedForEvent = {
+      ...updated,
+      stepResults: updated.testStepResults,
+      testStepResults: undefined,
+    };
 
-    return updated;
+    await this.emitProgressEvent(result.testRunId, result.testRunCaseId, updatedForEvent);
+
+    return updatedForEvent;
   }
 
   async getRunWithSummary(runId: string) {
@@ -107,6 +203,7 @@ export class TestResultsService {
                 title: true,
                 priority: true,
                 type: true,
+                templateType: true,
                 suiteId: true,
                 suite: { select: { id: true, name: true } },
                 steps: {
@@ -128,6 +225,7 @@ export class TestResultsService {
               take: 1,
               include: {
                 executedBy: { select: { id: true, name: true, email: true } },
+                testStepResults: true,
               },
             },
           },
@@ -143,11 +241,21 @@ export class TestResultsService {
 
     return {
       ...run,
-      testRunCases: run.testRunCases.map((trc: { testResults: Record<string, unknown>[]; [key: string]: unknown }) => ({
-        ...trc,
-        latestResult: trc.testResults[0] ?? null,
-        testResults: undefined,
-      })),
+      testRunCases: run.testRunCases.map((trc: { testResults: Array<Record<string, unknown> & { testStepResults?: unknown[] }>; [key: string]: unknown }) => {
+        const latestRaw = trc.testResults[0] ?? null;
+        const latestResult = latestRaw
+          ? {
+              ...latestRaw,
+              stepResults: (latestRaw as Record<string, unknown>).testStepResults ?? [],
+              testStepResults: undefined,
+            }
+          : null;
+        return {
+          ...trc,
+          latestResult,
+          testResults: undefined,
+        };
+      }),
       summary,
     };
   }
@@ -176,6 +284,29 @@ export class TestResultsService {
     }));
 
     return this.csvService.generateResultsCsv(rows);
+  }
+
+  /** Derive overall case status from step statuses */
+  deriveStatusFromSteps(stepResults: StepResultData[]): TestResultStatus {
+    if (stepResults.length === 0) {
+      return TestResultStatus.UNTESTED;
+    }
+
+    const hasFailure = stepResults.some((s) => s.status === TestResultStatus.FAILED);
+    if (hasFailure) return TestResultStatus.FAILED;
+
+    const hasBlocked = stepResults.some((s) => s.status === TestResultStatus.BLOCKED);
+    if (hasBlocked) return TestResultStatus.BLOCKED;
+
+    const hasRetest = stepResults.some((s) => s.status === TestResultStatus.RETEST);
+    if (hasRetest) return TestResultStatus.RETEST;
+
+    const hasUntested = stepResults.some(
+      (s) => s.status === TestResultStatus.UNTESTED || !s.status,
+    );
+    if (hasUntested) return TestResultStatus.RETEST;
+
+    return TestResultStatus.PASSED;
   }
 
   calculateSummary(

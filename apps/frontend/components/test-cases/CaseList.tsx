@@ -1,11 +1,40 @@
 'use client';
 
+import { useCallback, useEffect, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CasePriority, type TestCaseDto } from '@app/shared';
 import { formatLabel } from '@/lib/format';
 import { formatRelativeTime } from '@/lib/date-utils';
+import { cn } from '@/lib/utils';
+
+/** Checkbox that supports indeterminate state via a ref callback */
+function IndeterminateCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { indeterminate?: boolean }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.indeterminate = !!indeterminate;
+    }
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      className={cn(
+        'h-4 w-4 shrink-0 rounded border border-primary shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+      )}
+      checked={checked}
+      onChange={onChange}
+      {...props}
+    />
+  );
+}
 
 interface CaseListProps {
   cases: TestCaseDto[];
@@ -13,6 +42,11 @@ interface CaseListProps {
   onSelect: (id: string) => void;
   onCreate: () => void;
   onDelete: (id: string) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string, shiftKey: boolean) => void;
+  onToggleAll?: () => void;
+  isAllSelected?: boolean;
+  isSomeSelected?: boolean;
 }
 
 const PRIORITY_VARIANT: Record<CasePriority, 'destructive' | 'default' | 'secondary' | 'outline'> = {
@@ -22,11 +56,42 @@ const PRIORITY_VARIANT: Record<CasePriority, 'destructive' | 'default' | 'second
   [CasePriority.LOW]: 'outline',
 };
 
-export function CaseList({ cases, selectedId, onSelect, onCreate, onDelete }: CaseListProps) {
+export function CaseList({
+  cases,
+  selectedId,
+  onSelect,
+  onCreate,
+  onDelete,
+  selectedIds,
+  onToggleSelect,
+  onToggleAll,
+  isAllSelected,
+  isSomeSelected,
+}: CaseListProps) {
+  const selectionEnabled = !!onToggleSelect;
+
+  const handleCheckboxClick = useCallback(
+    (id: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      onToggleSelect?.(id, e.shiftKey);
+    },
+    [onToggleSelect],
+  );
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b px-4 py-2">
-        <h3 className="text-sm font-semibold">Test Cases ({cases.length})</h3>
+        <div className="flex items-center gap-2">
+          {selectionEnabled && cases.length > 0 && (
+            <IndeterminateCheckbox
+              aria-label="Select all test cases"
+              checked={isAllSelected}
+              indeterminate={isSomeSelected}
+              onChange={() => onToggleAll?.()}
+            />
+          )}
+          <h3 className="text-sm font-semibold">Test Cases ({cases.length})</h3>
+        </div>
         <Button size="sm" variant="ghost" onClick={onCreate}>
           + New Case
         </Button>
@@ -50,8 +115,29 @@ export function CaseList({ cases, selectedId, onSelect, onCreate, onDelete }: Ca
                 data-selected={selectedId === tc.id}
                 className={`flex items-center transition-colors ${
                   selectedId === tc.id ? 'bg-muted' : ''
-                }`}
+                } ${selectedIds?.has(tc.id) ? 'bg-primary/5' : ''}`}
               >
+                {selectionEnabled && (
+                  <div
+                    className="flex shrink-0 items-center pl-4"
+                    onClick={(e) => handleCheckboxClick(tc.id, e)}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        onToggleSelect?.(tc.id, e.shiftKey);
+                      }
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${tc.title}`}
+                      className="h-4 w-4 shrink-0 rounded border border-primary shadow"
+                      checked={selectedIds?.has(tc.id) ?? false}
+                      tabIndex={-1}
+                      readOnly
+                    />
+                  </div>
+                )}
                 <button
                   type="button"
                   className="flex flex-1 cursor-pointer flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-muted/50"

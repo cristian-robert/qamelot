@@ -11,28 +11,47 @@ import { ResultsCsvExportButton } from '@/components/test-results/ResultsCsvExpo
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TestRunStatus } from '@app/shared';
-import type { SubmitTestResultInput } from '@app/shared';
+import type { SubmitTestResultInput, StepResultInput } from '@app/shared';
 
 export default function RunExecutionPage() {
   const { id: projectId, runId } = useParams<{ id: string; runId: string }>();
   const router = useRouter();
   const { status: sseStatus } = useRunSSE(runId);
-  const { execution, isLoading, error, submitResult, updateResult, closeRun, rerunRun } =
+  const { execution, isLoading, error, submitResult, bulkSubmitResults, updateResult, closeRun, rerunRun } =
     useTestExecution(runId, { enablePolling: sseStatus === 'disconnected' });
 
   const isClosed = execution?.status === TestRunStatus.COMPLETED;
 
   const handleSubmit = useCallback(
-    (testRunCaseId: string, status: string, comment?: string, elapsed?: number) => {
+    (
+      testRunCaseId: string,
+      status: string,
+      comment?: string,
+      elapsed?: number,
+      stepResults?: StepResultInput[],
+      statusOverride?: boolean,
+    ) => {
       const input: SubmitTestResultInput = {
         testRunCaseId,
         status: status as SubmitTestResultInput['status'],
         ...(comment && { comment }),
         ...(elapsed && { elapsed }),
+        ...(stepResults?.length && { stepResults }),
+        ...(statusOverride !== undefined && { statusOverride }),
       };
       submitResult.mutate(input);
     },
     [submitResult],
+  );
+
+  const handleBulkSubmit = useCallback(
+    (testRunCaseIds: string[], status: string) => {
+      bulkSubmitResults.mutate({
+        testRunCaseIds,
+        status: status as 'PASSED' | 'FAILED' | 'BLOCKED' | 'RETEST',
+      });
+    },
+    [bulkSubmitResults],
   );
 
   const handleUpdateComment = useCallback(
@@ -123,7 +142,9 @@ export default function RunExecutionPage() {
         runName={execution.name}
         onSubmit={handleSubmit}
         onUpdateComment={handleUpdateComment}
+        onBulkSubmit={handleBulkSubmit}
         isPending={submitResult.isPending || updateResult.isPending}
+        isBulkPending={bulkSubmitResults.isPending}
         disabled={isClosed}
       />
     </div>

@@ -32,7 +32,7 @@ export default function ProjectDetailPage() {
     enabled: !!id,
   });
 
-  const { tree, isLoading: suitesLoading, createSuite, updateSuite, deleteSuite } =
+  const { suites, tree, isLoading: suitesLoading, createSuite, updateSuite, deleteSuite } =
     useTestSuites(id);
 
   const [selectedSuiteId, setSelectedSuiteId] = useState<string | null>(null);
@@ -158,6 +158,7 @@ export default function ProjectDetailPage() {
             <CaseListPanel
               projectId={id}
               suiteId={selectedSuiteId}
+              suites={suites}
               selectedCaseId={selectedCaseId}
               onSelectCase={handleSelectCase}
               onCaseCreated={handleCaseCreated}

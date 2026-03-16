@@ -7,9 +7,10 @@ import type { TestCaseStep } from '@app/shared';
 interface StepEditorProps {
   steps: TestCaseStep[];
   onChange: (steps: TestCaseStep[]) => void;
+  onInsertSharedSteps?: () => void;
 }
 
-export function StepEditor({ steps, onChange }: StepEditorProps) {
+export function StepEditor({ steps, onChange, onInsertSharedSteps }: StepEditorProps) {
   const addStep = () => {
     onChange([...steps, { action: '', expected: '' }]);
   };
@@ -37,9 +38,16 @@ export function StepEditor({ steps, onChange }: StepEditorProps) {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">Steps</span>
-        <Button type="button" size="sm" variant="outline" onClick={addStep}>
-          Add Step
-        </Button>
+        <div className="flex gap-1">
+          {onInsertSharedSteps && (
+            <Button type="button" size="sm" variant="outline" onClick={onInsertSharedSteps}>
+              Insert Shared Steps
+            </Button>
+          )}
+          <Button type="button" size="sm" variant="outline" onClick={addStep}>
+            Add Step
+          </Button>
+        </div>
       </div>
 
       {steps.length === 0 && (
@@ -91,7 +99,7 @@ export function StepEditor({ steps, onChange }: StepEditorProps) {
               aria-label="Remove step"
               onClick={() => removeStep(index)}
             >
-              ×
+              x
             </Button>
           </div>
         </div>

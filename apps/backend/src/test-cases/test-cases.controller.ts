@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   Res,
   UseInterceptors,
   UploadedFile,
@@ -33,11 +34,62 @@ import {
   ReorderStepsDto,
 } from './dto/test-case-step.dto';
 import { CopyMoveTestCaseDto } from './dto/copy-move-test-case.dto';
+import {
+  BulkUpdateCasesDto,
+  BulkMoveCasesDto,
+  BulkDeleteCasesDto,
+} from './dto/bulk-operations.dto';
+
+interface AuthenticatedRequest {
+  user: { id: string; email: string; role: string };
+}
 
 @ApiTags('test-cases')
 @Controller('projects/:projectId')
 export class TestCasesController {
   constructor(private readonly testCasesService: TestCasesService) {}
+
+  // ── Bulk Operations ──
+
+  @Patch('cases/bulk')
+  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @ApiOperation({ summary: 'Bulk update fields on multiple test cases' })
+  @ApiResponse({ status: 200, description: 'Cases updated with count' })
+  @ApiResponse({ status: 404, description: 'One or more cases not found' })
+  bulkUpdate(
+    @Param('projectId') projectId: string,
+    @Body() dto: BulkUpdateCasesDto,
+  ) {
+    return this.testCasesService.bulkUpdate(projectId, dto.caseIds, dto.fields);
+  }
+
+  @Post('cases/bulk-move')
+  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @ApiOperation({ summary: 'Bulk move test cases to another suite' })
+  @ApiResponse({ status: 201, description: 'Cases moved with count' })
+  @ApiResponse({ status: 404, description: 'Cases or target suite not found' })
+  bulkMove(
+    @Param('projectId') projectId: string,
+    @Body() dto: BulkMoveCasesDto,
+  ) {
+    return this.testCasesService.bulkMove(
+      projectId,
+      dto.caseIds,
+      dto.targetSuiteId,
+    );
+  }
+
+  @Delete('cases/bulk')
+  @Roles(Role.ADMIN, Role.LEAD)
+  @ApiOperation({ summary: 'Bulk soft-delete multiple test cases' })
+  @ApiResponse({ status: 200, description: 'Cases deleted with count' })
+  @ApiResponse({ status: 404, description: 'One or more cases not found' })
+  bulkDelete(
+    @Param('projectId') projectId: string,
+    @Body() dto: BulkDeleteCasesDto,
+  ) {
+    return this.testCasesService.bulkDelete(projectId, dto.caseIds);
+  }
 
   // ── CSV Export / Import ──
 
@@ -151,8 +203,20 @@ export class TestCasesController {
     @Param('projectId') projectId: string,
     @Param('id') id: string,
     @Body() dto: UpdateTestCaseDto,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.testCasesService.update(projectId, id, dto);
+    return this.testCasesService.update(projectId, id, dto, req.user.id);
+  }
+
+  @Get('cases/:caseId/history')
+  @ApiOperation({ summary: 'Get change history for a test case' })
+  @ApiResponse({ status: 200, description: 'Array of history entries' })
+  @ApiResponse({ status: 404, description: 'Test case not found' })
+  findHistory(
+    @Param('projectId') projectId: string,
+    @Param('caseId') caseId: string,
+  ) {
+    return this.testCasesService.findHistory(projectId, caseId);
   }
 
   @Delete('cases/:id')

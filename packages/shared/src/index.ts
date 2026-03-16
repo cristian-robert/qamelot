@@ -9,5 +9,8 @@ export * from './schemas/test-run';
 export * from './schemas/test-result';
 export * from './schemas/milestone';
 export * from './schemas/defect';
+export * from './schemas/test-case';
 export * from './schemas/user';
 export * from './schemas/attachment';
+export * from './schemas/case-history';
+export * from './schemas/shared-step';

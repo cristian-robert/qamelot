@@ -15,6 +15,7 @@ import { DefectsModule } from './defects/defects.module';
 import { ReportsModule } from './reports/reports.module';
 import { TestCasesModule } from './test-cases/test-cases.module';
 import { AttachmentsModule } from './attachments/attachments.module';
+import { SharedStepsModule } from './shared-steps/shared-steps.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { AttachmentsModule } from './attachments/attachments.module';
     DefectsModule,
     ReportsModule,
     AttachmentsModule,
+    SharedStepsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

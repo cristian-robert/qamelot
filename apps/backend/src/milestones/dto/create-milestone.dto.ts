@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, MinLength, MaxLength, IsDateString } from 'class-validator';
+import { IsString, IsOptional, MinLength, MaxLength, IsDateString, ValidateIf } from 'class-validator';
 
 export class CreateMilestoneDto {
   @ApiProperty({ example: 'Sprint 1', maxLength: 100 })
@@ -13,6 +13,12 @@ export class CreateMilestoneDto {
   @IsOptional()
   @MaxLength(500)
   description?: string;
+
+  @ApiPropertyOptional({ example: 'clu...parentId', nullable: true })
+  @ValidateIf((o) => o.parentId !== null)
+  @IsString()
+  @IsOptional()
+  parentId?: string | null;
 
   @ApiPropertyOptional({ example: '2026-04-01T00:00:00.000Z' })
   @IsDateString()

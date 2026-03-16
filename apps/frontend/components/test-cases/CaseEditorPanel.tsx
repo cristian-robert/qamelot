@@ -1,14 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { testCasesApi } from '@/lib/api/test-cases';
 import { testCasesQueryKey } from '@/lib/test-cases/useTestCases';
 import { CaseEditor } from './CaseEditor';
 import { CaseEditorSkeleton } from './CaseEditorSkeleton';
+import { CaseHistoryPanel } from './CaseHistoryPanel';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { CreateTestCaseInput, UpdateTestCaseInput } from '@app/shared';
+
+type Tab = 'editor' | 'history';
 
 interface CaseEditorPanelProps {
   projectId: string;
@@ -18,6 +22,7 @@ interface CaseEditorPanelProps {
 }
 
 export function CaseEditorPanel({ projectId, suiteId, caseId, onClose }: CaseEditorPanelProps) {
+  const [activeTab, setActiveTab] = useState<Tab>('editor');
   const queryClient = useQueryClient();
 
   const { data: testCase, isLoading } = useQuery({
@@ -35,6 +40,9 @@ export function CaseEditorPanel({ projectId, suiteId, caseId, onClose }: CaseEdi
       });
       queryClient.invalidateQueries({
         queryKey: ['projects', projectId, 'cases', caseId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['projects', projectId, 'cases', caseId, 'history'],
       });
     },
   });
@@ -63,23 +71,54 @@ export function CaseEditorPanel({ projectId, suiteId, caseId, onClose }: CaseEdi
         </Button>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-4">
-          {isLoading ? (
-            <CaseEditorSkeleton />
-          ) : testCase ? (
-            <CaseEditor
-              key={testCase.id}
-              testCase={testCase}
-              onSave={handleSave}
-              onCancel={onClose}
-              isPending={updateMutation.isPending}
-            />
-          ) : (
-            <p className="text-sm text-muted-foreground">Test case not found.</p>
-          )}
+      <div className="flex border-b">
+        <button
+          type="button"
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'editor'
+              ? 'border-b-2 border-primary text-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+          onClick={() => setActiveTab('editor')}
+        >
+          Details
+        </button>
+        <button
+          type="button"
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            activeTab === 'history'
+              ? 'border-b-2 border-primary text-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+          onClick={() => setActiveTab('history')}
+        >
+          History
+        </button>
+      </div>
+
+      {activeTab === 'editor' ? (
+        <ScrollArea className="flex-1">
+          <div className="p-4">
+            {isLoading ? (
+              <CaseEditorSkeleton />
+            ) : testCase ? (
+              <CaseEditor
+                key={testCase.id}
+                testCase={testCase}
+                onSave={handleSave}
+                onCancel={onClose}
+                isPending={updateMutation.isPending}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">Test case not found.</p>
+            )}
+          </div>
+        </ScrollArea>
+      ) : (
+        <div className="flex-1 overflow-hidden">
+          <CaseHistoryPanel projectId={projectId} caseId={caseId} />
         </div>
-      </ScrollArea>
+      )}
     </div>
   );
 }

@@ -45,6 +45,14 @@ export class MilestonesController {
     return this.milestonesService.findAllByProject(projectId, { status });
   }
 
+  @Get('projects/:projectId/milestones/tree')
+  @ApiOperation({ summary: 'Get milestone tree with progress aggregation' })
+  @ApiResponse({ status: 200, description: 'Milestone tree with nested children and progress' })
+  @ApiResponse({ status: 404, description: 'Project not found' })
+  findTree(@Param('projectId') projectId: string) {
+    return this.milestonesService.findTreeByProject(projectId);
+  }
+
   @Get('milestones/:id')
   @ApiOperation({ summary: 'Get a milestone by ID' })
   @ApiResponse({ status: 200, description: 'The milestone' })

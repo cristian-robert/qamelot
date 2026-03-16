@@ -19,6 +19,7 @@ import { TestResultsService } from './test-results.service';
 import { RunEventsService } from '../run-events/run-events.service';
 import { SubmitTestResultDto } from './dto/submit-test-result.dto';
 import { UpdateTestResultDto } from './dto/update-test-result.dto';
+import { BulkSubmitResultsDto } from './dto/bulk-submit-results.dto';
 
 interface AuthenticatedRequest {
   user: { id: string; email: string; role: string };
@@ -31,6 +32,20 @@ export class TestResultsController {
     private readonly testResultsService: TestResultsService,
     private readonly runEventsService: RunEventsService,
   ) {}
+
+  @Post('runs/:runId/results/bulk')
+  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @ApiOperation({ summary: 'Bulk submit results for multiple cases in a run' })
+  @ApiResponse({ status: 201, description: 'Results submitted with count' })
+  @ApiResponse({ status: 400, description: 'One or more cases do not belong to this run' })
+  @ApiResponse({ status: 404, description: 'Run not found' })
+  bulkSubmit(
+    @Param('runId') runId: string,
+    @Body() dto: BulkSubmitResultsDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.testResultsService.bulkSubmit(runId, req.user.id, dto);
+  }
 
   @Post('runs/:runId/results')
   @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)

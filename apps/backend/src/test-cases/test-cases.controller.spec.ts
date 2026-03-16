@@ -51,6 +51,7 @@ describe('TestCasesController', () => {
     reorderSteps: jest.fn(),
     exportCasesCsv: jest.fn(),
     importCasesCsv: jest.fn(),
+    findHistory: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -104,13 +105,14 @@ describe('TestCasesController', () => {
     expect(result).toEqual(mockTestCase);
   });
 
-  it('update delegates to service', async () => {
+  it('update delegates to service with userId from request', async () => {
     const updated = { ...mockTestCase, title: 'Updated' };
     mockService.update.mockResolvedValue(updated);
 
-    const result = await controller.update(PROJECT_ID, 'case-1', { title: 'Updated' });
+    const mockReq = { user: { id: 'user-1', email: 'test@test.com', role: 'TESTER' } };
+    const result = await controller.update(PROJECT_ID, 'case-1', { title: 'Updated' }, mockReq);
 
-    expect(mockService.update).toHaveBeenCalledWith(PROJECT_ID, 'case-1', { title: 'Updated' });
+    expect(mockService.update).toHaveBeenCalledWith(PROJECT_ID, 'case-1', { title: 'Updated' }, 'user-1');
     expect(result).toEqual(updated);
   });
 
@@ -239,5 +241,26 @@ describe('TestCasesController', () => {
 
     expect(mockService.importCasesCsv).toHaveBeenCalledWith(PROJECT_ID, mockFile.buffer);
     expect(result).toEqual(importResult);
+  });
+
+  it('findHistory delegates to service', async () => {
+    const mockHistory = [
+      {
+        id: 'hist-1',
+        caseId: 'case-1',
+        userId: 'user-1',
+        field: 'title',
+        oldValue: 'Old',
+        newValue: 'New',
+        createdAt: new Date(),
+        user: { id: 'user-1', name: 'Test', email: 'test@test.com' },
+      },
+    ];
+    mockService.findHistory.mockResolvedValue(mockHistory);
+
+    const result = await controller.findHistory(PROJECT_ID, 'case-1');
+
+    expect(mockService.findHistory).toHaveBeenCalledWith(PROJECT_ID, 'case-1');
+    expect(result).toEqual(mockHistory);
   });
 });

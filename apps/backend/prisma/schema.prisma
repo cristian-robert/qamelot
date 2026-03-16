@@ -76,32 +76,34 @@ enum TemplateType {
 }
 
 model User {
-  id          String       @id @default(cuid())
-  email       String       @unique
-  name        String
-  password    String
-  role        Role         @default(TESTER)
-  deletedAt   DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  testRuns    TestRun[]
-  testResults TestResult[]
-  attachments Attachment[]
+  id            String        @id @default(cuid())
+  email         String        @unique
+  name          String
+  password      String
+  role          Role          @default(TESTER)
+  deletedAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  testRuns      TestRun[]
+  testResults   TestResult[]
+  attachments   Attachment[]
+  caseHistories CaseHistory[]
 }
 
 model Project {
-  id          String      @id @default(cuid())
+  id          String       @id @default(cuid())
   name        String
   description String?
   deletedAt   DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   testSuites  TestSuite[]
   testCases   TestCase[]
   testPlans   TestPlan[]
   testRuns    TestRun[]
   milestones  Milestone[]
   defects     Defect[]
+  sharedSteps SharedStep[]
 }
 
 model TestSuite {
@@ -138,6 +140,7 @@ model TestCase {
   project       Project        @relation(fields: [projectId], references: [id])
   steps         TestCaseStep[]
   testRunCases  TestRunCase[]
+  history       CaseHistory[]
   deletedAt     DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -148,15 +151,31 @@ model TestCase {
   @@index([type])
 }
 
+model CaseHistory {
+  id        String   @id @default(cuid())
+  caseId    String
+  testCase  TestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  field     String
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+  @@index([userId])
+}
+
 model TestCaseStep {
-  id             String   @id @default(cuid())
-  caseId         String
-  testCase       TestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  stepNumber     Int
-  description    String
-  expectedResult String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id              String           @id @default(cuid())
+  caseId          String
+  testCase        TestCase         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  stepNumber      Int
+  description     String
+  expectedResult  String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  testStepResults TestStepResult[]
 
   @@unique([caseId, stepNumber])
   @@index([caseId])
@@ -217,23 +236,41 @@ model TestRunCase {
 }
 
 model TestResult {
-  id            String           @id @default(cuid())
-  testRunCaseId String
-  testRunCase   TestRunCase      @relation(fields: [testRunCaseId], references: [id])
-  testRunId     String
-  testRun       TestRun          @relation(fields: [testRunId], references: [id])
-  executedById  String
-  executedBy    User             @relation(fields: [executedById], references: [id])
-  status        TestResultStatus @default(UNTESTED)
-  comment       String?
-  elapsed       Int?             // duration in seconds
-  defects       Defect[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id              String           @id @default(cuid())
+  testRunCaseId   String
+  testRunCase     TestRunCase      @relation(fields: [testRunCaseId], references: [id])
+  testRunId       String
+  testRun         TestRun          @relation(fields: [testRunId], references: [id])
+  executedById    String
+  executedBy      User             @relation(fields: [executedById], references: [id])
+  status          TestResultStatus @default(UNTESTED)
+  statusOverride  Boolean          @default(false)
+  comment         String?
+  elapsed         Int?             // duration in seconds
+  defects         Defect[]
+  testStepResults TestStepResult[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([testRunCaseId])
   @@index([testRunId])
   @@index([executedById])
+}
+
+model TestStepResult {
+  id             String           @id @default(cuid())
+  testResultId   String
+  testResult     TestResult       @relation(fields: [testResultId], references: [id], onDelete: Cascade)
+  testCaseStepId String
+  testCaseStep   TestCaseStep     @relation(fields: [testCaseStepId], references: [id])
+  status         TestResultStatus @default(UNTESTED)
+  actualResult   String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([testResultId, testCaseStepId])
+  @@index([testResultId])
+  @@index([testCaseStepId])
 }
 
 model Milestone {
@@ -242,6 +279,9 @@ model Milestone {
   description String?
   projectId   String
   project     Project         @relation(fields: [projectId], references: [id])
+  parentId    String?
+  parent      Milestone?      @relation("MilestoneTree", fields: [parentId], references: [id])
+  children    Milestone[]     @relation("MilestoneTree")
   startDate   DateTime?
   dueDate     DateTime?
   status      MilestoneStatus @default(OPEN)
@@ -250,6 +290,7 @@ model Milestone {
   updatedAt   DateTime        @updatedAt
 
   @@index([projectId])
+  @@index([parentId])
 }
 
 model Defect {
@@ -288,4 +329,31 @@ model Attachment {
 
   @@index([entityType, entityId])
   @@index([uploadedById])
+}
+
+model SharedStep {
+  id        String           @id @default(cuid())
+  title     String
+  projectId String
+  project   Project          @relation(fields: [projectId], references: [id])
+  items     SharedStepItem[]
+  deletedAt DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([projectId])
+}
+
+model SharedStepItem {
+  id             String     @id @default(cuid())
+  sharedStepId   String
+  sharedStep     SharedStep @relation(fields: [sharedStepId], references: [id], onDelete: Cascade)
+  stepNumber     Int
+  description    String
+  expectedResult String
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([sharedStepId, stepNumber])
+  @@index([sharedStepId])
 }

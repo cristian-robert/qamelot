@@ -29,12 +29,13 @@ interface CaseEditorProps {
   onSave: (data: CreateTestCaseInput) => void;
   onCancel: () => void;
   isPending: boolean;
+  onInsertSharedSteps?: () => void;
 }
 
 const PRIORITIES = Object.values(CasePriority);
 const TYPES = Object.values(CaseType);
 
-export function CaseEditor({ testCase, onSave, onCancel, isPending }: CaseEditorProps) {
+export function CaseEditor({ testCase, onSave, onCancel, isPending, onInsertSharedSteps }: CaseEditorProps) {
   const {
     register,
     handleSubmit,

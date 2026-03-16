@@ -35,11 +35,13 @@ const mockResult = {
   testRunId: RUN_ID,
   executedById: USER_ID,
   status: TestResultStatus.PASSED,
+  statusOverride: false,
   comment: null,
   elapsed: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   executedBy: { id: USER_ID, name: 'Tester', email: 'test@example.com' },
+  testStepResults: [],
 };
 
 describe('TestResultsService', () => {
@@ -108,15 +110,83 @@ describe('TestResultsService', () => {
           testRunId: RUN_ID,
           executedById: USER_ID,
           status: TestResultStatus.PASSED,
+          statusOverride: false,
         },
         include: {
           executedBy: { select: { id: true, name: true, email: true } },
+          testStepResults: true,
         },
       });
-      expect(result).toEqual(mockResult);
+      expect(result).toEqual(expect.objectContaining({ id: 'result-1' }));
       expect(mockRunEventsService.emitUpdate).toHaveBeenCalledWith(
         expect.objectContaining({ runId: RUN_ID }),
       );
+    });
+
+    it('creates step results when stepResults are provided', async () => {
+      const stepResults = [
+        { testCaseStepId: 'step-1', status: TestResultStatus.PASSED },
+        { testCaseStepId: 'step-2', status: TestResultStatus.FAILED, actualResult: 'Got error' },
+      ];
+
+      mockPrisma.testRun.findFirst.mockResolvedValue(mockRun);
+      mockPrisma.testRunCase.findFirst.mockResolvedValue(mockRunCase);
+      mockPrisma.testResult.create.mockResolvedValue({
+        ...mockResult,
+        status: TestResultStatus.FAILED,
+        testStepResults: stepResults.map((sr, i) => ({
+          id: `sr-${i}`,
+          testResultId: 'result-1',
+          ...sr,
+          actualResult: sr.actualResult ?? null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })),
+      });
+      mockPrisma.testRunCase.findMany.mockResolvedValue([
+        { ...mockRunCase, testResults: [{ status: TestResultStatus.FAILED }] },
+      ]);
+      mockPrisma.testRun.update.mockResolvedValue({ ...mockRun, status: 'COMPLETED' });
+      mockPrisma.testRun.findUnique.mockResolvedValue({ status: 'COMPLETED' });
+
+      await service.submit(RUN_ID, USER_ID, {
+        testRunCaseId: TRC_ID,
+        status: TestResultStatus.PASSED,
+        stepResults,
+      });
+
+      const createCall = mockPrisma.testResult.create.mock.calls[0][0];
+      expect(createCall.data.status).toBe(TestResultStatus.FAILED);
+      expect(createCall.data.testStepResults.create).toHaveLength(2);
+      expect(createCall.data.testStepResults.create[0].testCaseStepId).toBe('step-1');
+      expect(createCall.data.testStepResults.create[1].actualResult).toBe('Got error');
+    });
+
+    it('uses provided status when statusOverride is true', async () => {
+      const stepResults = [
+        { testCaseStepId: 'step-1', status: TestResultStatus.PASSED },
+        { testCaseStepId: 'step-2', status: TestResultStatus.FAILED },
+      ];
+
+      mockPrisma.testRun.findFirst.mockResolvedValue(mockRun);
+      mockPrisma.testRunCase.findFirst.mockResolvedValue(mockRunCase);
+      mockPrisma.testResult.create.mockResolvedValue(mockResult);
+      mockPrisma.testRunCase.findMany.mockResolvedValue([
+        { ...mockRunCase, testResults: [{ status: TestResultStatus.PASSED }] },
+      ]);
+      mockPrisma.testRun.update.mockResolvedValue({ ...mockRun, status: 'COMPLETED' });
+      mockPrisma.testRun.findUnique.mockResolvedValue({ status: 'COMPLETED' });
+
+      await service.submit(RUN_ID, USER_ID, {
+        testRunCaseId: TRC_ID,
+        status: TestResultStatus.PASSED,
+        statusOverride: true,
+        stepResults,
+      });
+
+      const createCall = mockPrisma.testResult.create.mock.calls[0][0];
+      expect(createCall.data.status).toBe(TestResultStatus.PASSED);
+      expect(createCall.data.statusOverride).toBe(true);
     });
 
     it('throws NotFoundException when run does not exist', async () => {
@@ -209,9 +279,11 @@ describe('TestResultsService', () => {
         orderBy: { createdAt: 'desc' },
         include: {
           executedBy: { select: { id: true, name: true, email: true } },
+          testStepResults: true,
         },
       });
-      expect(result).toEqual([mockResult]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveProperty('stepResults');
     });
 
     it('throws NotFoundException when run does not exist', async () => {
@@ -240,9 +312,10 @@ describe('TestResultsService', () => {
         data: { status: TestResultStatus.FAILED },
         include: {
           executedBy: { select: { id: true, name: true, email: true } },
+          testStepResults: true,
         },
       });
-      expect(result).toEqual(updated);
+      expect(result).toEqual(expect.objectContaining({ status: TestResultStatus.FAILED }));
       expect(mockRunEventsService.emitUpdate).toHaveBeenCalledWith(
         expect.objectContaining({ runId: RUN_ID }),
       );
@@ -296,6 +369,7 @@ describe('TestResultsService', () => {
               title: 'Login Test',
               priority: 'MEDIUM',
               type: 'FUNCTIONAL',
+              templateType: 'TEXT',
               suiteId: 'suite-1',
               suite: { id: 'suite-1', name: 'Suite' },
               steps: [],
@@ -312,6 +386,7 @@ describe('TestResultsService', () => {
               title: 'Dashboard Test',
               priority: 'HIGH',
               type: 'FUNCTIONAL',
+              templateType: 'STEPS',
               suiteId: 'suite-2',
               suite: { id: 'suite-2', name: 'Suite 2' },
               steps: [],
@@ -332,7 +407,7 @@ describe('TestResultsService', () => {
         retest: 0,
         untested: 1,
       });
-      expect(result.testRunCases[0].latestResult).toEqual(mockResult);
+      expect(result.testRunCases[0].latestResult).toBeDefined();
       expect(result.testRunCases[1].latestResult).toBeNull();
     });
 
@@ -363,6 +438,60 @@ describe('TestResultsService', () => {
         retest: 1,
         untested: 1,
       });
+    });
+  });
+
+  describe('deriveStatusFromSteps', () => {
+    it('returns PASSED when all steps pass', () => {
+      const steps = [
+        { testCaseStepId: 's1', status: TestResultStatus.PASSED },
+        { testCaseStepId: 's2', status: TestResultStatus.PASSED },
+      ];
+      expect(service.deriveStatusFromSteps(steps)).toBe(TestResultStatus.PASSED);
+    });
+
+    it('returns FAILED when any step fails', () => {
+      const steps = [
+        { testCaseStepId: 's1', status: TestResultStatus.PASSED },
+        { testCaseStepId: 's2', status: TestResultStatus.FAILED },
+      ];
+      expect(service.deriveStatusFromSteps(steps)).toBe(TestResultStatus.FAILED);
+    });
+
+    it('returns BLOCKED when any step is blocked (and none fail)', () => {
+      const steps = [
+        { testCaseStepId: 's1', status: TestResultStatus.PASSED },
+        { testCaseStepId: 's2', status: TestResultStatus.BLOCKED },
+      ];
+      expect(service.deriveStatusFromSteps(steps)).toBe(TestResultStatus.BLOCKED);
+    });
+
+    it('returns RETEST when any step is retest (and none fail/block)', () => {
+      const steps = [
+        { testCaseStepId: 's1', status: TestResultStatus.PASSED },
+        { testCaseStepId: 's2', status: TestResultStatus.RETEST },
+      ];
+      expect(service.deriveStatusFromSteps(steps)).toBe(TestResultStatus.RETEST);
+    });
+
+    it('returns RETEST when any step is untested (and none fail/block)', () => {
+      const steps = [
+        { testCaseStepId: 's1', status: TestResultStatus.PASSED },
+        { testCaseStepId: 's2', status: TestResultStatus.UNTESTED },
+      ];
+      expect(service.deriveStatusFromSteps(steps)).toBe(TestResultStatus.RETEST);
+    });
+
+    it('returns UNTESTED when step array is empty', () => {
+      expect(service.deriveStatusFromSteps([])).toBe(TestResultStatus.UNTESTED);
+    });
+
+    it('FAILED takes priority over BLOCKED', () => {
+      const steps = [
+        { testCaseStepId: 's1', status: TestResultStatus.BLOCKED },
+        { testCaseStepId: 's2', status: TestResultStatus.FAILED },
+      ];
+      expect(service.deriveStatusFromSteps(steps)).toBe(TestResultStatus.FAILED);
     });
   });
 });

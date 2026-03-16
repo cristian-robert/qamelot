@@ -7,8 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { ResultStatusBadge } from './ResultStatusBadge';
 import { DefectBadge } from './DefectBadge';
 import { CreateDefectDialog } from './CreateDefectDialog';
-import { TestResultStatus } from '@app/shared';
-import type { TestRunCaseWithResultDto, CreateDefectInput, DefectDto } from '@app/shared';
+import { StepResultsPanel } from './StepResultsPanel';
+import { TestResultStatus, TemplateType } from '@app/shared';
+import type {
+  TestRunCaseWithResultDto,
+  CreateDefectInput,
+  DefectDto,
+  StepResultInput,
+} from '@app/shared';
 
 const statusButtons: Array<{
   status: 'PASSED' | 'FAILED' | 'BLOCKED' | 'RETEST';
@@ -31,13 +37,21 @@ const PRIORITY_COLORS: Record<string, string> = {
 interface CaseResultRowProps {
   testRunCase: TestRunCaseWithResultDto;
   runName: string;
-  onSubmit: (testRunCaseId: string, status: string, comment?: string, elapsed?: number) => void;
+  onSubmit: (
+    testRunCaseId: string,
+    status: string,
+    comment?: string,
+    elapsed?: number,
+    stepResults?: StepResultInput[],
+    statusOverride?: boolean,
+  ) => void;
   onUpdateComment: (resultId: string, comment: string) => void;
   onCreateDefect: (data: CreateDefectInput) => void;
   defects: DefectDto[];
   isPending: boolean;
   isDefectPending: boolean;
   disabled?: boolean;
+  checkboxCell?: React.ReactNode;
 }
 
 export function CaseResultRow({
@@ -50,6 +64,7 @@ export function CaseResultRow({
   isPending,
   isDefectPending,
   disabled = false,
+  checkboxCell,
 }: CaseResultRowProps) {
   const latestResult = testRunCase.latestResult;
   const currentStatus = latestResult?.status ?? TestResultStatus.UNTESTED;
@@ -58,7 +73,12 @@ export function CaseResultRow({
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [elapsed, setElapsed] = useState(latestResult?.elapsed ?? 0);
   const [defectDialogOpen, setDefectDialogOpen] = useState(false);
+  const [stepsExpanded, setStepsExpanded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const tc = testRunCase.testCase;
+  const isStepsTemplate = tc.templateType === TemplateType.STEPS;
+  const hasSteps = isStepsTemplate && tc.steps && tc.steps.length > 0;
 
   useEffect(() => {
     if (isTimerRunning) {
@@ -83,6 +103,21 @@ export function CaseResultRow({
     [testRunCase.id, comment, elapsed, isTimerRunning, onSubmit],
   );
 
+  const handleStepSubmit = useCallback(
+    (stepResults: StepResultInput[], overallStatus: string, isOverride: boolean) => {
+      if (isTimerRunning) setIsTimerRunning(false);
+      onSubmit(
+        testRunCase.id,
+        overallStatus,
+        comment || undefined,
+        elapsed || undefined,
+        stepResults,
+        isOverride,
+      );
+    },
+    [testRunCase.id, comment, elapsed, isTimerRunning, onSubmit],
+  );
+
   const handleCommentBlur = useCallback(() => {
     if (latestResult && comment !== (latestResult.comment ?? '')) {
       onUpdateComment(latestResult.id, comment);
@@ -95,14 +130,25 @@ export function CaseResultRow({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const tc = testRunCase.testCase;
-
   return (
     <>
       <tr className="border-b">
+        {checkboxCell}
         <td className="px-4 py-3">
           <div className="space-y-0.5">
-            <span className="text-sm font-medium">{tc.title}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{tc.title}</span>
+              {hasSteps && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setStepsExpanded(!stepsExpanded)}
+                >
+                  {stepsExpanded ? 'Hide Steps' : `Steps (${tc.steps!.length})`}
+                </Button>
+              )}
+            </div>
             <div className="flex items-center gap-1.5">
               <Badge variant="outline" className={PRIORITY_COLORS[tc.priority] ?? ''}>
                 {tc.priority}
@@ -110,12 +156,20 @@ export function CaseResultRow({
               {tc.suite && (
                 <span className="text-xs text-muted-foreground">{tc.suite.name}</span>
               )}
+              {isStepsTemplate && (
+                <Badge variant="outline" className="text-xs">
+                  STEPS
+                </Badge>
+              )}
               <DefectBadge defects={defects} />
             </div>
           </div>
         </td>
         <td className="px-4 py-3">
           <ResultStatusBadge status={currentStatus} />
+          {latestResult?.statusOverride && (
+            <span className="ml-1 text-xs text-muted-foreground">(override)</span>
+          )}
         </td>
         <td className="px-4 py-3">
           <div className="flex gap-1">
@@ -168,6 +222,20 @@ export function CaseResultRow({
           </div>
         </td>
       </tr>
+
+      {hasSteps && stepsExpanded && (
+        <tr>
+          <td colSpan={5} className="bg-muted/30 px-4 py-3">
+            <StepResultsPanel
+              steps={tc.steps!}
+              existingStepResults={latestResult?.stepResults}
+              onSubmitSteps={handleStepSubmit}
+              isPending={isPending}
+              disabled={disabled}
+            />
+          </td>
+        </tr>
+      )}
 
       {defectDialogOpen && (
         <CreateDefectDialog

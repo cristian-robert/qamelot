@@ -45,6 +45,7 @@ describe('TestCasesService', () => {
       findMany: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       count: jest.fn(),
       aggregate: jest.fn(),
     },
@@ -56,12 +57,17 @@ describe('TestCasesService', () => {
       delete: jest.fn(),
       aggregate: jest.fn(),
     },
+    caseHistory: {
+      createMany: jest.fn(),
+      findMany: jest.fn(),
+    },
     project: {
       findFirst: jest.fn(),
     },
     testSuite: {
       findFirst: jest.fn(),
     },
+    $transaction: jest.fn(),
   };
 
   const mockCsvService = {
@@ -578,6 +584,286 @@ describe('TestCasesService', () => {
       await expect(
         service.reorderSteps(PROJECT_ID, 'case-1', ['step-1']),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ── Bulk Operations ──
+
+  describe('bulkUpdate', () => {
+    it('updates priority for multiple cases', async () => {
+      const caseIds = ['case-1', 'case-2'];
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findMany.mockResolvedValue([
+        { id: 'case-1' },
+        { id: 'case-2' },
+      ]);
+      mockPrisma.testCase.updateMany.mockResolvedValue({ count: 2 });
+
+      const result = await service.bulkUpdate(PROJECT_ID, caseIds, {
+        priority: CasePriority.HIGH,
+      });
+
+      expect(mockPrisma.testCase.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: caseIds }, projectId: PROJECT_ID, deletedAt: null },
+        data: { priority: 'HIGH' },
+      });
+      expect(result).toEqual({ updated: 2 });
+    });
+
+    it('updates type for multiple cases', async () => {
+      const caseIds = ['case-1'];
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findMany.mockResolvedValue([{ id: 'case-1' }]);
+      mockPrisma.testCase.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await service.bulkUpdate(PROJECT_ID, caseIds, {
+        type: CaseType.REGRESSION,
+      });
+
+      expect(mockPrisma.testCase.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: caseIds }, projectId: PROJECT_ID, deletedAt: null },
+        data: { type: 'REGRESSION' },
+      });
+      expect(result).toEqual({ updated: 1 });
+    });
+
+    it('throws BadRequestException when no fields are provided', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findMany.mockResolvedValue([{ id: 'case-1' }]);
+
+      await expect(
+        service.bulkUpdate(PROJECT_ID, ['case-1'], {}),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFoundException when a case does not exist', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findMany.mockResolvedValue([{ id: 'case-1' }]);
+
+      await expect(
+        service.bulkUpdate(PROJECT_ID, ['case-1', 'nonexistent'], {
+          priority: CasePriority.HIGH,
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('bulkMove', () => {
+    it('moves multiple cases to a target suite', async () => {
+      const caseIds = ['case-1', 'case-2'];
+      const targetSuiteId = 'suite-2';
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findMany.mockResolvedValue([
+        { id: 'case-1' },
+        { id: 'case-2' },
+      ]);
+      mockPrisma.testSuite.findFirst.mockResolvedValue({
+        id: targetSuiteId,
+        projectId: PROJECT_ID,
+        deletedAt: null,
+      });
+      mockPrisma.testCase.aggregate.mockResolvedValue({ _max: { position: 3 } });
+      mockPrisma.$transaction.mockResolvedValue([]);
+
+      const result = await service.bulkMove(PROJECT_ID, caseIds, targetSuiteId);
+
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect(result).toEqual({ moved: 2 });
+    });
+
+    it('throws NotFoundException when target suite does not exist', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findMany.mockResolvedValue([{ id: 'case-1' }]);
+      mockPrisma.testSuite.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.bulkMove(PROJECT_ID, ['case-1'], 'nonexistent'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('bulkDelete', () => {
+    it('soft-deletes multiple cases', async () => {
+      const caseIds = ['case-1', 'case-2'];
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findMany.mockResolvedValue([
+        { id: 'case-1' },
+        { id: 'case-2' },
+      ]);
+      mockPrisma.testCase.updateMany.mockResolvedValue({ count: 2 });
+
+      const result = await service.bulkDelete(PROJECT_ID, caseIds);
+
+      expect(mockPrisma.testCase.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: caseIds }, projectId: PROJECT_ID, deletedAt: null },
+        data: { deletedAt: expect.any(Date) },
+      });
+      expect(result).toEqual({ deleted: 2 });
+    });
+
+    it('throws NotFoundException when a case does not exist', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.bulkDelete(PROJECT_ID, ['nonexistent']),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ── update with history ──
+
+  describe('update with history recording', () => {
+    const USER_ID = 'user-1';
+
+    it('records history entries when userId is provided and fields change', async () => {
+      const updated = { ...mockTestCase, title: 'New title' };
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findFirst.mockResolvedValue(mockTestCase);
+      mockPrisma.caseHistory.createMany.mockResolvedValue({ count: 1 });
+      mockPrisma.testCase.update.mockResolvedValue(updated);
+
+      await service.update(PROJECT_ID, 'case-1', { title: 'New title' }, USER_ID);
+
+      expect(mockPrisma.caseHistory.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            caseId: 'case-1',
+            userId: USER_ID,
+            field: 'title',
+            oldValue: 'Verify login with valid credentials',
+            newValue: 'New title',
+          },
+        ],
+      });
+    });
+
+    it('does not record history when value does not change', async () => {
+      const updated = { ...mockTestCase };
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findFirst.mockResolvedValue(mockTestCase);
+      mockPrisma.testCase.update.mockResolvedValue(updated);
+
+      await service.update(
+        PROJECT_ID,
+        'case-1',
+        { title: mockTestCase.title },
+        USER_ID,
+      );
+
+      expect(mockPrisma.caseHistory.createMany).not.toHaveBeenCalled();
+    });
+
+    it('does not record history when userId is not provided', async () => {
+      const updated = { ...mockTestCase, title: 'New title' };
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findFirst.mockResolvedValue(mockTestCase);
+      mockPrisma.testCase.update.mockResolvedValue(updated);
+
+      await service.update(PROJECT_ID, 'case-1', { title: 'New title' });
+
+      expect(mockPrisma.caseHistory.createMany).not.toHaveBeenCalled();
+    });
+
+    it('records multiple history entries for multiple changed fields', async () => {
+      const updated = { ...mockTestCase, title: 'New title', priority: 'HIGH' };
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findFirst.mockResolvedValue(mockTestCase);
+      mockPrisma.caseHistory.createMany.mockResolvedValue({ count: 2 });
+      mockPrisma.testCase.update.mockResolvedValue(updated);
+
+      await service.update(
+        PROJECT_ID,
+        'case-1',
+        { title: 'New title', priority: CasePriority.HIGH },
+        USER_ID,
+      );
+
+      expect(mockPrisma.caseHistory.createMany).toHaveBeenCalledWith({
+        data: expect.arrayContaining([
+          expect.objectContaining({ field: 'title', newValue: 'New title' }),
+          expect.objectContaining({ field: 'priority', oldValue: 'MEDIUM', newValue: 'HIGH' }),
+        ]),
+      });
+    });
+
+    it('handles null to value changes for preconditions', async () => {
+      const caseWithNullPre = { ...mockTestCase, preconditions: null };
+      const updated = { ...caseWithNullPre, preconditions: 'New precondition' };
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findFirst.mockResolvedValue(caseWithNullPre);
+      mockPrisma.caseHistory.createMany.mockResolvedValue({ count: 1 });
+      mockPrisma.testCase.update.mockResolvedValue(updated);
+
+      await service.update(
+        PROJECT_ID,
+        'case-1',
+        { preconditions: 'New precondition' },
+        USER_ID,
+      );
+
+      expect(mockPrisma.caseHistory.createMany).toHaveBeenCalledWith({
+        data: [
+          {
+            caseId: 'case-1',
+            userId: USER_ID,
+            field: 'preconditions',
+            oldValue: null,
+            newValue: 'New precondition',
+          },
+        ],
+      });
+    });
+  });
+
+  // ── findHistory ──
+
+  describe('findHistory', () => {
+    const mockHistoryEntry = {
+      id: 'hist-1',
+      caseId: 'case-1',
+      userId: 'user-1',
+      field: 'title',
+      oldValue: 'Old title',
+      newValue: 'New title',
+      createdAt: new Date(),
+      user: { id: 'user-1', name: 'Test User', email: 'test@example.com' },
+    };
+
+    it('returns history entries for a case ordered by createdAt desc', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findFirst.mockResolvedValue(mockTestCase);
+      mockPrisma.caseHistory.findMany.mockResolvedValue([mockHistoryEntry]);
+
+      const result = await service.findHistory(PROJECT_ID, 'case-1');
+
+      expect(mockPrisma.caseHistory.findMany).toHaveBeenCalledWith({
+        where: { caseId: 'case-1' },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(result).toEqual([mockHistoryEntry]);
+    });
+
+    it('throws NotFoundException when case does not exist', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.findHistory(PROJECT_ID, 'nonexistent'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns empty array when no history exists', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findFirst.mockResolvedValue(mockTestCase);
+      mockPrisma.caseHistory.findMany.mockResolvedValue([]);
+
+      const result = await service.findHistory(PROJECT_ID, 'case-1');
+
+      expect(result).toEqual([]);
     });
   });
 });

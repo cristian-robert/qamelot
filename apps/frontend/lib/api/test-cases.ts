@@ -1,9 +1,23 @@
-import type { TestCaseDto, CreateTestCaseInput, UpdateTestCaseInput } from '@app/shared';
+import type {
+  TestCaseDto,
+  CreateTestCaseInput,
+  UpdateTestCaseInput,
+  BulkUpdateCasesInput,
+  BulkMoveCasesInput,
+  BulkDeleteCasesInput,
+  CaseHistoryDto,
+} from '@app/shared';
 import { apiFetch, apiDownload, apiUpload } from './client';
 
 export interface CsvImportResult {
   imported: number;
   errors: Array<{ row: number; field: string; message: string }>;
+}
+
+export interface BulkOperationResult {
+  updated?: number;
+  moved?: number;
+  deleted?: number;
 }
 
 export const testCasesApi = {
@@ -30,6 +44,24 @@ export const testCasesApi = {
       method: 'DELETE',
     }),
 
+  bulkUpdate: (projectId: string, data: BulkUpdateCasesInput) =>
+    apiFetch<BulkOperationResult>(`/projects/${projectId}/cases/bulk`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  bulkMove: (projectId: string, data: BulkMoveCasesInput) =>
+    apiFetch<BulkOperationResult>(`/projects/${projectId}/cases/bulk-move`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  bulkDelete: (projectId: string, data: BulkDeleteCasesInput) =>
+    apiFetch<BulkOperationResult>(`/projects/${projectId}/cases/bulk`, {
+      method: 'DELETE',
+      body: JSON.stringify(data),
+    }),
+
   exportCsv: (projectId: string) =>
     apiDownload(
       `/projects/${projectId}/cases/export?format=csv`,
@@ -41,4 +73,7 @@ export const testCasesApi = {
       `/projects/${projectId}/cases/import`,
       file,
     ),
+
+  getHistory: (projectId: string, caseId: string) =>
+    apiFetch<CaseHistoryDto[]>(`/projects/${projectId}/cases/${caseId}/history`),
 };

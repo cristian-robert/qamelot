@@ -18,6 +18,8 @@ interface MilestoneFormDialogProps {
   onSubmit: (data: CreateMilestoneInput) => void;
   isPending: boolean;
   defaultValues?: { name: string; description?: string; startDate?: string; dueDate?: string };
+  parentId?: string | null;
+  parentName?: string;
   title: string;
 }
 
@@ -27,6 +29,8 @@ export function MilestoneFormDialog({
   onSubmit,
   isPending,
   defaultValues,
+  parentId,
+  parentName,
   title,
 }: MilestoneFormDialogProps) {
   const values = defaultValues ?? { name: '', description: '', startDate: '', dueDate: '' };
@@ -41,7 +45,7 @@ export function MilestoneFormDialog({
   });
 
   const handleFormSubmit = (data: CreateMilestoneInput) => {
-    onSubmit(data);
+    onSubmit({ ...data, parentId: parentId ?? null });
     reset();
   };
 
@@ -51,6 +55,11 @@ export function MilestoneFormDialog({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
+        {parentName && (
+          <p className="text-sm text-muted-foreground">
+            Creating under: <span className="font-medium">{parentName}</span>
+          </p>
+        )}
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <div>
             <Input placeholder="Milestone name" {...register('name')} />

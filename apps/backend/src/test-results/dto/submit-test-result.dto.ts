@@ -1,6 +1,38 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsEnum, IsOptional, MaxLength, IsInt, Min, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  MaxLength,
+  IsInt,
+  Min,
+  MinLength,
+  IsArray,
+  ValidateNested,
+  IsBoolean,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import { TestResultStatus } from '@app/shared';
+
+export class StepResultDto {
+  @ApiProperty({ example: 'step-123', description: 'Test case step ID' })
+  @IsString()
+  @MinLength(1)
+  testCaseStepId!: string;
+
+  @ApiProperty({
+    enum: TestResultStatus,
+    example: TestResultStatus.PASSED,
+  })
+  @IsEnum(TestResultStatus)
+  status!: TestResultStatus;
+
+  @ApiPropertyOptional({ example: 'Actual output was correct', maxLength: 5000 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(5000)
+  actualResult?: string;
+}
 
 export class SubmitTestResultDto {
   @ApiProperty({ example: 'trc-123', description: 'Test run case ID' })
@@ -17,6 +49,11 @@ export class SubmitTestResultDto {
   })
   status!: TestResultStatus;
 
+  @ApiPropertyOptional({ description: 'Whether the overall status was manually overridden' })
+  @IsBoolean()
+  @IsOptional()
+  statusOverride?: boolean;
+
   @ApiPropertyOptional({ example: 'Login successful', maxLength: 2000 })
   @IsString()
   @IsOptional()
@@ -28,4 +65,11 @@ export class SubmitTestResultDto {
   @IsOptional()
   @Min(0)
   elapsed?: number;
+
+  @ApiPropertyOptional({ description: 'Step-level results (for STEPS template type)', type: [StepResultDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => StepResultDto)
+  @IsOptional()
+  stepResults?: StepResultDto[];
 }

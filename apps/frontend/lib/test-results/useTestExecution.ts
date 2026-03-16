@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { SubmitTestResultInput, UpdateTestResultInput } from '@app/shared';
+import type { SubmitTestResultInput, UpdateTestResultInput, BulkSubmitTestResultsInput } from '@app/shared';
 import { testResultsApi } from '../api/test-results';
 import { testRunsApi } from '../api/test-runs';
 
@@ -35,6 +35,14 @@ export function useTestExecution(runId: string, options?: UseTestExecutionOption
     },
   });
 
+  const bulkSubmitResults = useMutation({
+    mutationFn: (data: BulkSubmitTestResultsInput) =>
+      testResultsApi.bulkSubmit(runId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
   const updateResult = useMutation({
     mutationFn: ({ resultId, data }: { resultId: string; data: UpdateTestResultInput }) =>
       testResultsApi.update(resultId, data),
@@ -62,6 +70,7 @@ export function useTestExecution(runId: string, options?: UseTestExecutionOption
     isLoading,
     error,
     submitResult,
+    bulkSubmitResults,
     updateResult,
     closeRun,
     rerunRun,

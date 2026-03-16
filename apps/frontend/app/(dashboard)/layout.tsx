@@ -41,7 +41,7 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
   return (
     <Link
       href={item.href}
-      className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      className={`flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-[13px] font-medium transition-all ${
         isActive
           ? 'border-l-2 border-sidebar-accent bg-white/10 text-white'
           : 'border-l-2 border-transparent text-sidebar-foreground/70 hover:bg-white/5 hover:text-sidebar-foreground'

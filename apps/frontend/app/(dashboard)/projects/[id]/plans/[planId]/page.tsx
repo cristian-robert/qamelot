@@ -246,27 +246,27 @@ export default function PlanDetailPage() {
             : 'No test runs yet. Create your first run to get started.'}
         </p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {runs.map((run) => (
             <Link
               key={run.id}
               href={`/projects/${projectId}/runs/${run.id}/execute`}
-              className="flex items-center justify-between rounded-lg border bg-card p-4 hover:shadow-md transition-shadow"
+              className="group flex cursor-pointer items-center justify-between rounded-lg border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md"
             >
               <div>
-                <h3 className="font-medium">{run.name}</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="text-[13px] font-semibold group-hover:text-primary transition-colors">{run.name}</h3>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
                   {run._count.testRunCases} case{run._count.testRunCases !== 1 ? 's' : ''}
-                  {run.assignedTo && ` · Assigned to ${run.assignedTo.name}`}
+                  {run.assignedTo && ` · ${run.assignedTo.name}`}
                   {run.configLabel && (
-                    <span className="ml-2 inline-flex items-center rounded bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-700">
+                    <span className="ml-2 inline-flex items-center rounded border border-purple-200 bg-purple-50 px-1.5 py-0.5 text-[10px] font-medium text-purple-700">
                       {run.configLabel}
                     </span>
                   )}
                 </p>
               </div>
               <span
-                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${RUN_STATUS_COLORS[run.status]}`}
+                className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${RUN_STATUS_COLORS[run.status]}`}
               >
                 {RUN_STATUS_LABELS[run.status]}
               </span>
@@ -280,25 +280,30 @@ export default function PlanDetailPage() {
           role="dialog"
           aria-modal="true"
           aria-label="Create test run"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={closeDialog}
         >
           <div
-            className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-lg border bg-card p-6 shadow-lg space-y-4"
+            className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-xl border bg-card p-6 shadow-2xl space-y-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold">New Test Run</h2>
+            <div>
+              <h2 className="text-base font-semibold">New Test Run</h2>
+              <p className="mt-0.5 text-[13px] text-muted-foreground">
+                Select test cases to include in this run.
+              </p>
+            </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-1">
-                <label htmlFor="run-name" className="text-sm font-medium">
+              <div className="space-y-1.5">
+                <label htmlFor="run-name" className="text-[13px] font-semibold">
                   Run name
                 </label>
                 <input
                   id="run-name"
                   type="text"
                   {...register('name')}
-                  className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full rounded-lg border px-3 py-2 text-[13px] transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
                   placeholder="Smoke Test Run"
                   autoFocus
                 />
@@ -322,7 +327,7 @@ export default function PlanDetailPage() {
               {/* Config Matrix Section */}
               {hasConfigGroups && (
                 <div className="space-y-2 border-t pt-3">
-                  <label className="flex items-center gap-2 text-sm font-medium">
+                  <label className="flex items-center gap-2 text-[13px] font-semibold">
                     <Checkbox
                       checked={useMatrix}
                       onCheckedChange={(checked) => {
@@ -345,18 +350,18 @@ export default function PlanDetailPage() {
               )}
 
               {mutationError && (
-                <p className="text-sm text-destructive">
+                <p className="text-[13px] text-destructive">
                   {mutationError instanceof Error
                     ? mutationError.message
                     : 'Failed to create run'}
                 </p>
               )}
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={closeDialog}>
+              <div className="flex justify-end gap-2 border-t pt-4">
+                <Button type="button" variant="outline" onClick={closeDialog} className="cursor-pointer">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isPending}>
+                <Button type="submit" disabled={isPending} className="cursor-pointer">
                   {isPending
                     ? 'Creating...'
                     : useMatrix && matrixCombinations.length > 0
@@ -386,6 +391,13 @@ interface CaseSelectorProps {
   errors: ReturnType<typeof useForm<CreateTestRunInput>>['formState']['errors'];
 }
 
+const PRIORITY_SHORTCODE: Record<string, { label: string; className: string }> = {
+  CRITICAL: { label: 'C', className: 'bg-red-100 text-red-800 border-red-200' },
+  HIGH: { label: 'H', className: 'bg-orange-100 text-orange-800 border-orange-200' },
+  MEDIUM: { label: 'M', className: 'bg-blue-100 text-blue-800 border-blue-200' },
+  LOW: { label: 'L', className: 'bg-gray-100 text-gray-600 border-gray-200' },
+};
+
 function CaseSelector({
   suites,
   cases,
@@ -397,9 +409,26 @@ function CaseSelector({
   register,
   errors,
 }: CaseSelectorProps) {
+  const deselectAllInSuite = () => {
+    const caseIdsInSuite = cases.map((c) => c.id);
+    /* no-op if nothing to deselect — the parent handles state */
+    caseIdsInSuite.forEach((id) => {
+      if (selectedCaseIds.includes(id)) {
+        onToggleCase(id);
+      }
+    });
+  };
+
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium">Select test cases</label>
+      <div className="flex items-center justify-between">
+        <label className="text-[13px] font-semibold">Select test cases</label>
+        {selectedCaseIds.length > 0 && (
+          <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+            {selectedCaseIds.length} selected
+          </span>
+        )}
+      </div>
 
       {suites.length === 0 ? (
         <p className="text-xs text-muted-foreground">
@@ -407,12 +436,13 @@ function CaseSelector({
         </p>
       ) : (
         <div className="space-y-2">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-1.5 flex-wrap">
             {suites.map((suite) => (
               <Button
                 key={suite.id}
                 type="button"
                 size="sm"
+                className="h-7 cursor-pointer text-xs"
                 variant={activeSuiteId === suite.id ? 'default' : 'outline'}
                 onClick={() => onSetActiveSuiteId(suite.id)}
               >
@@ -422,44 +452,51 @@ function CaseSelector({
           </div>
 
           {activeSuiteId && (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[11px] font-medium text-muted-foreground">
                   Cases in selected suite
                 </span>
-                <Button type="button" size="sm" variant="ghost" onClick={onSelectAllInSuite}>
-                  Select all
-                </Button>
+                <div className="flex gap-1">
+                  <Button type="button" size="sm" variant="ghost" className="h-6 cursor-pointer text-[11px]" onClick={onSelectAllInSuite}>
+                    Select All
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" className="h-6 cursor-pointer text-[11px]" onClick={deselectAllInSuite}>
+                    Deselect All
+                  </Button>
+                </div>
               </div>
-              <div className="max-h-40 overflow-y-auto rounded-md border p-2 space-y-1">
+              <div className="max-h-48 overflow-y-auto rounded-lg border p-1.5 space-y-0.5">
                 {cases.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-2">
+                  <p className="text-xs text-muted-foreground py-3 text-center">
                     No cases in this suite.
                   </p>
                 ) : (
-                  cases.map((tc) => (
-                    <label key={tc.id} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={selectedCaseIds.includes(tc.id)}
-                        onCheckedChange={() => onToggleCase(tc.id)}
-                      />
-                      {tc.title}
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        {tc.priority}
-                      </span>
-                    </label>
-                  ))
+                  cases.map((tc) => {
+                    const shortcode = PRIORITY_SHORTCODE[tc.priority];
+                    return (
+                      <label
+                        key={tc.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          checked={selectedCaseIds.includes(tc.id)}
+                          onCheckedChange={() => onToggleCase(tc.id)}
+                        />
+                        <span className="flex-1 truncate">{tc.title}</span>
+                        {shortcode && (
+                          <span className={`inline-flex size-5 items-center justify-center rounded border text-[10px] font-bold ${shortcode.className}`}>
+                            {shortcode.label}
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })
                 )}
               </div>
             </div>
           )}
         </div>
-      )}
-
-      {selectedCaseIds.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {selectedCaseIds.length} case{selectedCaseIds.length !== 1 ? 's' : ''} selected
-        </p>
       )}
 
       <input type="hidden" {...register('caseIds')} />

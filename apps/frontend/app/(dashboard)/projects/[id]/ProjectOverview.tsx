@@ -25,19 +25,19 @@ interface NavCardProps {
 
 function NavCard({ href, icon, title, description }: NavCardProps) {
   return (
-    <Link href={href} className="group">
-      <Card className="transition-all group-hover:-translate-y-0.5 group-hover:shadow-md">
+    <Link href={href} className="group cursor-pointer">
+      <Card className="transition-all group-hover:-translate-y-0.5 group-hover:border-primary/30 group-hover:shadow-md">
         <CardContent className="flex items-center gap-4">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
             {icon}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold group-hover:text-emerald-700 transition-colors">
+            <p className="text-[13px] font-semibold group-hover:text-primary transition-colors">
               {title}
             </p>
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="text-[12px] text-muted-foreground">{description}</p>
           </div>
-          <ChevronRight className="size-4 text-muted-foreground group-hover:text-emerald-600 transition-colors" />
+          <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
         </CardContent>
       </Card>
     </Link>

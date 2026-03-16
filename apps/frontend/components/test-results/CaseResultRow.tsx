@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { Timer, Bug, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +10,7 @@ import { DefectBadge } from './DefectBadge';
 import { CreateDefectDialog } from './CreateDefectDialog';
 import { StepResultsPanel } from './StepResultsPanel';
 import { TestResultStatus, TemplateType } from '@app/shared';
+import { cn } from '@/lib/utils';
 import type {
   TestRunCaseWithResultDto,
   CreateDefectInput,
@@ -19,19 +21,19 @@ import type {
 const statusButtons: Array<{
   status: 'PASSED' | 'FAILED' | 'BLOCKED' | 'RETEST';
   label: string;
-  className: string;
+  activeClass: string;
 }> = [
-  { status: 'PASSED', label: 'Pass', className: 'bg-green-600 hover:bg-green-700 text-white' },
-  { status: 'FAILED', label: 'Fail', className: 'bg-red-600 hover:bg-red-700 text-white' },
-  { status: 'BLOCKED', label: 'Blocked', className: 'bg-yellow-600 hover:bg-yellow-700 text-white' },
-  { status: 'RETEST', label: 'Retest', className: 'bg-blue-600 hover:bg-blue-700 text-white' },
+  { status: 'PASSED', label: 'Pass', activeClass: 'bg-green-600 hover:bg-green-700 text-white' },
+  { status: 'FAILED', label: 'Fail', activeClass: 'bg-red-600 hover:bg-red-700 text-white' },
+  { status: 'BLOCKED', label: 'Block', activeClass: 'bg-yellow-600 hover:bg-yellow-700 text-white' },
+  { status: 'RETEST', label: 'Retest', activeClass: 'bg-blue-600 hover:bg-blue-700 text-white' },
 ];
 
 const PRIORITY_COLORS: Record<string, string> = {
-  CRITICAL: 'bg-red-100 text-red-800',
-  HIGH: 'bg-orange-100 text-orange-800',
-  MEDIUM: 'bg-blue-100 text-blue-800',
-  LOW: 'bg-gray-100 text-gray-600',
+  CRITICAL: 'bg-red-100 text-red-800 border-red-200',
+  HIGH: 'bg-orange-100 text-orange-800 border-orange-200',
+  MEDIUM: 'bg-blue-100 text-blue-800 border-blue-200',
+  LOW: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 
 interface CaseResultRowProps {
@@ -132,44 +134,49 @@ export function CaseResultRow({
 
   return (
     <>
-      <tr className="border-b">
+      <tr className="border-b transition-colors hover:bg-muted/30">
         {checkboxCell}
         <td className="px-4 py-3">
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">{tc.title}</span>
               {hasSteps && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs"
+                <button
+                  type="button"
+                  className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded transition-colors hover:bg-muted"
                   onClick={() => setStepsExpanded(!stepsExpanded)}
+                  aria-label={stepsExpanded ? 'Collapse steps' : 'Expand steps'}
                 >
-                  {stepsExpanded ? 'Hide Steps' : `Steps (${tc.steps!.length})`}
-                </Button>
+                  {stepsExpanded
+                    ? <ChevronDown className="size-3.5" />
+                    : <ChevronRight className="size-3.5" />
+                  }
+                </button>
+              )}
+              <span className="text-[13px] font-medium">{tc.title}</span>
+              {hasSteps && (
+                <Badge variant="outline" className="h-[18px] px-1.5 text-[10px]">
+                  {tc.steps!.length} step{tc.steps!.length !== 1 ? 's' : ''}
+                </Badge>
               )}
             </div>
             <div className="flex items-center gap-1.5">
-              <Badge variant="outline" className={PRIORITY_COLORS[tc.priority] ?? ''}>
+              <Badge variant="outline" className={cn('h-[18px] px-1.5 text-[10px] font-semibold', PRIORITY_COLORS[tc.priority] ?? '')}>
                 {tc.priority}
               </Badge>
               {tc.suite && (
-                <span className="text-xs text-muted-foreground">{tc.suite.name}</span>
-              )}
-              {isStepsTemplate && (
-                <Badge variant="outline" className="text-xs">
-                  STEPS
-                </Badge>
+                <span className="text-[11px] text-muted-foreground">{tc.suite.name}</span>
               )}
               <DefectBadge defects={defects} />
             </div>
           </div>
         </td>
         <td className="px-4 py-3">
-          <ResultStatusBadge status={currentStatus} />
-          {latestResult?.statusOverride && (
-            <span className="ml-1 text-xs text-muted-foreground">(override)</span>
-          )}
+          <div className="flex items-center gap-1.5">
+            <ResultStatusBadge status={currentStatus} />
+            {latestResult?.statusOverride && (
+              <span className="text-[10px] text-muted-foreground">(override)</span>
+            )}
+          </div>
         </td>
         <td className="px-4 py-3">
           <div className="flex gap-1">
@@ -177,7 +184,10 @@ export function CaseResultRow({
               <Button
                 key={btn.status}
                 size="sm"
-                className={btn.className}
+                className={cn(
+                  'h-7 cursor-pointer px-2.5 text-xs font-medium',
+                  btn.activeClass,
+                )}
                 disabled={isPending || disabled}
                 onClick={() => handleStatusClick(btn.status)}
               >
@@ -188,11 +198,12 @@ export function CaseResultRow({
               <Button
                 size="sm"
                 variant="outline"
-                className="border-red-300 text-red-700 hover:bg-red-50"
+                className="h-7 cursor-pointer gap-1 border-red-300 px-2 text-xs text-red-700 hover:bg-red-50"
                 disabled={disabled}
                 onClick={() => setDefectDialogOpen(true)}
               >
-                Create Bug
+                <Bug className="size-3" />
+                Bug
               </Button>
             )}
           </div>
@@ -204,16 +215,18 @@ export function CaseResultRow({
             onChange={(e) => setComment(e.target.value)}
             onBlur={handleCommentBlur}
             rows={1}
-            className="min-h-[36px] resize-none text-sm"
+            className="min-h-[32px] resize-none text-[13px]"
             disabled={disabled}
           />
         </td>
         <td className="px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-sm">{formatTime(elapsed)}</span>
+          <div className="flex items-center gap-1.5">
+            <Timer className="size-3.5 text-muted-foreground" />
+            <span className="min-w-[40px] font-mono text-[13px]">{formatTime(elapsed)}</span>
             <Button
               size="sm"
               variant={isTimerRunning ? 'destructive' : 'outline'}
+              className="h-6 cursor-pointer px-2 text-[10px]"
               onClick={toggleTimer}
               disabled={disabled}
             >
@@ -225,7 +238,7 @@ export function CaseResultRow({
 
       {hasSteps && stepsExpanded && (
         <tr>
-          <td colSpan={5} className="bg-muted/30 px-4 py-3">
+          <td colSpan={checkboxCell ? 7 : 6} className="border-b bg-muted/20 px-6 py-4">
             <StepResultsPanel
               steps={tc.steps!}
               existingStepResults={latestResult?.stepResults}

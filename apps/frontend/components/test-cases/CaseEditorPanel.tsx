@@ -10,6 +10,7 @@ import { CaseEditorSkeleton } from './CaseEditorSkeleton';
 import { CaseHistoryPanel } from './CaseHistoryPanel';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import type { CreateTestCaseInput, UpdateTestCaseInput } from '@app/shared';
 
 type Tab = 'editor' | 'history';
@@ -60,40 +61,49 @@ export function CaseEditorPanel({ projectId, suiteId, caseId, onClose }: CaseEdi
     updateMutation.mutate(updateData);
   };
 
+  const tabs: Array<{ key: Tab; label: string }> = [
+    { key: 'editor', label: 'Details' },
+    { key: 'history', label: 'History' },
+  ];
+
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b px-4 py-2">
-        <h3 className="text-sm font-semibold">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b px-4 py-2.5">
+        <h3 className="text-[13px] font-semibold">
           {testCase ? 'Edit Test Case' : 'Loading...'}
         </h3>
-        <Button size="sm" variant="ghost" onClick={onClose} aria-label="Close editor">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onClose}
+          aria-label="Close editor"
+          className="size-7 cursor-pointer p-0"
+        >
           <X className="size-4" />
         </Button>
       </div>
 
-      <div className="flex border-b">
-        <button
-          type="button"
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === 'editor'
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-          onClick={() => setActiveTab('editor')}
-        >
-          Details
-        </button>
-        <button
-          type="button"
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === 'history'
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-          onClick={() => setActiveTab('history')}
-        >
-          History
-        </button>
+      {/* Tab navigation */}
+      <div className="flex border-b px-4">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className={cn(
+              'relative cursor-pointer px-3 py-2.5 text-[13px] font-medium transition-colors',
+              activeTab === tab.key
+                ? 'text-primary'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
+            {activeTab === tab.key && (
+              <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary" />
+            )}
+          </button>
+        ))}
       </div>
 
       {activeTab === 'editor' ? (
@@ -111,7 +121,7 @@ export function CaseEditorPanel({ projectId, suiteId, caseId, onClose }: CaseEdi
                 isPending={updateMutation.isPending}
               />
             ) : (
-              <p className="text-sm text-muted-foreground">Test case not found.</p>
+              <p className="text-[13px] text-muted-foreground">Test case not found.</p>
             )}
           </div>
         </ScrollArea>

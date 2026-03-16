@@ -135,7 +135,8 @@ describe('RunExecutionPage', () => {
 
     renderWithProviders(React.createElement(RunExecutionPage));
 
-    expect(screen.getByText('Loading execution data...')).toBeInTheDocument();
+    // Loading state shows skeleton elements (animated pulse divs)
+    expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
   it('renders run name and plan name after loading', async () => {
@@ -183,7 +184,7 @@ describe('RunExecutionPage', () => {
       expect(screen.getAllByRole('button', { name: 'Pass' })).toHaveLength(2);
     });
     expect(screen.getAllByRole('button', { name: 'Fail' })).toHaveLength(2);
-    expect(screen.getAllByRole('button', { name: 'Blocked' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Block' })).toHaveLength(2);
     expect(screen.getAllByRole('button', { name: 'Retest' })).toHaveLength(2);
   });
 
@@ -219,7 +220,7 @@ describe('RunExecutionPage', () => {
     renderWithProviders(React.createElement(RunExecutionPage));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Create Bug' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Bug' })).toBeInTheDocument();
     });
   });
 
@@ -231,7 +232,7 @@ describe('RunExecutionPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Dashboard Suite')).toBeInTheDocument();
     });
-    expect(screen.queryByRole('button', { name: 'Create Bug' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Bug' })).not.toBeInTheDocument();
   });
 
   it('shows run status badge', async () => {

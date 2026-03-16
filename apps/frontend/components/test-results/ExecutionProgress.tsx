@@ -5,6 +5,14 @@ interface ExecutionProgressProps {
   summary: TestRunResultSummary;
 }
 
+const statusSegments = [
+  { key: 'passed', label: 'Passed', dotClass: 'bg-green-500', textClass: 'text-green-700' },
+  { key: 'failed', label: 'Failed', dotClass: 'bg-red-500', textClass: 'text-red-700' },
+  { key: 'blocked', label: 'Blocked', dotClass: 'bg-yellow-500', textClass: 'text-yellow-700' },
+  { key: 'retest', label: 'Retest', dotClass: 'bg-blue-500', textClass: 'text-blue-700' },
+  { key: 'untested', label: 'Untested', dotClass: 'bg-gray-300', textClass: 'text-gray-500' },
+] as const;
+
 export function ExecutionProgress({ summary }: ExecutionProgressProps) {
   const completed = summary.total - summary.untested;
   const percent = summary.total > 0 ? Math.round((completed / summary.total) * 100) : 0;
@@ -12,21 +20,29 @@ export function ExecutionProgress({ summary }: ExecutionProgressProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-medium">
+      <div className="flex items-center justify-between">
+        <span className="text-[13px] font-semibold">
           Progress: {completed}/{summary.total} ({percent}%)
         </span>
         {completed > 0 && (
-          <span className="text-muted-foreground">Pass rate: {passRate}%</span>
+          <span className="text-[13px] text-muted-foreground">Pass rate: {passRate}%</span>
         )}
       </div>
-      <Progress value={percent} className="h-2" />
-      <div className="flex gap-4 text-xs text-muted-foreground">
-        <span className="text-green-700">{summary.passed} passed</span>
-        <span className="text-red-700">{summary.failed} failed</span>
-        <span className="text-yellow-700">{summary.blocked} blocked</span>
-        <span className="text-blue-700">{summary.retest} retest</span>
-        <span className="text-gray-500">{summary.untested} untested</span>
+
+      <Progress value={percent} className="h-2.5" />
+
+      <div className="flex flex-wrap gap-x-5 gap-y-1">
+        {statusSegments.map((seg) => {
+          const count = summary[seg.key];
+          return (
+            <div key={seg.key} className="flex items-center gap-1.5">
+              <span className={`inline-block size-2 rounded-full ${seg.dotClass}`} />
+              <span className={`text-xs font-medium ${seg.textClass}`}>
+                {count} {seg.label.toLowerCase()}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

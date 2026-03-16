@@ -87,8 +87,10 @@ export function CaseHistoryPanel({ projectId, caseId }: CaseHistoryPanelProps) {
 
   if (!history || history.length === 0) {
     return (
-      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-        No changes recorded yet.
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <p className="text-[13px] text-muted-foreground">
+          No changes recorded yet.
+        </p>
       </div>
     );
   }
@@ -105,10 +107,10 @@ export function CaseHistoryPanel({ projectId, caseId }: CaseHistoryPanelProps) {
               {getInitials(entry.user.name)}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-baseline gap-1 text-sm">
-                <span className="font-medium truncate">{entry.user.name}</span>
+              <div className="flex items-baseline gap-1 text-[13px]">
+                <span className="font-semibold truncate">{entry.user.name}</span>
                 <span className="text-muted-foreground">changed</span>
-                <span className="font-medium">{formatFieldName(entry.field)}</span>
+                <span className="font-semibold">{formatFieldName(entry.field)}</span>
               </div>
               <div className="mt-1 text-xs text-muted-foreground space-y-0.5">
                 <div className="flex items-start gap-1">

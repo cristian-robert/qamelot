@@ -121,20 +121,20 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="flex h-full">
-      {/* Pane 1: Suite Tree sidebar (~240px) */}
-      <aside className="flex w-60 shrink-0 flex-col border-r">
-        <div className="flex items-center justify-between border-b px-3 py-2">
-          <h2 className="text-sm font-semibold">Suites</h2>
-          <Button size="sm" variant="ghost" onClick={handleCreateRoot}>
+    <div className="-m-6 flex h-[calc(100vh-0px)] overflow-hidden">
+      {/* Pane 1: Suite Tree sidebar */}
+      <aside className="flex w-60 shrink-0 flex-col border-r bg-card">
+        <div className="flex items-center justify-between border-b px-3 py-2.5">
+          <h2 className="text-[13px] font-semibold">Suites</h2>
+          <Button size="sm" variant="ghost" className="h-7 cursor-pointer text-xs" onClick={handleCreateRoot}>
             + New Suite
           </Button>
         </div>
         <ScrollArea className="flex-1">
           {suitesLoading ? (
-            <div className="px-3 py-4 space-y-2">
+            <div className="space-y-2 px-3 py-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-5 animate-pulse rounded bg-muted" />
+                <div key={i} className="h-6 animate-pulse rounded bg-muted" />
               ))}
             </div>
           ) : (
@@ -153,8 +153,8 @@ export default function ProjectDetailPage() {
       {/* Pane 2 & 3: Case list + Editor, or Project Overview */}
       {selectedSuiteId ? (
         <>
-          {/* Pane 2: Case List (~350px) */}
-          <div className="flex w-[350px] shrink-0 flex-col border-r">
+          {/* Pane 2: Case List */}
+          <div className="flex w-[340px] shrink-0 flex-col border-r bg-card">
             <CaseListPanel
               projectId={id}
               suiteId={selectedSuiteId}
@@ -165,9 +165,9 @@ export default function ProjectDetailPage() {
             />
           </div>
 
-          {/* Pane 3: Case Editor (flex-1) */}
+          {/* Pane 3: Case Editor */}
           {selectedCaseId ? (
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col bg-card">
               <CaseEditorPanel
                 key={selectedCaseId}
                 projectId={id}
@@ -177,15 +177,22 @@ export default function ProjectDetailPage() {
               />
             </div>
           ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <p className="text-sm text-muted-foreground">
-                Select a test case to view or edit it.
-              </p>
+            <div className="flex flex-1 items-center justify-center bg-background">
+              <div className="text-center">
+                <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-muted">
+                  <svg className="size-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                </div>
+                <p className="text-[13px] font-medium text-muted-foreground">
+                  Select a test case to view or edit it.
+                </p>
+              </div>
             </div>
           )}
         </>
       ) : (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-background">
           <ProjectOverview
             id={id}
             name={project.name}
@@ -196,6 +203,7 @@ export default function ProjectDetailPage() {
             <Button
               variant="outline"
               size="sm"
+              className="cursor-pointer"
               onClick={() => setImportOpen(true)}
             >
               <Upload className="mr-1.5 size-4" />

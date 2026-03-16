@@ -10,6 +10,7 @@ import { LiveIndicator } from '@/components/test-results/LiveIndicator';
 import { ResultsCsvExportButton } from '@/components/test-results/ResultsCsvExportButton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { TestRunStatus } from '@app/shared';
 import type { SubmitTestResultInput, StepResultInput } from '@app/shared';
 
@@ -74,19 +75,42 @@ export default function RunExecutionPage() {
   }, [rerunRun, router, projectId]);
 
   if (isLoading) {
-    return <div className="p-6">Loading execution data...</div>;
+    return (
+      <div className="space-y-6 p-6">
+        <div className="space-y-2">
+          <div className="h-7 w-64 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-96 animate-pulse rounded bg-muted" />
+        </div>
+        <div className="h-24 animate-pulse rounded-lg bg-muted" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (error || !execution) {
-    return <div className="p-6">Failed to load run execution.</div>;
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-destructive/10">
+          <svg className="size-5 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+        </div>
+        <p className="text-[13px] font-medium text-muted-foreground">Failed to load run execution.</p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6 p-6">
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{execution.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="text-xl font-bold">{execution.name}</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
             Plan: {execution.testPlan.name}
             {execution.assignedTo && (
               <> &middot; Assigned to: {execution.assignedTo.name}</>
@@ -115,6 +139,7 @@ export default function RunExecutionPage() {
             <Button
               variant="destructive"
               size="sm"
+              className="cursor-pointer"
               onClick={handleClose}
               disabled={closeRun.isPending}
             >
@@ -125,6 +150,7 @@ export default function RunExecutionPage() {
             <Button
               variant="outline"
               size="sm"
+              className="cursor-pointer"
               onClick={handleRerun}
               disabled={rerunRun.isPending}
             >
@@ -134,8 +160,12 @@ export default function RunExecutionPage() {
         </div>
       </div>
 
-      <ExecutionProgress summary={execution.summary} />
+      {/* Progress card */}
+      <Card className="p-5">
+        <ExecutionProgress summary={execution.summary} />
+      </Card>
 
+      {/* Execution table */}
       <ExecutionTable
         testRunCases={execution.testRunCases}
         projectId={projectId}

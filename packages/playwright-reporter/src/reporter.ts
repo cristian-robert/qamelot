@@ -129,10 +129,17 @@ export class QamelotReporter implements Reporter {
   }
 
   private buildTestId(test: TestCase): string {
+    // Prefer explicit @QAM: tag — no path nonsense
+    const qamTag = test.tags.find((t) => t.startsWith('@QAM:'));
+    if (qamTag) {
+      return qamTag.slice(5); // strip "@QAM:" prefix
+    }
+
+    // Fallback: build from file path + title path
     const filePath = test.location.file;
-    // titlePath() returns ['', '', 'file.spec.ts', 'Describe', 'test name']
-    // Filter out empty strings and the file name element to get just describe + test
-    const titlePath = test.titlePath().filter((s) => s.length > 0 && !s.endsWith('.spec.ts') && !s.endsWith('.test.ts'));
+    const titlePath = test.titlePath().filter(
+      (s) => s.length > 0 && !s.endsWith('.spec.ts') && !s.endsWith('.test.ts'),
+    );
     return `${filePath} > ${titlePath.join(' > ')}`;
   }
 

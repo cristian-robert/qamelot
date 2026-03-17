@@ -12,6 +12,7 @@ describe('AutomationService', () => {
     testRun: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     testRunCase: { findFirst: jest.fn() },
     testResult: { create: jest.fn() },
+    apiKey: { findUnique: jest.fn() },
   };
 
   const mockRunEventsService = { emitUpdate: jest.fn() };
@@ -78,9 +79,10 @@ describe('AutomationService', () => {
         id: 'result-1', status: 'PASSED', testRunCaseId: 'trc-1',
       });
 
+      mockPrisma.apiKey.findUnique.mockResolvedValue({ createdById: 'user-1' });
       const result = await service.submitResult('run-1', {
         automationId: 'test.spec.ts > test', status: 'PASSED', duration: 1500,
-      }, 'proj-1');
+      }, 'proj-1', 'key-1');
 
       expect(result).not.toBeNull();
       expect(mockPrisma.testResult.create).toHaveBeenCalled();
@@ -90,7 +92,7 @@ describe('AutomationService', () => {
       mockPrisma.testRunCase.findFirst.mockResolvedValue(null);
       const result = await service.submitResult('run-1', {
         automationId: 'unknown', status: 'PASSED',
-      }, 'proj-1');
+      }, 'proj-1', 'key-1');
       expect(result).toBeNull();
     });
 
@@ -101,9 +103,10 @@ describe('AutomationService', () => {
       mockPrisma.testRun.update.mockResolvedValue({});
       mockPrisma.testResult.create.mockResolvedValue({ id: 'r-1', status: 'PASSED' });
 
+      mockPrisma.apiKey.findUnique.mockResolvedValue({ createdById: 'user-1' });
       await service.submitResult('run-1', {
         automationId: 'test', status: 'PASSED',
-      }, 'proj-1');
+      }, 'proj-1', 'key-1');
 
       expect(mockPrisma.testRun.update).toHaveBeenCalledWith({
         where: { id: 'run-1' },

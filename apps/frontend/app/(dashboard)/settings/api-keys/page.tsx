@@ -128,7 +128,9 @@ export default function ApiKeysPage() {
               disabled={loadingProjects}
             >
               <SelectTrigger className="w-full max-w-xs">
-                <SelectValue placeholder="Select a project..." />
+                <SelectValue placeholder="Select a project...">
+                  {projects?.find((p) => p.id === selectedProjectId)?.name}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {projects?.map((p) => (

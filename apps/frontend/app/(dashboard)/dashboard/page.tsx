@@ -259,13 +259,13 @@ export default function DashboardPage() {
             href="/projects"
             icon={Play}
             title="Test Runs"
-            description="Execute test plans and record results"
+            description="Select a project to view and execute test runs"
           />
           <QuickLink
             href="/projects"
             icon={BarChart3}
             title="Reports"
-            description="View coverage and progress metrics"
+            description="Select a project to view test reports and analytics"
           />
         </div>
       </div>

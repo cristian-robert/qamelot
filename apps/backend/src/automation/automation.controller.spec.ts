@@ -50,6 +50,7 @@ describe('AutomationController', () => {
       'run-1',
       dto.results[0],
       'proj-1',
+      'key-1',
     );
     expect(result.submitted).toBe(1);
   });

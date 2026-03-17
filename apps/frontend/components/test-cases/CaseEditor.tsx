@@ -396,7 +396,15 @@ export function CaseEditor({ projectId, caseId }: CaseEditorProps) {
           {effectiveTemplate === TemplateType.STEPS && (
             <div className="space-y-2">
               <Label>Test Steps ({steps.length})</Label>
-              <StepEditor steps={steps} onChange={setSteps} />
+              {steps.length === 0 && testCase.automationStatus === AutomationStatus.AUTOMATED ? (
+                <div className="rounded-lg border border-dashed py-6 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    This is an automated test — manual steps are not required.
+                  </p>
+                </div>
+              ) : (
+                <StepEditor steps={steps} onChange={setSteps} />
+              )}
             </div>
           )}
 
@@ -411,23 +419,28 @@ export function CaseEditor({ projectId, caseId }: CaseEditorProps) {
               </p>
             ) : (
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant={testCase.automationStatus === AutomationStatus.AUTOMATED ? 'default' : 'destructive'}>
-                    {testCase.automationStatus === AutomationStatus.AUTOMATED ? 'Automated' : 'Needs Update'}
-                  </Badge>
-                </div>
+                <Badge variant={testCase.automationStatus === AutomationStatus.AUTOMATED ? 'default' : 'destructive'}>
+                  {testCase.automationStatus === AutomationStatus.AUTOMATED ? 'Automated' : 'Needs Update'}
+                </Badge>
                 {testCase.automationId && (
                   <div>
-                    <span className="text-xs text-muted-foreground">Automation ID</span>
-                    <p className="font-mono text-xs break-all">{testCase.automationId}</p>
+                    <span className="text-xs font-medium text-muted-foreground">Automation ID</span>
+                    <p className="rounded bg-muted px-2 py-1 font-mono text-xs break-all">
+                      {testCase.automationId}
+                    </p>
                   </div>
                 )}
                 {testCase.automationFilePath && (
                   <div>
-                    <span className="text-xs text-muted-foreground">File</span>
-                    <p className="font-mono text-xs break-all">{testCase.automationFilePath}</p>
+                    <span className="text-xs font-medium text-muted-foreground">Spec File</span>
+                    <p className="rounded bg-muted px-2 py-1 font-mono text-xs break-all">
+                      {testCase.automationFilePath}
+                    </p>
                   </div>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  This test case is linked to an automated Playwright test.
+                </p>
               </div>
             )}
           </div>

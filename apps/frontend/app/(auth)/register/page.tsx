@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 
 export default function RegisterPage() {
   const { register: registerMutation } = useAuth();
@@ -22,61 +23,80 @@ export default function RegisterPage() {
   const onSubmit = (data: RegisterInput) => registerMutation.mutate(data);
 
   return (
-    <div className="animate-in rounded-xl border bg-card p-8 shadow-sm">
+    <div className="animate-in">
       <div className="mb-6">
-        <h2 className="text-lg font-semibold">Create account</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Create account</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Set up your Qamelot account
+          Set up your Qamelot account to get started
         </p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Name</Label>
-          <Input
-            id="name"
-            placeholder="Your name"
-            {...register('name')}
-          />
+        <div className="space-y-1.5">
+          <Label htmlFor="name">Full name</Label>
+          <div className="relative">
+            <User className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="name"
+              placeholder="Your name"
+              className="pl-8"
+              {...register('name')}
+            />
+          </div>
           {errors.name && (
             <p className="text-xs text-destructive">{errors.name.message}</p>
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="you@company.com"
-            {...register('email')}
-          />
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@company.com"
+              className="pl-8"
+              {...register('email')}
+            />
+          </div>
           {errors.email && (
             <p className="text-xs text-destructive">{errors.email.message}</p>
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="Create a password"
-            {...register('password')}
-          />
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="password"
+              type="password"
+              placeholder="Create a password (8+ characters)"
+              className="pl-8"
+              {...register('password')}
+            />
+          </div>
           {errors.password && (
             <p className="text-xs text-destructive">{errors.password.message}</p>
           )}
         </div>
 
         {registerMutation.error && (
-          <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {registerMutation.error.message}
           </div>
         )}
 
         <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-          {registerMutation.isPending ? 'Creating account...' : 'Create account'}
+          {registerMutation.isPending ? (
+            'Creating account...'
+          ) : (
+            <>
+              Create account
+              <ArrowRight className="ml-1.5 size-3.5" />
+            </>
+          )}
         </Button>
       </form>
 

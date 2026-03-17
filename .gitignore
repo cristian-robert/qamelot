@@ -52,3 +52,8 @@ uploads/
 
 # Test integration playground
 test-integration/
+
+# Local-only directories
+.playwright-cli/
+design-system/
+docs/

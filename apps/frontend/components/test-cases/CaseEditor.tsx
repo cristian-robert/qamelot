@@ -7,6 +7,7 @@ import {
   UpdateTestCaseSchema,
   type UpdateTestCaseInput,
   type TestCaseStepDto,
+  AutomationStatus,
   CasePriority,
   CaseType,
   TemplateType,
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { Save, Undo2, Clock } from 'lucide-react';
 import { CaseEditorSkeleton } from './CaseEditorSkeleton';
 import { StepEditor, type StepData } from './StepEditor';
@@ -397,6 +399,38 @@ export function CaseEditor({ projectId, caseId }: CaseEditorProps) {
               <StepEditor steps={steps} onChange={setSteps} />
             </div>
           )}
+
+          <Separator />
+
+          {/* Automation Section (read-only) */}
+          <div className="space-y-3 rounded-lg border p-4">
+            <h4 className="text-sm font-medium text-muted-foreground">Automation</h4>
+            {testCase.automationStatus === AutomationStatus.NOT_AUTOMATED ? (
+              <p className="text-sm text-muted-foreground">
+                Not linked to any automated test.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant={testCase.automationStatus === AutomationStatus.AUTOMATED ? 'default' : 'destructive'}>
+                    {testCase.automationStatus === AutomationStatus.AUTOMATED ? 'Automated' : 'Needs Update'}
+                  </Badge>
+                </div>
+                {testCase.automationId && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Automation ID</span>
+                    <p className="font-mono text-xs break-all">{testCase.automationId}</p>
+                  </div>
+                )}
+                {testCase.automationFilePath && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">File</span>
+                    <p className="font-mono text-xs break-all">{testCase.automationFilePath}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </form>
       </div>
 

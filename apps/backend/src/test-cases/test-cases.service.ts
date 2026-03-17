@@ -131,6 +131,9 @@ export class TestCasesService {
         ...(data.type !== undefined && { type: data.type }),
         ...(data.estimate !== undefined && { estimate: data.estimate }),
         ...(data.references !== undefined && { references: data.references }),
+        ...(data.automationId !== undefined && { automationId: data.automationId }),
+        ...(data.automationFilePath !== undefined && { automationFilePath: data.automationFilePath }),
+        ...(data.automationStatus !== undefined && { automationStatus: data.automationStatus }),
       },
       include: { steps: { orderBy: { stepNumber: 'asc' } } },
     });

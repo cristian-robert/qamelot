@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Plus, Search, ListFilter } from 'lucide-react';
+import { Plus, Search, ListFilter, Zap, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTestCases, useCreateTestCase } from '@/lib/test-cases/useTestCases';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
@@ -165,14 +165,22 @@ export function CaseListPanel({
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        'truncate text-sm',
-                        isActive ? 'font-medium text-emerald-800' : 'text-foreground',
+                    <div className="flex items-center gap-1.5">
+                      <p
+                        className={cn(
+                          'truncate text-sm',
+                          isActive ? 'font-medium text-emerald-800' : 'text-foreground',
+                        )}
+                      >
+                        {tc.title}
+                      </p>
+                      {tc.automationStatus === 'AUTOMATED' && (
+                        <Zap className="h-3 w-3 shrink-0 text-green-500" />
                       )}
-                    >
-                      {tc.title}
-                    </p>
+                      {tc.automationStatus === 'NEEDS_UPDATE' && (
+                        <AlertTriangle className="h-3 w-3 shrink-0 text-yellow-500" />
+                      )}
+                    </div>
                     <div className="mt-1 flex items-center gap-1.5">
                       <Badge
                         variant="secondary"

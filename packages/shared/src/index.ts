@@ -16,3 +16,5 @@ export * from './schemas/case-history';
 export * from './schemas/shared-step';
 export * from './schemas/config';
 export * from './schemas/custom-field';
+export * from './schemas/automation';
+export * from './schemas/api-key';

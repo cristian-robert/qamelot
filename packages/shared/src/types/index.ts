@@ -71,6 +71,8 @@ export interface TestRunDto extends BaseEntity {
   status: TestRunStatus;
   configLabel: string | null;
   sourceRunId: string | null;
+  executionType: ExecutionType;
+  ciJobUrl: string | null;
   deletedAt: string | null;
 }
 
@@ -135,6 +137,7 @@ export interface TestResultDto {
   statusOverride: boolean;
   comment: string | null;
   elapsed: number | null;
+  automationLog: string | null;
   stepResults?: TestStepResultDto[];
   createdAt: string;
   updatedAt: string;
@@ -264,6 +267,19 @@ export enum TemplateType {
   STEPS = 'STEPS',
 }
 
+// Automation status — tracks whether a test case is linked to automation
+export enum AutomationStatus {
+  NOT_AUTOMATED = 'NOT_AUTOMATED',
+  AUTOMATED = 'AUTOMATED',
+  NEEDS_UPDATE = 'NEEDS_UPDATE',
+}
+
+// Execution type — manual vs automated test run
+export enum ExecutionType {
+  MANUAL = 'MANUAL',
+  AUTOMATED = 'AUTOMATED',
+}
+
 // Test case step shape returned by API
 export interface TestCaseStepDto {
   id: string;
@@ -287,6 +303,9 @@ export interface TestCaseDto extends BaseEntity {
   position: number;
   suiteId: string;
   projectId: string;
+  automationId: string | null;
+  automationFilePath: string | null;
+  automationStatus: AutomationStatus;
   deletedAt: string | null;
 }
 
@@ -587,4 +606,42 @@ export interface UserWorkloadEntry {
 export interface DateRangeFilter {
   startDate?: string;
   endDate?: string;
+}
+
+// ── API Key DTOs ──
+
+// API key shape returned by API (key value is never returned after creation)
+export interface ApiKeyDto {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  projectId: string;
+  createdById: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+// Extended API key shape returned only at creation time (includes raw key)
+export interface ApiKeyCreatedDto extends ApiKeyDto {
+  rawKey: string; // Only returned once at creation time
+}
+
+// ── Automation DTOs ──
+
+// Mapping between a test case and its automation identifier
+export interface AutomationCaseMapDto {
+  testCaseId: string;
+  automationId: string;
+  title: string;
+  suiteId: string;
+}
+
+// Result of syncing automation tests with Qamelot test cases
+export interface AutomationSyncResultDto {
+  matched: number;
+  created: number;
+  stale: number;
+  unmatched: string[]; // automationIds not found in Qamelot
 }

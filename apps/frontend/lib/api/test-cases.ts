@@ -25,8 +25,11 @@ export interface BulkOperationResult {
 }
 
 export const testCasesApi = {
-  listBySuite: async (projectId: string, suiteId: string) => {
-    const res = await apiFetch<{ data: TestCaseDto[] }>(`/projects/${projectId}/suites/${suiteId}/cases`);
+  listBySuite: async (projectId: string, suiteId: string, filters?: { automationStatus?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.automationStatus) params.set('automationStatus', filters.automationStatus);
+    const qs = params.toString();
+    const res = await apiFetch<{ data: TestCaseDto[] }>(`/projects/${projectId}/suites/${suiteId}/cases${qs ? `?${qs}` : ''}`);
     return res.data;
   },
   getById: (projectId: string, id: string) =>

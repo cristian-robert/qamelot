@@ -17,7 +17,8 @@ import type {
   TestRunCaseWithResultDto,
   SubmitTestResultInput,
 } from '@app/shared';
-import { TestResultStatus, CasePriority, CaseType } from '@app/shared';
+import { TestResultStatus, TestRunStatus, CasePriority, CaseType } from '@app/shared';
+import { toast } from 'sonner';
 import {
   useTestExecution,
   useSubmitResult,
@@ -79,6 +80,7 @@ export default function ExecutePage({
   const cases = execution?.testRunCases ?? [];
   const activeCase: TestRunCaseWithResultDto | undefined = cases[activeCaseIndex];
   const steps: TestCaseStepDto[] = activeCase?.testCase.steps ?? [];
+  const isRunClosed = execution?.status === TestRunStatus.COMPLETED;
 
   const caseStatus = useCallback(
     (trc: TestRunCaseWithResultDto): TestResultStatus =>
@@ -165,6 +167,9 @@ export default function ExecutePage({
           setActiveCaseIndex(activeCaseIndex + 1);
         }
       },
+      onError: (error: Error) => {
+        toast.error(error.message || 'Failed to submit result');
+      },
     });
   }
 
@@ -201,11 +206,18 @@ export default function ExecutePage({
 
     if (untestedIds.length === 0) return;
 
-    bulkSubmit.mutate({
-      testRunCaseIds: untestedIds,
-      status: 'PASSED',
-      comment: 'Bulk submitted as passed',
-    });
+    bulkSubmit.mutate(
+      {
+        testRunCaseIds: untestedIds,
+        status: 'PASSED',
+        comment: 'Bulk submitted as passed',
+      },
+      {
+        onError: (error: Error) => {
+          toast.error(error.message || 'Failed to submit results');
+        },
+      },
+    );
   }
 
   function selectCase(index: number) {
@@ -272,6 +284,13 @@ export default function ExecutePage({
               ]}
             />
 
+            {/* Completed run banner */}
+            {isRunClosed && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                This run is completed. Results cannot be modified.
+              </div>
+            )}
+
             {/* Case header */}
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-4">
@@ -317,6 +336,7 @@ export default function ExecutePage({
                 size="sm"
                 className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={handlePassAllSteps}
+                disabled={isRunClosed}
               >
                 <Zap className="size-3.5" />
                 Pass All Steps
@@ -326,6 +346,7 @@ export default function ExecutePage({
                 size="sm"
                 className="gap-1.5"
                 onClick={handleSkipCase}
+                disabled={isRunClosed}
               >
                 <SkipForward className="size-3.5" />
                 Skip
@@ -335,6 +356,7 @@ export default function ExecutePage({
                 className="gap-1.5"
                 onClick={() => handleSubmitCase()}
                 disabled={
+                  isRunClosed ||
                   submitResult.isPending ||
                   (steps.length > 0 && !computedOverallStatus)
                 }
@@ -348,7 +370,7 @@ export default function ExecutePage({
                   size="sm"
                   className="gap-1.5 text-muted-foreground"
                   onClick={handleBulkSubmitAll}
-                  disabled={bulkSubmit.isPending}
+                  disabled={isRunClosed || bulkSubmit.isPending}
                 >
                   <CheckCircle2 className="size-3.5" />
                   {bulkSubmit.isPending ? 'Submitting...' : 'Submit All Remaining'}

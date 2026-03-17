@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   FolderKanban,
+  Key,
   Users,
   Settings,
   LogOut,
@@ -30,6 +31,7 @@ const adminNav: NavItem[] = [
 ];
 
 const bottomNav: NavItem[] = [
+  { label: 'API Keys', href: '/settings/api-keys', icon: Key },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 

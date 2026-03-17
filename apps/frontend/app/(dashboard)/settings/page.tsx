@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Key, Loader2 } from 'lucide-react';
 import { UpdateProfileSchema } from '@app/shared';
 import { useAuth } from '@/lib/auth/useAuth';
 import { useUpdateProfile } from '@/lib/users/useProfile';
@@ -186,6 +187,24 @@ export default function SettingsPage() {
                 )}
               </div>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* API Keys */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Key className="size-4" />
+              API Keys
+            </CardTitle>
+            <CardDescription>
+              Manage API keys for Playwright automation integration
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/settings/api-keys">
+              <Button variant="outline">Manage API Keys</Button>
+            </Link>
           </CardContent>
         </Card>
       </div>

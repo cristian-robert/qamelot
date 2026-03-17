@@ -1,0 +1,23 @@
+{
+  "name": "@app/playwright-reporter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright reporter that sends results to Qamelot",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@app/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@playwright/test": "^1.40.0"
+  },
+  "peerDependencies": {
+    "@playwright/test": ">=1.30.0"
+  }
+}

@@ -2,54 +2,37 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateTestSuiteInput, UpdateTestSuiteInput } from '@app/shared';
-import { testSuitesApi } from '../api/test-suites';
-import { buildTree } from './tree-utils';
-
-export function testSuitesQueryKey(projectId: string) {
-  return ['projects', projectId, 'suites'] as const;
-}
+import { testSuitesApi } from '@/lib/api/test-suites';
 
 export function useTestSuites(projectId: string) {
-  const queryClient = useQueryClient();
-  const queryKey = testSuitesQueryKey(projectId);
-
-  const { data: suites, isLoading, error } = useQuery({
-    queryKey,
+  return useQuery({
+    queryKey: ['test-suites', projectId],
     queryFn: () => testSuitesApi.listByProject(projectId),
     enabled: !!projectId,
   });
+}
 
-  const tree = suites ? buildTree(suites) : [];
-
-  const createSuite = useMutation({
+export function useCreateTestSuite(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: (data: CreateTestSuiteInput) => testSuitesApi.create(projectId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['test-suites', projectId] }),
   });
+}
 
-  const updateSuite = useMutation({
+export function useUpdateTestSuite(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateTestSuiteInput }) =>
       testSuitesApi.update(projectId, id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['test-suites', projectId] }),
   });
+}
 
-  const deleteSuite = useMutation({
+export function useDeleteTestSuite(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: (id: string) => testSuitesApi.remove(projectId, id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['test-suites', projectId] }),
   });
-
-  return {
-    suites: suites ?? [],
-    tree,
-    isLoading,
-    error,
-    createSuite,
-    updateSuite,
-    deleteSuite,
-  };
 }

@@ -1,111 +1,223 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
-import { projectsApi } from '@/lib/api/projects';
-import { PROJECTS_QUERY_KEY } from '@/lib/projects/useProjects';
-import { useConfigs } from '@/lib/configs/useConfigs';
+import { use, useState } from 'react';
+import { Plus, Settings2, X } from 'lucide-react';
+import type { ConfigGroupWithItemsDto, ConfigItemDto } from '@app/shared';
+import { useProject } from '@/lib/projects/useProjects';
+import {
+  useConfigGroups,
+  useCreateConfigGroup,
+  useCreateConfigItem,
+  useDeleteConfigItem,
+} from '@/lib/configs/useConfigs';
 import { Breadcrumb } from '@/components/Breadcrumb';
-import { ConfigGroupCard } from '@/components/configs/ConfigGroupCard';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
-export default function ProjectConfigsPage() {
-  const { id: projectId } = useParams<{ id: string }>();
-  const [newGroupName, setNewGroupName] = useState('');
+export default function ConfigsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: projectId } = use(params);
+  const { data: project } = useProject(projectId);
+  const { data: groups, isLoading } = useConfigGroups(projectId);
+  const createGroup = useCreateConfigGroup(projectId);
+  const createItem = useCreateConfigItem();
+  const deleteItem = useDeleteConfigItem();
 
-  const { data: project, isLoading: projectLoading } = useQuery({
-    queryKey: [...PROJECTS_QUERY_KEY, projectId],
-    queryFn: () => projectsApi.getById(projectId),
-    enabled: !!projectId,
-  });
-
-  const {
-    groups,
-    isLoading: configsLoading,
-    createGroup,
-    updateGroup,
-    deleteGroup,
-    createItem,
-    deleteItem,
-  } = useConfigs(projectId);
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [itemOpen, setItemOpen] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [itemName, setItemName] = useState('');
 
   function handleCreateGroup() {
-    const trimmed = newGroupName.trim();
-    if (!trimmed) return;
-    createGroup.mutate({ name: trimmed }, {
-      onSuccess: () => setNewGroupName(''),
-    });
+    if (!groupName.trim()) return;
+    createGroup.mutate(
+      { name: groupName.trim() },
+      {
+        onSuccess: () => {
+          setGroupOpen(false);
+          setGroupName('');
+        },
+      },
+    );
   }
 
-  if (projectLoading) {
-    return <div className="text-muted-foreground">Loading...</div>;
+  function handleCreateItem() {
+    if (!itemName.trim() || !selectedGroupId) return;
+    createItem.mutate(
+      { groupId: selectedGroupId, data: { name: itemName.trim() } },
+      {
+        onSuccess: () => {
+          setItemOpen(false);
+          setItemName('');
+          setSelectedGroupId(null);
+        },
+      },
+    );
   }
 
-  if (!project) {
-    return <div className="text-destructive">Project not found.</div>;
+  function openAddItem(groupId: string) {
+    setSelectedGroupId(groupId);
+    setItemName('');
+    setItemOpen(true);
   }
 
   return (
-    <div className="space-y-6">
-      <Breadcrumb items={[
-        { label: 'Projects', href: '/projects' },
-        { label: project.name, href: `/projects/${projectId}` },
-        { label: 'Configurations' },
-      ]} />
+    <div className="flex-1 space-y-6 overflow-y-auto p-6">
+      <Breadcrumb
+        items={[
+          { label: 'Projects', href: '/projects' },
+          { label: project?.name ?? '...', href: `/projects/${projectId}` },
+          { label: 'Configs' },
+        ]}
+      />
 
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Configurations</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Define configuration groups (e.g., Browser, OS) and values for matrix testing.
-        </p>
+        <Dialog open={groupOpen} onOpenChange={setGroupOpen}>
+          <DialogTrigger render={<Button />}>
+            <Plus className="size-4" />
+            Add Group
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Config Group</DialogTitle>
+              <DialogDescription>
+                A config group organizes configuration items for matrix testing.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="group-name">Group Name</Label>
+                <Input
+                  id="group-name"
+                  placeholder="e.g. Browsers, OS, Environments"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={handleCreateGroup}
+                disabled={!groupName.trim() || createGroup.isPending}
+              >
+                {createGroup.isPending ? 'Creating...' : 'Create'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Input
-          placeholder="New group name (e.g., Browser)"
-          value={newGroupName}
-          onChange={(e) => setNewGroupName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleCreateGroup();
-          }}
-          className="max-w-xs"
-        />
-        <Button
-          onClick={handleCreateGroup}
-          disabled={!newGroupName.trim() || createGroup.isPending}
-        >
-          <Plus className="mr-1.5 size-4" />
-          Add Group
-        </Button>
-      </div>
+      <Dialog open={itemOpen} onOpenChange={setItemOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Config Item</DialogTitle>
+            <DialogDescription>
+              Add a configuration option to this group.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="item-name">Item Name</Label>
+              <Input
+                id="item-name"
+                placeholder="e.g. Chrome, Firefox, Safari"
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleCreateItem}
+              disabled={!itemName.trim() || createItem.isPending}
+            >
+              {createItem.isPending ? 'Adding...' : 'Add Item'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {configsLoading ? (
-        <p className="text-sm text-muted-foreground">Loading configurations...</p>
-      ) : groups.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No configuration groups yet. Create your first group to start defining test
-          configurations.
-        </p>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {groups.map((group) => (
-            <ConfigGroupCard
-              key={group.id}
-              group={group}
-              onAddItem={(groupId, name) =>
-                createItem.mutate({ groupId, data: { name } })
-              }
-              onDeleteItem={(itemId) => deleteItem.mutate(itemId)}
-              onUpdateGroup={(groupId, name) =>
-                updateGroup.mutate({ id: groupId, data: { name } })
-              }
-              onDeleteGroup={(groupId) => deleteGroup.mutate(groupId)}
-              isAddingItem={createItem.isPending}
-            />
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-5 w-32" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-full" />
+              </CardContent>
+            </Card>
           ))}
+        </div>
+      ) : groups?.length ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {groups.map((group: ConfigGroupWithItemsDto) => (
+            <Card key={group.id}>
+              <CardHeader>
+                <CardTitle>{group.name}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {group.items.map((item: ConfigItemDto) => (
+                    <Badge
+                      key={item.id}
+                      variant="secondary"
+                      className="gap-1"
+                    >
+                      {item.name}
+                      <button
+                        onClick={() => deleteItem.mutate(item.id)}
+                        className="ml-0.5 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  {group.items.length === 0 && (
+                    <p className="text-xs text-muted-foreground">No items yet</p>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openAddItem(group.id)}
+                >
+                  <Plus className="size-3" />
+                  Add Item
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <Settings2 className="size-10 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">
+            No configuration groups yet. Create groups for matrix testing.
+          </p>
+          <Button variant="outline" onClick={() => setGroupOpen(true)}>
+            <Plus className="size-4" />
+            Add Group
+          </Button>
         </div>
       )}
     </div>

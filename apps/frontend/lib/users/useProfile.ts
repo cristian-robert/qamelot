@@ -2,18 +2,15 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { UpdateProfileInput } from '@app/shared';
-import { usersApi } from '../api/users';
-import { AUTH_QUERY_KEY } from '../auth/useAuth';
+import { usersApi } from '@/lib/api/users';
 
-export function useProfile() {
+export function useUpdateProfile() {
   const queryClient = useQueryClient();
-
-  const updateProfile = useMutation({
+  return useMutation({
     mutationFn: (data: UpdateProfileInput) => usersApi.updateProfile(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });
-
-  return { updateProfile };
 }

@@ -2,97 +2,45 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateMilestoneInput, UpdateMilestoneInput } from '@app/shared';
-import { milestonesApi, type MilestoneFilters } from '../api/milestones';
-
-export function milestonesQueryKey(projectId: string, filters?: MilestoneFilters) {
-  return ['projects', projectId, 'milestones', filters ?? {}] as const;
-}
-
-export function milestoneTreeQueryKey(projectId: string) {
-  return ['projects', projectId, 'milestones', 'tree'] as const;
-}
+import { milestonesApi, type MilestoneFilters } from '@/lib/api/milestones';
 
 export function useMilestones(projectId: string, filters?: MilestoneFilters) {
-  const queryClient = useQueryClient();
-  const queryKey = milestonesQueryKey(projectId, filters);
-
-  const { data: milestones, isLoading, error } = useQuery({
-    queryKey,
+  return useQuery({
+    queryKey: ['milestones', projectId, filters],
     queryFn: () => milestonesApi.listByProject(projectId, filters),
     enabled: !!projectId,
   });
-
-  const createMilestone = useMutation({
-    mutationFn: (data: CreateMilestoneInput) =>
-      milestonesApi.create(projectId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'milestones'] });
-    },
-  });
-
-  const updateMilestone = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateMilestoneInput }) =>
-      milestonesApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'milestones'] });
-    },
-  });
-
-  const deleteMilestone = useMutation({
-    mutationFn: (id: string) => milestonesApi.remove(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'milestones'] });
-    },
-  });
-
-  return {
-    milestones: milestones ?? [],
-    isLoading,
-    error,
-    createMilestone,
-    updateMilestone,
-    deleteMilestone,
-  };
 }
 
 export function useMilestoneTree(projectId: string) {
-  const queryClient = useQueryClient();
-
-  const { data: tree, isLoading, error } = useQuery({
-    queryKey: milestoneTreeQueryKey(projectId),
+  return useQuery({
+    queryKey: ['milestones', 'tree', projectId],
     queryFn: () => milestonesApi.treeByProject(projectId),
     enabled: !!projectId,
   });
+}
 
-  const createMilestone = useMutation({
-    mutationFn: (data: CreateMilestoneInput) =>
-      milestonesApi.create(projectId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'milestones'] });
-    },
+export function useCreateMilestone(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateMilestoneInput) => milestonesApi.create(projectId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['milestones', projectId] }),
   });
+}
 
-  const updateMilestone = useMutation({
+export function useUpdateMilestone(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateMilestoneInput }) =>
       milestonesApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'milestones'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['milestones', projectId] }),
   });
+}
 
-  const deleteMilestone = useMutation({
+export function useDeleteMilestone(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: (id: string) => milestonesApi.remove(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'milestones'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['milestones', projectId] }),
   });
-
-  return {
-    tree: tree ?? [],
-    isLoading,
-    error,
-    createMilestone,
-    updateMilestone,
-    deleteMilestone,
-  };
 }

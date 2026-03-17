@@ -1,24 +1,21 @@
 'use client';
 
-import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Paperclip } from 'lucide-react';
+import { Paperclip } from 'lucide-react';
 import type { AttachmentEntityType } from '@app/shared';
 import { attachmentsApi } from '@/lib/api/attachments';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { FileUploadZone } from './FileUploadZone';
 import { AttachmentList } from './AttachmentList';
-import { cn } from '@/lib/utils';
 
 interface AttachmentsPanelProps {
   entityType: AttachmentEntityType;
   entityId: string;
-  className?: string;
 }
 
-export function AttachmentsPanel({ entityType, entityId, className }: AttachmentsPanelProps) {
+export function AttachmentsPanel({ entityType, entityId }: AttachmentsPanelProps) {
   const queryClient = useQueryClient();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
   const queryKey = ['attachments', entityType, entityId];
 
   const { data: attachments = [], isLoading } = useQuery({
@@ -29,60 +26,59 @@ export function AttachmentsPanel({ entityType, entityId, className }: Attachment
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => attachmentsApi.upload(file, entityType, entityId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => attachmentsApi.remove(id),
-    onMutate: (id) => setDeletingId(id),
-    onSettled: () => setDeletingId(null),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
-  const handleFilesSelected = useCallback(
-    (files: File[]) => {
-      for (const file of files) {
-        uploadMutation.mutate(file);
-      }
-    },
-    [uploadMutation],
-  );
+  async function handleUpload(file: File) {
+    await uploadMutation.mutateAsync(file);
+  }
+
+  function handleDelete(id: string) {
+    deleteMutation.mutate(id);
+  }
 
   return (
-    <div className={cn('space-y-4', className)}>
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <Paperclip className="size-4" />
-        Attachments
-        {isLoading && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
-      </div>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Paperclip className="size-4 text-muted-foreground" />
+          Attachments
+          {attachments.length > 0 && (
+            <span className="text-xs text-muted-foreground">({attachments.length})</span>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <FileUploadZone onUpload={handleUpload} disabled={uploadMutation.isPending} />
 
-      <FileUploadZone
-        onFilesSelected={handleFilesSelected}
-        disabled={uploadMutation.isPending}
-      />
+        {uploadMutation.error && (
+          <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {uploadMutation.error.message}
+          </div>
+        )}
 
-      {uploadMutation.isPending && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Uploading...
-        </div>
-      )}
-
-      {uploadMutation.isError && (
-        <p className="text-sm text-destructive">
-          Upload failed: {uploadMutation.error.message}
-        </p>
-      )}
-
-      <AttachmentList
-        attachments={attachments}
-        onDelete={(id) => deleteMutation.mutate(id)}
-        isDeleting={deletingId}
-      />
-    </div>
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="h-12 animate-pulse rounded-md bg-muted" />
+            ))}
+          </div>
+        ) : (
+          <>
+            {attachments.length > 0 && <Separator />}
+            <AttachmentList
+              attachments={attachments}
+              onDelete={handleDelete}
+              isDeleting={deleteMutation.isPending}
+            />
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

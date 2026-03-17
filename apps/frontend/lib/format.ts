@@ -1,3 +1,23 @@
-export function formatLabel(value: string): string {
-  return value.charAt(0) + value.slice(1).toLowerCase();
+export function formatDate(date: string | null | undefined): string {
+  if (!date) return '\u2014';
+  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export function formatDateTime(date: string | null | undefined): string {
+  if (!date) return '\u2014';
+  return new Date(date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+export function formatRelativeTime(date: string): string {
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const diff = now - then;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return formatDate(date);
 }

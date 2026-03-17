@@ -2,51 +2,37 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateSharedStepInput, UpdateSharedStepInput } from '@app/shared';
-import { sharedStepsApi } from '../api/shared-steps';
-
-export function sharedStepsQueryKey(projectId: string) {
-  return ['projects', projectId, 'shared-steps'] as const;
-}
+import { sharedStepsApi } from '@/lib/api/shared-steps';
 
 export function useSharedSteps(projectId: string) {
-  const queryClient = useQueryClient();
-  const queryKey = sharedStepsQueryKey(projectId);
-
-  const { data: sharedSteps, isLoading, error } = useQuery({
-    queryKey,
+  return useQuery({
+    queryKey: ['shared-steps', projectId],
     queryFn: () => sharedStepsApi.listByProject(projectId),
     enabled: !!projectId,
   });
+}
 
-  const createSharedStep = useMutation({
-    mutationFn: (data: CreateSharedStepInput) =>
-      sharedStepsApi.create(projectId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-    },
+export function useCreateSharedStep(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateSharedStepInput) => sharedStepsApi.create(projectId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shared-steps', projectId] }),
   });
+}
 
-  const updateSharedStep = useMutation({
+export function useUpdateSharedStep(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateSharedStepInput }) =>
       sharedStepsApi.update(projectId, id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shared-steps', projectId] }),
   });
+}
 
-  const deleteSharedStep = useMutation({
+export function useDeleteSharedStep(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: (id: string) => sharedStepsApi.remove(projectId, id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shared-steps', projectId] }),
   });
-
-  return {
-    sharedSteps: sharedSteps ?? [],
-    isLoading,
-    error,
-    createSharedStep,
-    updateSharedStep,
-    deleteSharedStep,
-  };
 }

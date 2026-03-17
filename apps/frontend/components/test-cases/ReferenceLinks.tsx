@@ -1,56 +1,46 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { ExternalLink } from 'lucide-react';
 
 interface ReferenceLinksProps {
-  references: string;
+  references: string | null | undefined;
 }
 
-const URL_PATTERN = /^https?:\/\//;
-
-/** Parse a comma-separated references string into trimmed tokens */
-export function parseReferences(references: string): string[] {
-  return references
-    .split(',')
-    .map((r) => r.trim())
-    .filter((r) => r.length > 0);
+function resolveUrl(ref: string): string | null {
+  const trimmed = ref.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^JIRA-/i.test(trimmed)) return `https://jira.example.com/browse/${trimmed}`;
+  if (/^REQ-/i.test(trimmed)) return `https://requirements.example.com/${trimmed}`;
+  return null;
 }
 
-/** Check if a reference string looks like a URL */
-export function isUrl(value: string): boolean {
-  return URL_PATTERN.test(value);
-}
-
-/**
- * Renders comma-separated references as badges.
- * URLs are rendered as clickable links; plain text as static badges.
- */
 export function ReferenceLinks({ references }: ReferenceLinksProps) {
-  const refs = parseReferences(references);
+  if (!references) return null;
 
+  const refs = references.split(',').map((r) => r.trim()).filter(Boolean);
   if (refs.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1" data-testid="reference-links">
-      {refs.map((ref, index) =>
-        isUrl(ref) ? (
-          <a
-            key={`${ref}-${index}`}
-            href={ref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex"
-          >
-            <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80">
-              {ref}
-            </Badge>
-          </a>
-        ) : (
-          <Badge key={`${ref}-${index}`} variant="outline">
+    <div className="flex flex-wrap gap-1.5">
+      {refs.map((ref) => {
+        const url = resolveUrl(ref);
+        if (url) {
+          return (
+            <a key={ref} href={url} target="_blank" rel="noopener noreferrer">
+              <Badge variant="outline" className="cursor-pointer gap-1 hover:bg-muted">
+                <ExternalLink className="size-2.5" />
+                {ref}
+              </Badge>
+            </a>
+          );
+        }
+        return (
+          <Badge key={ref} variant="outline">
             {ref}
           </Badge>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }

@@ -1,127 +1,118 @@
 'use client';
 
-import { useCallback } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { CreateDefectSchema } from '@app/shared';
-import type { CreateDefectInput, TestRunCaseWithResultDto } from '@app/shared';
+import { useState } from 'react';
+import { Bug } from 'lucide-react';
+import { useCreateDefect } from '@/lib/defects/useDefects';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
+  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogClose,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 
 interface CreateDefectDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  testRunCase: TestRunCaseWithResultDto;
-  runName: string;
-  onSubmit: (data: CreateDefectInput) => void;
-  isPending: boolean;
-}
-
-function buildDefaultDescription(
-  testRunCase: TestRunCaseWithResultDto,
-  runName: string,
-): string {
-  const parts: string[] = [];
-  parts.push(`Test Case: ${testRunCase.testCase.title}`);
-  parts.push(`Run: ${runName}`);
-  if (testRunCase.latestResult?.comment) {
-    parts.push(`Failure Comment: ${testRunCase.latestResult.comment}`);
-  }
-  return parts.join('\n');
+  projectId: string;
+  testResultId: string;
+  caseTitle: string;
+  trigger?: React.ReactElement;
 }
 
 export function CreateDefectDialog({
-  open,
-  onOpenChange,
-  testRunCase,
-  runName,
-  onSubmit,
-  isPending,
+  projectId,
+  testResultId,
+  caseTitle,
+  trigger,
 }: CreateDefectDialogProps) {
-  const resultId = testRunCase.latestResult?.id;
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<CreateDefectInput>({
-    resolver: zodResolver(CreateDefectSchema),
-    defaultValues: {
-      reference: '',
-      description: buildDefaultDescription(testRunCase, runName),
-      testResultId: resultId,
-    },
-  });
-
-  const handleFormSubmit = useCallback(
-    (data: CreateDefectInput) => {
-      onSubmit({ ...data, testResultId: resultId });
-      reset();
-      onOpenChange(false);
-    },
-    [onSubmit, resultId, reset, onOpenChange],
+  const [open, setOpen] = useState(false);
+  const [reference, setReference] = useState('');
+  const [description, setDescription] = useState(
+    `Defect found during execution of: ${caseTitle}`,
   );
 
+  const createDefect = useCreateDefect(projectId);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!reference.trim()) return;
+
+    createDefect.mutate(
+      {
+        reference: reference.trim(),
+        description: description.trim() || undefined,
+        testResultId,
+      },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          setReference('');
+          setDescription('');
+        },
+      },
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger
+        render={
+          trigger ?? (
+            <Button variant="outline" size="xs" className="gap-1 text-red-600 hover:text-red-700" />
+          )
+        }
+      >
+        <Bug className="size-3" />
+        Log Defect
+      </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Create Defect</DialogTitle>
-          <DialogDescription>
-            Report a defect for &quot;{testRunCase.testCase.title}&quot; in run &quot;{runName}&quot;.
-          </DialogDescription>
-        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Log Defect</DialogTitle>
+            <DialogDescription>
+              Link a defect reference to this failed test result.
+            </DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="defect-reference">Reference (ticket ID or URL)</Label>
-            <Input
-              id="defect-reference"
-              placeholder="e.g. PROJ-123 or https://issues.example.com/123"
-              {...register('reference')}
-              aria-invalid={!!errors.reference}
-            />
-            {errors.reference && (
-              <p className="text-xs text-destructive">{errors.reference.message}</p>
-            )}
+          <div className="mt-4 space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="defect-reference">Reference</Label>
+              <Input
+                id="defect-reference"
+                placeholder="e.g. BUG-123 or JIRA ticket URL"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="defect-description">Description</Label>
+              <Textarea
+                id="defect-description"
+                placeholder="Describe the defect..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="min-h-[80px]"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="defect-description">Description</Label>
-            <Textarea
-              id="defect-description"
-              placeholder="Describe the defect..."
-              rows={4}
-              {...register('description')}
-              aria-invalid={!!errors.description}
-            />
-            {errors.description && (
-              <p className="text-xs text-destructive">{errors.description.message}</p>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isPending}
-            >
+          <DialogFooter className="mt-4">
+            <DialogClose render={<Button variant="outline" />}>
               Cancel
-            </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? 'Creating...' : 'Create Defect'}
+            </DialogClose>
+            <Button
+              type="submit"
+              disabled={!reference.trim() || createDefect.isPending}
+            >
+              {createDefect.isPending ? 'Creating...' : 'Create Defect'}
             </Button>
           </DialogFooter>
         </form>

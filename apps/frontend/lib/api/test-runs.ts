@@ -1,22 +1,12 @@
-import type {
-  TestRunDto,
-  TestRunDetailDto,
-  CreateTestRunInput,
-  UpdateTestRunInput,
-  CreateMatrixRunsInput,
-} from '@app/shared';
+import type { TestRunDto, TestRunDetailDto, CreateTestRunInput, UpdateTestRunInput, CreateMatrixRunsInput } from '@app/shared';
 import { apiFetch } from './client';
 
-/** Run list item includes assignedTo relation, case count, and optional configLabel */
 export interface TestRunListItem extends TestRunDto {
   assignedTo: { id: string; name: string; email: string } | null;
   _count: { testRunCases: number };
 }
 
-export interface TestRunFilters {
-  status?: string;
-  assigneeId?: string;
-}
+export interface TestRunFilters { status?: string; assigneeId?: string; }
 
 function buildQueryString(filters?: TestRunFilters): string {
   if (!filters) return '';
@@ -30,34 +20,14 @@ function buildQueryString(filters?: TestRunFilters): string {
 export const testRunsApi = {
   listByPlan: (planId: string, filters?: TestRunFilters) =>
     apiFetch<TestRunListItem[]>(`/plans/${planId}/runs${buildQueryString(filters)}`),
-
-  getById: (id: string) =>
-    apiFetch<TestRunDetailDto>(`/runs/${id}`),
-
+  getById: (id: string) => apiFetch<TestRunDetailDto>(`/runs/${id}`),
   create: (planId: string, data: CreateTestRunInput) =>
-    apiFetch<TestRunDetailDto>(`/plans/${planId}/runs`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
+    apiFetch<TestRunDetailDto>(`/plans/${planId}/runs`, { method: 'POST', body: JSON.stringify(data) }),
   update: (id: string, data: UpdateTestRunInput) =>
-    apiFetch<TestRunDto>(`/runs/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
-
-  close: (id: string) =>
-    apiFetch<TestRunDetailDto>(`/runs/${id}/close`, { method: 'PATCH' }),
-
-  rerun: (id: string) =>
-    apiFetch<TestRunDetailDto>(`/runs/${id}/rerun`, { method: 'POST' }),
-
-  remove: (id: string) =>
-    apiFetch<TestRunDto>(`/runs/${id}`, { method: 'DELETE' }),
-
+    apiFetch<TestRunDto>(`/runs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  close: (id: string) => apiFetch<TestRunDetailDto>(`/runs/${id}/close`, { method: 'PATCH' }),
+  rerun: (id: string) => apiFetch<TestRunDetailDto>(`/runs/${id}/rerun`, { method: 'POST' }),
+  remove: (id: string) => apiFetch<TestRunDto>(`/runs/${id}`, { method: 'DELETE' }),
   createMatrixRuns: (planId: string, data: CreateMatrixRunsInput) =>
-    apiFetch<TestRunDetailDto[]>(`/plans/${planId}/runs/matrix`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+    apiFetch<TestRunDetailDto[]>(`/plans/${planId}/runs/matrix`, { method: 'POST', body: JSON.stringify(data) }),
 };

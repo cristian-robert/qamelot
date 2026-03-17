@@ -1,102 +1,259 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
-import { useMilestoneTree } from '@/lib/milestones/useMilestones';
-import { MilestoneTree } from '@/components/milestones/MilestoneTree';
-import { MilestoneFormDialog } from '@/components/milestones/MilestoneFormDialog';
+import { use, useState } from 'react';
+import {
+  Plus,
+  ChevronRight,
+  ChevronDown,
+  Target,
+  Calendar,
+  AlertTriangle,
+} from 'lucide-react';
+import { MilestoneStatus } from '@app/shared';
+import type { MilestoneTreeNode } from '@app/shared';
+import { useProject } from '@/lib/projects/useProjects';
+import { useMilestoneTree, useCreateMilestone } from '@/lib/milestones/useMilestones';
+import { formatDate } from '@/lib/format';
+import { daysUntil, isOverdue } from '@/lib/date-utils';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/ui/button';
-import type { CreateMilestoneInput, MilestoneTreeNode } from '@app/shared';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
-/** Find a node by id anywhere in the tree */
-function findNode(tree: MilestoneTreeNode[], id: string): MilestoneTreeNode | null {
-  for (const node of tree) {
-    if (node.id === id) return node;
-    const found = findNode(node.children, id);
-    if (found) return found;
-  }
-  return null;
-}
+export default function MilestonesPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: projectId } = use(params);
+  const { data: project } = useProject(projectId);
+  const { data: tree, isLoading } = useMilestoneTree(projectId);
+  const createMilestone = useCreateMilestone(projectId);
 
-export default function MilestonesPage() {
-  const { id: projectId } = useParams<{ id: string }>();
-  const {
-    tree,
-    isLoading,
-    error,
-    createMilestone,
-    updateMilestone,
-    deleteMilestone,
-  } = useMilestoneTree(projectId);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [startDate, setStartDate] = useState('');
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [parentId, setParentId] = useState<string | null>(null);
-
-  const parentNode = parentId ? findNode(tree, parentId) : null;
-
-  const openCreateDialog = useCallback((pId: string | null = null) => {
-    setParentId(pId);
-    setDialogOpen(true);
-  }, []);
-
-  const handleCreate = (data: CreateMilestoneInput) => {
-    createMilestone.mutate(data, {
-      onSuccess: () => {
-        setDialogOpen(false);
-        setParentId(null);
+  function handleCreate() {
+    if (!name.trim()) return;
+    createMilestone.mutate(
+      {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        startDate: startDate || undefined,
+        dueDate: dueDate || undefined,
       },
-    });
-  };
-
-  const handleClose = (milestoneId: string) => {
-    updateMilestone.mutate({ id: milestoneId, data: { status: 'CLOSED' } });
-  };
-
-  const handleDelete = (milestoneId: string) => {
-    if (window.confirm('Delete this milestone?')) {
-      deleteMilestone.mutate(milestoneId);
-    }
-  };
+      {
+        onSuccess: () => {
+          setOpen(false);
+          setName('');
+          setDescription('');
+          setDueDate('');
+          setStartDate('');
+        },
+      },
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      <Breadcrumb items={[
-        { label: 'Projects', href: '/projects' },
-        { label: 'Milestones' },
-      ]} />
+    <div className="flex-1 space-y-6 overflow-y-auto p-6">
+      <Breadcrumb
+        items={[
+          { label: 'Projects', href: '/projects' },
+          { label: project?.name ?? '...', href: `/projects/${projectId}` },
+          { label: 'Milestones' },
+        ]}
+      />
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Milestones</h1>
-        <Button onClick={() => openCreateDialog(null)}>New Milestone</Button>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger render={<Button />}>
+            <Plus className="size-4" />
+            New Milestone
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Milestone</DialogTitle>
+              <DialogDescription>
+                Add a milestone to track progress toward a goal.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="ms-name">Name</Label>
+                <Input
+                  id="ms-name"
+                  placeholder="Milestone name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ms-desc">Description</Label>
+                <Textarea
+                  id="ms-desc"
+                  placeholder="Optional description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ms-start">Start Date</Label>
+                  <Input
+                    id="ms-start"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ms-due">Due Date</Label>
+                  <Input
+                    id="ms-due"
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={handleCreate}
+                disabled={!name.trim() || createMilestone.isPending}
+              >
+                {createMilestone.isPending ? 'Creating...' : 'Create'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {error ? (
-        <p className="text-sm text-destructive">
-          {error instanceof Error ? error.message : 'Failed to load milestones'}
-        </p>
-      ) : isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      ) : tree?.length ? (
+        <div className="space-y-2">
+          {tree.map((node) => (
+            <MilestoneNode key={node.id} node={node} depth={0} />
+          ))}
+        </div>
       ) : (
-        <MilestoneTree
-          tree={tree}
-          onAddChild={(id) => openCreateDialog(id)}
-          onClose={handleClose}
-          onDelete={handleDelete}
-        />
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <Target className="size-10 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">
+            No milestones yet. Create one to track project progress.
+          </p>
+          <Button variant="outline" onClick={() => setOpen(true)}>
+            <Plus className="size-4" />
+            New Milestone
+          </Button>
+        </div>
       )}
+    </div>
+  );
+}
 
-      <MilestoneFormDialog
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) setParentId(null);
-        }}
-        onSubmit={handleCreate}
-        isPending={createMilestone.isPending}
-        parentId={parentId}
-        parentName={parentNode?.name}
-        title={parentId ? 'Create Sub-Milestone' : 'Create Milestone'}
-      />
+function MilestoneNode({
+  node,
+  depth,
+}: {
+  node: MilestoneTreeNode;
+  depth: number;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const hasChildren = node.children.length > 0;
+  const days = daysUntil(node.dueDate);
+  const overdue = isOverdue(node.dueDate);
+
+  return (
+    <div style={{ marginLeft: depth * 24 }}>
+      <div className="flex items-center gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50">
+        {hasChildren ? (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            {expanded ? (
+              <ChevronDown className="size-4" />
+            ) : (
+              <ChevronRight className="size-4" />
+            )}
+          </button>
+        ) : (
+          <div className="size-4 shrink-0" />
+        )}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{node.name}</span>
+            <Badge
+              variant={node.status === MilestoneStatus.OPEN ? 'default' : 'secondary'}
+            >
+              {node.status}
+            </Badge>
+          </div>
+          <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
+            {node.dueDate && (
+              <span className="flex items-center gap-1">
+                <Calendar className="size-3" />
+                Due {formatDate(node.dueDate)}
+              </span>
+            )}
+            {days !== null && node.status === MilestoneStatus.OPEN && (
+              <span
+                className={`flex items-center gap-1 ${
+                  overdue ? 'text-red-600' : days <= 7 ? 'text-amber-600' : ''
+                }`}
+              >
+                {overdue ? (
+                  <>
+                    <AlertTriangle className="size-3" />
+                    Overdue by {Math.abs(days)}d
+                  </>
+                ) : (
+                  `${days}d remaining`
+                )}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex w-40 items-center gap-2">
+          <Progress value={node.progress.percent} />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {Math.round(node.progress.percent)}%
+          </span>
+        </div>
+      </div>
+
+      {hasChildren && expanded && (
+        <div className="mt-2 space-y-2">
+          {node.children.map((child) => (
+            <MilestoneNode key={child.id} node={child} depth={depth + 1} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

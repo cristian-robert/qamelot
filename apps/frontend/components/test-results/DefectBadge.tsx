@@ -1,27 +1,23 @@
-'use client';
-
+import { Bug } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import type { DefectDto } from '@app/shared';
+import { cn } from '@/lib/utils';
 
 interface DefectBadgeProps {
-  defects: DefectDto[];
+  reference: string;
+  className?: string;
 }
 
-export function DefectBadge({ defects }: DefectBadgeProps) {
-  if (defects.length === 0) return null;
-
+export function DefectBadge({ reference, className }: DefectBadgeProps) {
   return (
-    <div className="flex flex-wrap gap-1">
-      {defects.map((defect) => (
-        <Badge
-          key={defect.id}
-          variant="secondary"
-          className="bg-red-50 text-red-700 hover:bg-red-100"
-          title={defect.description ?? defect.reference}
-        >
-          {defect.reference}
-        </Badge>
-      ))}
-    </div>
+    <Badge
+      variant="outline"
+      className={cn(
+        'gap-1 bg-red-50 text-red-700 border-red-200 text-[10px] font-semibold',
+        className,
+      )}
+    >
+      <Bug className="size-3" />
+      {reference}
+    </Badge>
   );
 }

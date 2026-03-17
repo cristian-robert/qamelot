@@ -1,174 +1,203 @@
 'use client';
 
 import { useState } from 'react';
+import { Pencil, Trash2, ListOrdered, ChevronDown, ChevronRight } from 'lucide-react';
+import type { SharedStepWithItemsDto, CreateSharedStepInput } from '@app/shared';
+import {
+  useSharedSteps,
+  useCreateSharedStep,
+  useUpdateSharedStep,
+  useDeleteSharedStep,
+} from '@/lib/shared-steps/useSharedSteps';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import type {
-  SharedStepWithItemsDto,
-  CreateSharedStepInput,
-  TestCaseStep,
-} from '@app/shared';
-import { useSharedSteps } from '@/lib/shared-steps/useSharedSteps';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { SharedStepFormDialog } from './SharedStepFormDialog';
 
 interface SharedStepLibraryProps {
   projectId: string;
-  onInsert: (steps: TestCaseStep[]) => void;
 }
 
-export function SharedStepLibrary({ projectId, onInsert }: SharedStepLibraryProps) {
-  const {
-    sharedSteps,
-    isLoading,
-    createSharedStep,
-    updateSharedStep,
-    deleteSharedStep,
-  } = useSharedSteps(projectId);
+export function SharedStepLibrary({ projectId }: SharedStepLibraryProps) {
+  const { data: steps, isLoading } = useSharedSteps(projectId);
+  const createStep = useCreateSharedStep(projectId);
+  const updateStep = useUpdateSharedStep(projectId);
+  const deleteStep = useDeleteSharedStep(projectId);
 
-  const [dialogState, setDialogState] = useState<{
-    open: boolean;
-    mode: 'create' | 'edit';
-    sharedStep?: SharedStepWithItemsDto;
-  }>({ open: false, mode: 'create' });
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<SharedStepWithItemsDto | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SharedStepWithItemsDto | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
-  const handleCreate = () => {
-    setDialogState({ open: true, mode: 'create' });
-  };
+  function handleCreate(data: CreateSharedStepInput) {
+    createStep.mutate(data, {
+      onSuccess: () => setFormOpen(false),
+    });
+  }
 
-  const handleEdit = (sharedStep: SharedStepWithItemsDto) => {
-    setDialogState({ open: true, mode: 'edit', sharedStep });
-  };
+  function handleEdit(step: SharedStepWithItemsDto) {
+    setEditing(step);
+    setFormOpen(true);
+  }
 
-  const handleDelete = (id: string, title: string) => {
-    if (window.confirm(`Delete shared step "${title}"?`)) {
-      deleteSharedStep.mutate(id);
-    }
-  };
+  function handleUpdate(data: CreateSharedStepInput) {
+    if (!editing) return;
+    updateStep.mutate(
+      { id: editing.id, data },
+      { onSuccess: () => { setFormOpen(false); setEditing(null); } },
+    );
+  }
 
-  const handleInsert = (sharedStep: SharedStepWithItemsDto) => {
-    const steps: TestCaseStep[] = sharedStep.items.map((item) => ({
-      action: `[Shared: ${sharedStep.title}] ${item.description}`,
-      expected: item.expectedResult,
-    }));
-    onInsert(steps);
-  };
+  function handleDelete() {
+    if (!deleteTarget) return;
+    deleteStep.mutate(deleteTarget.id, {
+      onSuccess: () => setDeleteTarget(null),
+    });
+  }
 
-  const handleDialogSubmit = (data: CreateSharedStepInput) => {
-    if (dialogState.mode === 'create') {
-      createSharedStep.mutate(data, {
-        onSuccess: () => setDialogState({ open: false, mode: 'create' }),
-      });
-    } else if (dialogState.sharedStep) {
-      updateSharedStep.mutate(
-        { id: dialogState.sharedStep.id, data },
-        { onSuccess: () => setDialogState({ open: false, mode: 'create' }) },
-      );
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i}>
+            <CardContent className="py-4">
+              <div className="h-5 w-48 animate-pulse rounded bg-muted" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-full flex-col border-l">
-      <div className="flex items-center justify-between border-b px-3 py-2">
-        <h3 className="text-sm font-semibold">Shared Steps</h3>
-        <Button size="sm" variant="ghost" onClick={handleCreate}>
-          + New
-        </Button>
-      </div>
-
-      <ScrollArea className="flex-1">
-        {isLoading ? (
-          <div className="px-3 py-4 space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-10 animate-pulse rounded bg-muted" />
-            ))}
-          </div>
-        ) : sharedSteps.length === 0 ? (
-          <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-            No shared steps yet.
-          </p>
-        ) : (
-          <div className="divide-y">
-            {sharedSteps.map((ss) => (
-              <div key={ss.id} className="px-3 py-2">
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    className="flex-1 text-left text-sm font-medium hover:text-emerald-700 transition-colors"
-                    onClick={() => setExpandedId(expandedId === ss.id ? null : ss.id)}
-                  >
-                    {ss.title}
-                  </button>
-                  <Badge variant="secondary" className="ml-2 shrink-0">
-                    {ss.items.length} step{ss.items.length !== 1 ? 's' : ''}
-                  </Badge>
-                </div>
-
-                {expandedId === ss.id && (
-                  <div className="mt-2 space-y-1">
-                    {ss.items.map((item) => (
-                      <div key={item.id} className="rounded bg-muted/50 px-2 py-1 text-xs">
-                        <span className="font-medium">{item.stepNumber}.</span>{' '}
-                        {item.description}
-                        <span className="text-muted-foreground"> → {item.expectedResult}</span>
-                      </div>
-                    ))}
-                    <div className="flex gap-1 pt-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        onClick={() => handleInsert(ss)}
-                      >
-                        Insert into case
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 text-xs"
-                        onClick={() => handleEdit(ss)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 text-xs text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(ss.id, ss.title)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
+    <>
+      {steps?.length ? (
+        <div className="space-y-3">
+          {steps.map((step) => {
+            const isExpanded = expandedIds.has(step.id);
+            return (
+              <Card key={step.id}>
+                <CardHeader className="py-3">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => toggleExpanded(step.id)}
+                    >
+                      {isExpanded
+                        ? <ChevronDown className="size-4" />
+                        : <ChevronRight className="size-4" />}
+                    </Button>
+                    <CardTitle className="flex-1 text-sm">{step.title}</CardTitle>
+                    <span className="text-xs text-muted-foreground">
+                      {step.items.length} step{step.items.length !== 1 ? 's' : ''}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => handleEdit(step)}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => setDeleteTarget(step)}
+                    >
+                      <Trash2 className="size-3.5 text-destructive" />
+                    </Button>
                   </div>
+                </CardHeader>
+                {isExpanded && (
+                  <CardContent className="pt-0 pb-3">
+                    <div className="space-y-2">
+                      {step.items
+                        .sort((a, b) => a.stepNumber - b.stepNumber)
+                        .map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex gap-3 rounded-md border px-3 py-2 text-sm"
+                          >
+                            <span className="shrink-0 font-mono text-xs font-semibold text-muted-foreground">
+                              {item.stepNumber}.
+                            </span>
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <p>{item.description}</p>
+                              {item.expectedResult && (
+                                <p className="text-xs text-muted-foreground">
+                                  Expected: {item.expectedResult}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </CardContent>
                 )}
-              </div>
-            ))}
-          </div>
-        )}
-      </ScrollArea>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <ListOrdered className="size-10 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">
+            No shared steps yet. Create reusable step groups for your test cases.
+          </p>
+        </div>
+      )}
 
       <SharedStepFormDialog
-        open={dialogState.open}
+        open={formOpen}
         onOpenChange={(open) => {
-          if (!open) setDialogState({ open: false, mode: 'create' });
+          setFormOpen(open);
+          if (!open) setEditing(null);
         }}
-        onSubmit={handleDialogSubmit}
-        isPending={createSharedStep.isPending || updateSharedStep.isPending}
-        title={dialogState.mode === 'create' ? 'Create Shared Step' : 'Edit Shared Step'}
-        defaultValues={
-          dialogState.mode === 'edit' && dialogState.sharedStep
-            ? {
-                title: dialogState.sharedStep.title,
-                items: dialogState.sharedStep.items.map((item) => ({
-                  description: item.description,
-                  expectedResult: item.expectedResult,
-                })),
-              }
-            : undefined
-        }
+        onSubmit={editing ? handleUpdate : handleCreate}
+        isPending={editing ? updateStep.isPending : createStep.isPending}
+        error={editing ? updateStep.error : createStep.error}
+        editingStep={editing}
       />
-    </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Shared Step</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &ldquo;{deleteTarget?.title}&rdquo;? This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteStep.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteStep.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

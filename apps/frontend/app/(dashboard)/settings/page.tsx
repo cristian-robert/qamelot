@@ -1,130 +1,194 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { UpdateProfileSchema, type UpdateProfileInput } from '@app/shared';
+import { Check, Loader2 } from 'lucide-react';
+import { UpdateProfileSchema } from '@app/shared';
 import { useAuth } from '@/lib/auth/useAuth';
-import { useProfile } from '@/lib/users/useProfile';
+import { useUpdateProfile } from '@/lib/users/useProfile';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { RoleBadge } from '@/components/users/role-badge';
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const { updateProfile } = useProfile();
+  const updateProfile = useUpdateProfile();
+  const [nameSuccess, setNameSuccess] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<UpdateProfileInput>({
-    resolver: zodResolver(UpdateProfileSchema),
+  const nameForm = useForm<{ name: string }>({
     defaultValues: { name: user?.name ?? '' },
   });
 
-  function onSubmit(data: UpdateProfileInput) {
-    const payload: UpdateProfileInput = {};
-    if (data.name && data.name !== user?.name) payload.name = data.name;
-    if (data.newPassword) {
-      payload.currentPassword = data.currentPassword;
-      payload.newPassword = data.newPassword;
-    }
+  const passwordForm = useForm<{ currentPassword: string; newPassword: string }>({
+    defaultValues: { currentPassword: '', newPassword: '' },
+  });
 
-    if (Object.keys(payload).length === 0) return;
-
-    updateProfile.mutate(payload, {
-      onSuccess: () => reset({ name: payload.name ?? user?.name ?? '' }),
-    });
-  }
-
-  if (!user) {
-    return (
-      <div className="p-6">
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      </div>
+  function onNameSubmit(data: { name: string }) {
+    if (!data.name.trim()) return;
+    updateProfile.mutate(
+      { name: data.name.trim() },
+      {
+        onSuccess: () => {
+          setNameSuccess(true);
+          setTimeout(() => setNameSuccess(false), 3000);
+        },
+      },
     );
   }
 
+  function onPasswordSubmit(data: { currentPassword: string; newPassword: string }) {
+    const parsed = UpdateProfileSchema.safeParse({
+      currentPassword: data.currentPassword,
+      newPassword: data.newPassword,
+    });
+    if (!parsed.success) {
+      const firstError = parsed.error.errors[0];
+      if (firstError) {
+        passwordForm.setError(
+          firstError.path[0] as 'currentPassword' | 'newPassword',
+          { message: firstError.message },
+        );
+      }
+      return;
+    }
+    updateProfile.mutate(
+      { currentPassword: data.currentPassword, newPassword: data.newPassword },
+      {
+        onSuccess: () => {
+          passwordForm.reset();
+          setPasswordSuccess(true);
+          setTimeout(() => setPasswordSuccess(false), 3000);
+        },
+        onError: (error) => {
+          passwordForm.setError('currentPassword', { message: error.message });
+        },
+      },
+    );
+  }
+
+  if (!user) return null;
+
   return (
-    <div className="p-6 space-y-6 max-w-lg">
-      <h1 className="text-2xl font-semibold tracking-tight">Profile Settings</h1>
-
-      <div className="space-y-1">
-        <p className="text-sm text-muted-foreground">Email</p>
-        <p className="text-sm font-medium">{user.email}</p>
+    <div className="flex-1 space-y-6 overflow-y-auto p-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage your profile and account preferences
+        </p>
       </div>
 
-      <div className="space-y-1">
-        <p className="text-sm text-muted-foreground">Role</p>
-        <RoleBadge role={user.role} />
+      <div className="grid gap-6 lg:max-w-2xl">
+        {/* Profile Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+            <CardDescription>Your account details</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-muted-foreground">Email</Label>
+                <p className="text-sm font-medium">{user.email}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground">Role</Label>
+                <div>
+                  <RoleBadge role={user.role} />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Change Name */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Display Name</CardTitle>
+            <CardDescription>Update your display name visible to team members</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={nameForm.handleSubmit(onNameSubmit)} className="flex items-end gap-3">
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="settings-name">Name</Label>
+                <Input
+                  id="settings-name"
+                  placeholder="Your name"
+                  {...nameForm.register('name')}
+                />
+              </div>
+              <Button type="submit" disabled={updateProfile.isPending}>
+                {updateProfile.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : nameSuccess ? (
+                  <Check className="size-4" />
+                ) : null}
+                {nameSuccess ? 'Saved' : 'Save'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Change Password */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Password</CardTitle>
+            <CardDescription>Change your account password</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="current-password">Current Password</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  placeholder="Enter current password"
+                  {...passwordForm.register('currentPassword')}
+                />
+                {passwordForm.formState.errors.currentPassword && (
+                  <p className="text-xs text-destructive">
+                    {passwordForm.formState.errors.currentPassword.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Enter new password (min. 8 characters)"
+                  {...passwordForm.register('newPassword')}
+                />
+                {passwordForm.formState.errors.newPassword && (
+                  <p className="text-xs text-destructive">
+                    {passwordForm.formState.errors.newPassword.message}
+                  </p>
+                )}
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center gap-3">
+                <Button type="submit" disabled={updateProfile.isPending}>
+                  {updateProfile.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : passwordSuccess ? (
+                    <Check className="size-4" />
+                  ) : null}
+                  {passwordSuccess ? 'Updated' : 'Update Password'}
+                </Button>
+                {passwordSuccess && (
+                  <p className="text-sm text-emerald-600">Password changed successfully.</p>
+                )}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-1">
-          <label htmlFor="settings-name" className="text-sm font-medium">
-            Display Name
-          </label>
-          <Input
-            id="settings-name"
-            type="text"
-            {...register('name')}
-          />
-          {errors.name && (
-            <p className="text-xs text-destructive">{errors.name.message}</p>
-          )}
-        </div>
-
-        <hr className="border-border" />
-
-        <p className="text-sm font-medium">Change Password</p>
-
-        <div className="space-y-1">
-          <label htmlFor="settings-current-pw" className="text-sm font-medium">
-            Current Password
-          </label>
-          <Input
-            id="settings-current-pw"
-            type="password"
-            {...register('currentPassword')}
-            placeholder="Enter current password"
-          />
-          {errors.currentPassword && (
-            <p className="text-xs text-destructive">{errors.currentPassword.message}</p>
-          )}
-        </div>
-
-        <div className="space-y-1">
-          <label htmlFor="settings-new-pw" className="text-sm font-medium">
-            New Password
-          </label>
-          <Input
-            id="settings-new-pw"
-            type="password"
-            {...register('newPassword')}
-            placeholder="At least 8 characters"
-          />
-          {errors.newPassword && (
-            <p className="text-xs text-destructive">{errors.newPassword.message}</p>
-          )}
-        </div>
-
-        {updateProfile.error && (
-          <p className="text-sm text-destructive">
-            {updateProfile.error instanceof Error
-              ? updateProfile.error.message
-              : 'Failed to update profile'}
-          </p>
-        )}
-
-        {updateProfile.isSuccess && (
-          <p className="text-sm text-green-600">Profile updated successfully.</p>
-        )}
-
-        <Button type="submit" disabled={updateProfile.isPending}>
-          {updateProfile.isPending ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </form>
     </div>
   );
 }

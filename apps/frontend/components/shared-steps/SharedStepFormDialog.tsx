@@ -1,25 +1,34 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CreateSharedStepSchema, type CreateSharedStepInput } from '@app/shared';
+import { Plus, Trash2 } from 'lucide-react';
+import {
+  CreateSharedStepSchema,
+  type CreateSharedStepInput,
+  type SharedStepWithItemsDto,
+} from '@app/shared';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 interface SharedStepFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: CreateSharedStepInput) => void;
   isPending: boolean;
-  defaultValues?: CreateSharedStepInput;
-  title: string;
+  error: Error | null;
+  editingStep?: SharedStepWithItemsDto | null;
 }
 
 export function SharedStepFormDialog({
@@ -27,14 +36,9 @@ export function SharedStepFormDialog({
   onOpenChange,
   onSubmit,
   isPending,
-  defaultValues,
-  title,
+  error,
+  editingStep,
 }: SharedStepFormDialogProps) {
-  const values = defaultValues ?? {
-    title: '',
-    items: [{ description: '', expectedResult: '' }],
-  };
-
   const {
     register,
     handleSubmit,
@@ -43,7 +47,10 @@ export function SharedStepFormDialog({
     formState: { errors },
   } = useForm<CreateSharedStepInput>({
     resolver: zodResolver(CreateSharedStepSchema),
-    values,
+    defaultValues: {
+      title: '',
+      items: [{ description: '', expectedResult: '' }],
+    },
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -51,57 +58,98 @@ export function SharedStepFormDialog({
     name: 'items',
   });
 
-  const handleFormSubmit = (data: CreateSharedStepInput) => {
-    onSubmit(data);
-    reset();
-  };
+  useEffect(() => {
+    if (editingStep) {
+      reset({
+        title: editingStep.title,
+        items: editingStep.items.map((item) => ({
+          description: item.description,
+          expectedResult: item.expectedResult,
+        })),
+      });
+    } else {
+      reset({
+        title: '',
+        items: [{ description: '', expectedResult: '' }],
+      });
+    }
+  }, [editingStep, reset]);
+
+  function handleClose(nextOpen: boolean) {
+    if (!nextOpen) {
+      reset({ title: '', items: [{ description: '', expectedResult: '' }] });
+    }
+    onOpenChange(nextOpen);
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{editingStep ? 'Edit Shared Step' : 'Create Shared Step'}</DialogTitle>
+          <DialogDescription>
+            {editingStep
+              ? 'Update the shared step title and items.'
+              : 'Define a reusable set of test steps.'}
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="ss-title">Title</Label>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="shared-step-title">Title</Label>
             <Input
-              id="ss-title"
-              placeholder="Shared step title (e.g. Login flow)"
+              id="shared-step-title"
+              placeholder="Shared step title"
               {...register('title')}
             />
             {errors.title && (
-              <p className="text-sm text-destructive">{errors.title.message}</p>
+              <p className="text-xs text-destructive">{errors.title.message}</p>
             )}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label>Step Items</Label>
               <Button
                 type="button"
-                size="sm"
                 variant="outline"
+                size="sm"
                 onClick={() => append({ description: '', expectedResult: '' })}
               >
-                Add Item
+                <Plus className="size-3.5" />
+                Add Step
               </Button>
             </div>
 
-            {fields.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                At least one step item is required.
-              </p>
-            )}
-
             {fields.map((field, index) => (
-              <div key={field.id} className="flex items-start gap-2 rounded border p-2">
-                <span className="mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
-                  {index + 1}
-                </span>
-                <div className="flex flex-1 flex-col gap-1">
-                  <Input
-                    placeholder="Description"
+              <div
+                key={field.id}
+                className="space-y-2 rounded-md border p-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Step {index + 1}
+                  </span>
+                  {fields.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => remove(index)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor={`step-desc-${index}`} className="text-xs">
+                    Description
+                  </Label>
+                  <Textarea
+                    id={`step-desc-${index}`}
+                    placeholder="What to do"
+                    rows={2}
                     {...register(`items.${index}.description`)}
                   />
                   {errors.items?.[index]?.description && (
@@ -109,8 +157,16 @@ export function SharedStepFormDialog({
                       {errors.items[index].description?.message}
                     </p>
                   )}
-                  <Input
-                    placeholder="Expected result"
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor={`step-expected-${index}`} className="text-xs">
+                    Expected Result
+                  </Label>
+                  <Textarea
+                    id={`step-expected-${index}`}
+                    placeholder="What should happen"
+                    rows={2}
                     {...register(`items.${index}.expectedResult`)}
                   />
                   {errors.items?.[index]?.expectedResult && (
@@ -119,32 +175,27 @@ export function SharedStepFormDialog({
                     </p>
                   )}
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  aria-label="Remove item"
-                  onClick={() => remove(index)}
-                  disabled={fields.length <= 1}
-                >
-                  x
-                </Button>
               </div>
             ))}
 
             {errors.items?.root && (
-              <p className="text-sm text-destructive">{errors.items.root.message}</p>
+              <p className="text-xs text-destructive">{errors.items.root.message}</p>
             )}
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
+          {error && (
+            <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error.message}
+            </div>
+          )}
+
+          <DialogFooter>
             <Button type="submit" disabled={isPending}>
-              {isPending ? 'Saving...' : 'Save'}
+              {isPending
+                ? editingStep ? 'Saving...' : 'Creating...'
+                : editingStep ? 'Save Changes' : 'Create'}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

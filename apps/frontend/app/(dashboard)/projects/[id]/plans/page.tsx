@@ -1,217 +1,209 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { use, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { CreateTestPlanSchema, type CreateTestPlanInput, type TestPlanStatus } from '@app/shared';
-import { useTestPlans } from '@/lib/test-plans/useTestPlans';
-import { useFilterParams } from '@/lib/useFilterParams';
+import { Plus, ClipboardList } from 'lucide-react';
+import { TestPlanStatus } from '@app/shared';
+import type { TestPlanWithRunCountDto } from '@app/shared';
+import { useTestPlans, useCreateTestPlan } from '@/lib/test-plans/useTestPlans';
+import { formatDate } from '@/lib/format';
 import { Breadcrumb } from '@/components/Breadcrumb';
-import { FilterBar, type FilterConfig } from '@/components/FilterBar';
+import { useProject } from '@/lib/projects/useProjects';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
-const STATUS_LABELS: Record<TestPlanStatus, string> = {
-  DRAFT: 'Draft',
-  ACTIVE: 'Active',
-  COMPLETED: 'Completed',
-  ARCHIVED: 'Archived',
+const statusBadgeVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
+  [TestPlanStatus.DRAFT]: 'secondary',
+  [TestPlanStatus.ACTIVE]: 'default',
+  [TestPlanStatus.COMPLETED]: 'outline',
+  [TestPlanStatus.ARCHIVED]: 'secondary',
 };
 
-const STATUS_COLORS: Record<TestPlanStatus, string> = {
-  DRAFT: 'bg-gray-100 text-gray-700',
-  ACTIVE: 'bg-blue-100 text-blue-700',
-  COMPLETED: 'bg-green-100 text-green-700',
-  ARCHIVED: 'bg-amber-100 text-amber-700',
-};
+export default function PlansPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: projectId } = use(params);
+  const { data: project } = useProject(projectId);
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const { data: plans, isLoading } = useTestPlans(projectId, statusFilter ? { status: statusFilter } : undefined);
+  const createPlan = useCreateTestPlan(projectId);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
 
-const FILTER_KEYS = ['status'] as const;
-
-const PLAN_FILTERS: FilterConfig[] = [
-  {
-    type: 'select',
-    key: 'status',
-    label: 'All statuses',
-    options: [
-      { value: 'DRAFT', label: 'Draft' },
-      { value: 'ACTIVE', label: 'Active' },
-      { value: 'COMPLETED', label: 'Completed' },
-      { value: 'ARCHIVED', label: 'Archived' },
-    ],
-  },
-];
-
-export default function TestPlansPage() {
-  const { id: projectId } = useParams<{ id: string }>();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const { filters, activeCount, setFilter, clearAll } = useFilterParams(FILTER_KEYS);
-  const { plans, isLoading, error, createPlan } = useTestPlans(projectId, filters);
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<CreateTestPlanInput>({
-    resolver: zodResolver(CreateTestPlanSchema),
-  });
-
-  useEffect(() => {
-    if (!dialogOpen) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        setDialogOpen(false);
-        reset();
-      }
-    }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [dialogOpen, reset]);
-
-  function openDialog() {
-    reset();
-    setDialogOpen(true);
-  }
-
-  function closeDialog() {
-    setDialogOpen(false);
-    reset();
-  }
-
-  function onSubmit(data: CreateTestPlanInput) {
-    createPlan.mutate(data, {
-      onSuccess: () => closeDialog(),
-    });
+  function handleCreate() {
+    if (!name.trim()) return;
+    createPlan.mutate(
+      { name: name.trim(), description: description.trim() || undefined },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          setName('');
+          setDescription('');
+        },
+      },
+    );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <Breadcrumb items={[
-        { label: 'Projects', href: '/projects' },
-        { label: 'Test Plans' },
-      ]} />
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Test Plans</h1>
-        <Button onClick={openDialog}>New Plan</Button>
-      </div>
-
-      <FilterBar
-        filters={PLAN_FILTERS}
-        values={filters}
-        activeCount={activeCount}
-        onChange={setFilter}
-        onClearAll={clearAll}
+    <div className="flex-1 space-y-6 overflow-y-auto p-6">
+      <Breadcrumb
+        items={[
+          { label: 'Projects', href: '/projects' },
+          { label: project?.name ?? '...', href: `/projects/${projectId}` },
+          { label: 'Plans' },
+        ]}
       />
 
-      {error ? (
-        <p className="text-sm text-destructive">
-          {error instanceof Error ? error.message : 'Failed to load test plans'}
-        </p>
-      ) : isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : plans.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {activeCount > 0
-            ? 'No test plans match the current filters.'
-            : 'No test plans yet. Create your first plan to get started.'}
-        </p>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <Link
-              key={plan.id}
-              href={`/projects/${projectId}/plans/${plan.id}`}
-              className="block rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <h2 className="font-medium">{plan.name}</h2>
-                <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[plan.status]}`}
-                >
-                  {STATUS_LABELS[plan.status]}
-                </span>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Test Plans</h1>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger render={<Button />}>
+            <Plus className="size-4" />
+            New Plan
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Test Plan</DialogTitle>
+              <DialogDescription>
+                Group related test runs under a plan.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="plan-name">Name</Label>
+                <Input
+                  id="plan-name"
+                  placeholder="Plan name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
               </div>
-              {plan.description && (
-                <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-                  {plan.description}
-                </p>
-              )}
-              <p className="mt-2 text-xs text-muted-foreground">
-                {plan._count.testRuns} run{plan._count.testRuns !== 1 ? 's' : ''}
-              </p>
-            </Link>
+              <div className="space-y-2">
+                <Label htmlFor="plan-desc">Description</Label>
+                <Textarea
+                  id="plan-desc"
+                  placeholder="Optional description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={handleCreate}
+                disabled={!name.trim() || createPlan.isPending}
+              >
+                {createPlan.isPending ? 'Creating...' : 'Create'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Select
+          value={statusFilter ?? ''}
+          onValueChange={(val) => setStatusFilter(val || undefined)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All Statuses</SelectItem>
+            {Object.values(TestPlanStatus).map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
           ))}
         </div>
-      )}
-
-      {dialogOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Create test plan"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={closeDialog}
-        >
-          <div
-            className="w-full max-w-md rounded-lg border bg-card p-6 shadow-lg space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold">New Test Plan</h2>
-
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-1">
-                <label htmlFor="name" className="text-sm font-medium">
-                  Plan name
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  {...register('name')}
-                  className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Sprint 1 Plan"
-                  autoFocus
-                />
-                {errors.name && (
-                  <p className="text-xs text-destructive">{errors.name.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="description" className="text-sm font-medium">
-                  Description{' '}
-                  <span className="text-muted-foreground font-normal">(optional)</span>
-                </label>
-                <textarea
-                  id="description"
-                  {...register('description')}
-                  className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                  placeholder="A short description..."
-                  rows={3}
-                />
-                {errors.description && (
-                  <p className="text-xs text-destructive">{errors.description.message}</p>
-                )}
-              </div>
-
-              {createPlan.error && (
-                <p className="text-sm text-destructive">
-                  {createPlan.error instanceof Error
-                    ? createPlan.error.message
-                    : 'Failed to create plan'}
-                </p>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={closeDialog}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createPlan.isPending}>
-                  {createPlan.isPending ? 'Creating...' : 'Create'}
-                </Button>
-              </div>
-            </form>
-          </div>
+      ) : plans?.length ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Runs</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead>Updated</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {plans.map((plan: TestPlanWithRunCountDto) => (
+              <TableRow key={plan.id}>
+                <TableCell>
+                  <Link
+                    href={`/projects/${projectId}/plans/${plan.id}`}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {plan.name}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={statusBadgeVariant[plan.status] ?? 'secondary'}>
+                    {plan.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>{plan._count.testRuns}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatDate(plan.createdAt)}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatDate(plan.updatedAt)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      ) : (
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <ClipboardList className="size-10 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">
+            No test plans yet. Create a plan to organize your test runs.
+          </p>
+          <Button variant="outline" onClick={() => setOpen(true)}>
+            <Plus className="size-4" />
+            New Plan
+          </Button>
         </div>
       )}
     </div>

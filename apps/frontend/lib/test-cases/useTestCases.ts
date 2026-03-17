@@ -1,82 +1,79 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type {
-  CreateTestCaseInput,
-  UpdateTestCaseInput,
-  BulkUpdateCasesInput,
-  BulkMoveCasesInput,
-  BulkDeleteCasesInput,
-} from '@app/shared';
-import { testCasesApi } from '../api/test-cases';
-
-export function testCasesQueryKey(projectId: string, suiteId: string) {
-  return ['projects', projectId, 'suites', suiteId, 'cases'] as const;
-}
+import type { CreateTestCaseInput, UpdateTestCaseInput, BulkUpdateCasesInput, BulkMoveCasesInput, BulkDeleteCasesInput } from '@app/shared';
+import { testCasesApi } from '@/lib/api/test-cases';
 
 export function useTestCases(projectId: string, suiteId: string | null) {
-  const queryClient = useQueryClient();
-  const queryKey = suiteId ? testCasesQueryKey(projectId, suiteId) : [];
-
-  const invalidate = () => {
-    if (suiteId) queryClient.invalidateQueries({ queryKey });
-  };
-
-  const { data: cases, isLoading, error } = useQuery({
-    queryKey,
+  return useQuery({
+    queryKey: ['test-cases', projectId, suiteId],
     queryFn: () => testCasesApi.listBySuite(projectId, suiteId!),
     enabled: !!projectId && !!suiteId,
   });
+}
 
-  const createCase = useMutation({
-    mutationFn: (data: CreateTestCaseInput) =>
-      testCasesApi.create(projectId, suiteId!, data),
-    onSuccess: invalidate,
+export function useTestCase(projectId: string, caseId: string | null) {
+  return useQuery({
+    queryKey: ['test-cases', 'detail', projectId, caseId],
+    queryFn: () => testCasesApi.getById(projectId, caseId!),
+    enabled: !!projectId && !!caseId,
   });
+}
 
-  const updateCase = useMutation({
+export function useCreateTestCase(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ suiteId, data }: { suiteId: string; data: CreateTestCaseInput }) =>
+      testCasesApi.create(projectId, suiteId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['test-cases', projectId] }),
+  });
+}
+
+export function useUpdateTestCase(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateTestCaseInput }) =>
       testCasesApi.update(projectId, id, data),
-    onSuccess: invalidate,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['test-cases'] }),
   });
+}
 
-  const deleteCase = useMutation({
+export function useDeleteTestCase(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: (id: string) => testCasesApi.remove(projectId, id),
-    onSuccess: invalidate,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['test-cases'] }),
   });
+}
 
-  const bulkUpdateCases = useMutation({
-    mutationFn: (data: BulkUpdateCasesInput) =>
-      testCasesApi.bulkUpdate(projectId, data),
-    onSuccess: invalidate,
+export function useBulkUpdateCases(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkUpdateCasesInput) => testCasesApi.bulkUpdate(projectId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['test-cases'] }),
   });
+}
 
-  const bulkMoveCases = useMutation({
-    mutationFn: (data: BulkMoveCasesInput) =>
-      testCasesApi.bulkMove(projectId, data),
-    onSuccess: () => {
-      // Invalidate all suite queries since cases moved between suites
-      queryClient.invalidateQueries({
-        queryKey: ['projects', projectId, 'suites'],
-      });
-    },
+export function useBulkMoveCases(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkMoveCasesInput) => testCasesApi.bulkMove(projectId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['test-cases'] }),
   });
+}
 
-  const bulkDeleteCases = useMutation({
-    mutationFn: (data: BulkDeleteCasesInput) =>
-      testCasesApi.bulkDelete(projectId, data),
-    onSuccess: invalidate,
+export function useBulkDeleteCases(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkDeleteCasesInput) => testCasesApi.bulkDelete(projectId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['test-cases'] }),
   });
+}
 
-  return {
-    cases: cases ?? [],
-    isLoading,
-    error,
-    createCase,
-    updateCase,
-    deleteCase,
-    bulkUpdateCases,
-    bulkMoveCases,
-    bulkDeleteCases,
-  };
+export function useCaseHistory(projectId: string, caseId: string | null) {
+  return useQuery({
+    queryKey: ['case-history', projectId, caseId],
+    queryFn: () => testCasesApi.getHistory(projectId, caseId!),
+    enabled: !!projectId && !!caseId,
+  });
 }

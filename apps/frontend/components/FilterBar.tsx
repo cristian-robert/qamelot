@@ -1,148 +1,112 @@
 'use client';
 
-import { Search, X } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { X, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
-export interface FilterOption {
-  value: string;
+interface FilterOption {
   label: string;
+  value: string;
 }
 
-export interface SelectFilterConfig {
-  type: 'select';
+interface FilterConfig {
   key: string;
   label: string;
   options: FilterOption[];
 }
 
-export interface SearchFilterConfig {
-  type: 'search';
+interface ActiveFilter {
   key: string;
-  placeholder: string;
+  label: string;
+  value: string;
+  displayValue: string;
 }
 
-export type FilterConfig = SelectFilterConfig | SearchFilterConfig;
-
 interface FilterBarProps {
-  filters: FilterConfig[];
-  values: Record<string, string | undefined>;
-  activeCount: number;
-  totalCount?: number;
-  filteredCount?: number;
-  onChange: (key: string, value: string | undefined) => void;
-  onClearAll: () => void;
-  /** Local search input value (may differ from debounced URL param) */
-  searchValue?: string;
+  search?: string;
   onSearchChange?: (value: string) => void;
+  searchPlaceholder?: string;
+  filters?: FilterConfig[];
+  activeFilters?: ActiveFilter[];
+  onFilterChange?: (key: string, value: string | null) => void;
+  onClearAll?: () => void;
 }
 
 export function FilterBar({
-  filters,
-  values,
-  activeCount,
-  totalCount,
-  filteredCount,
-  onChange,
-  onClearAll,
-  searchValue,
+  search,
   onSearchChange,
+  searchPlaceholder = 'Search...',
+  filters = [],
+  activeFilters = [],
+  onFilterChange,
+  onClearAll,
 }: FilterBarProps) {
-  /** Get the display label for a currently-selected filter value */
-  const getActiveFilterLabel = (filter: SelectFilterConfig): string | null => {
-    const val = values[filter.key];
-    if (!val) return null;
-    return filter.options.find((o) => o.value === val)?.label ?? val;
-  };
-
   return (
-    <div className="space-y-2">
-      {/* Filter controls row */}
-      <div className="flex flex-wrap items-center gap-2">
-        {filters.map((filter) => {
-          if (filter.type === 'search') {
-            return (
-              <div key={filter.key} className="relative">
-                <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder={filter.placeholder}
-                  value={searchValue ?? values[filter.key] ?? ''}
-                  onChange={(e) => onSearchChange?.(e.target.value)}
-                  aria-label={filter.placeholder}
-                  className="h-8 w-56 pl-8 text-[13px]"
-                />
-              </div>
-            );
-          }
+    <div className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-3 py-2">
+      {onSearchChange && (
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search ?? ''}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={searchPlaceholder}
+            className="h-8 w-48 pl-8 text-xs"
+          />
+        </div>
+      )}
 
-          return (
-            <select
-              key={filter.key}
-              value={values[filter.key] ?? ''}
-              onChange={(e) =>
-                onChange(filter.key, e.target.value || undefined)
-              }
-              aria-label={filter.label}
-              className="h-8 cursor-pointer rounded-lg border border-input bg-transparent px-2.5 py-1 text-[13px] transition-colors outline-none hover:border-ring/50 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-            >
-              <option value="">{filter.label}</option>
-              {filter.options.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          );
-        })}
+      {filters.map((filter) => (
+        <Select
+          key={filter.key}
+          value={activeFilters.find((f) => f.key === filter.key)?.value ?? ''}
+          onValueChange={(v) => onFilterChange?.(filter.key, v || null)}
+        >
+          <SelectTrigger className="h-8 w-auto min-w-[120px] text-xs">
+            <SelectValue placeholder={filter.label} />
+          </SelectTrigger>
+          <SelectContent>
+            {filter.options.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ))}
 
-        {activeCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClearAll}
-            className="h-8 cursor-pointer gap-1 text-xs text-muted-foreground hover:text-foreground"
+      <div className="flex-1" />
+
+      {activeFilters.map((filter) => (
+        <div
+          key={filter.key}
+          className="flex items-center gap-1 rounded bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary"
+        >
+          {filter.label}: {filter.displayValue}
+          <button
+            onClick={() => onFilterChange?.(filter.key, null)}
+            className="ml-0.5 rounded-full p-0.5 hover:bg-primary/20"
           >
             <X className="size-3" />
-            Clear all
-          </Button>
-        )}
-      </div>
-
-      {/* Active filter chips + result count */}
-      {(activeCount > 0 || (totalCount !== undefined && filteredCount !== undefined)) && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {/* Active filter chips */}
-          {filters.map((filter) => {
-            if (filter.type !== 'select') return null;
-            const label = getActiveFilterLabel(filter);
-            if (!label) return null;
-            return (
-              <Badge
-                key={filter.key}
-                className="cursor-pointer gap-1 bg-primary/10 text-primary hover:bg-primary/20"
-              >
-                {filter.label}: {label}
-                <button
-                  type="button"
-                  className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20"
-                  onClick={() => onChange(filter.key, undefined)}
-                  aria-label={`Remove ${filter.label} filter`}
-                >
-                  <X className="size-2.5" />
-                </button>
-              </Badge>
-            );
-          })}
-
-          {/* Result count */}
-          {totalCount !== undefined && filteredCount !== undefined && (
-            <span className="ml-auto text-xs text-muted-foreground">
-              Showing {filteredCount} of {totalCount}
-            </span>
-          )}
+          </button>
         </div>
+      ))}
+
+      {activeFilters.length > 0 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClearAll}
+          className="h-6 px-2 text-[11px] text-muted-foreground"
+        >
+          Clear all
+        </Button>
       )}
     </div>
   );

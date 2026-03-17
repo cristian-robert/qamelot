@@ -5,7 +5,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     ...init,
     credentials: 'include',
     headers: {
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init?.body instanceof FormData ? {} : init?.body ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
     },
   });
@@ -13,14 +13,12 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     const body = await res.json().catch(() => ({}));
     throw new Error((body as Record<string, string>).message ?? `HTTP ${res.status}`);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
-/** Download a file as a Blob (for CSV exports) */
 export async function apiDownload(path: string, filename: string): Promise<void> {
-  const res = await fetch(`${BASE}${path}`, {
-    credentials: 'include',
-  });
+  const res = await fetch(`${BASE}${path}`, { credentials: 'include' });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as Record<string, string>).message ?? `HTTP ${res.status}`);
@@ -36,11 +34,9 @@ export async function apiDownload(path: string, filename: string): Promise<void>
   URL.revokeObjectURL(url);
 }
 
-/** Upload a file via multipart/form-data */
 export async function apiUpload<T>(path: string, file: File): Promise<T> {
   const formData = new FormData();
   formData.append('file', file);
-
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
     credentials: 'include',
@@ -51,4 +47,8 @@ export async function apiUpload<T>(path: string, file: File): Promise<T> {
     throw new Error((body as Record<string, string>).message ?? `HTTP ${res.status}`);
   }
   return res.json() as Promise<T>;
+}
+
+export function getBaseUrl(): string {
+  return BASE;
 }

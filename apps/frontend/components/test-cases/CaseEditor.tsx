@@ -1,20 +1,23 @@
 'use client';
 
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
-  CreateTestCaseSchema,
+  UpdateTestCaseSchema,
+  type UpdateTestCaseInput,
+  type TestCaseStepDto,
   CasePriority,
   CaseType,
   TemplateType,
-  type CreateTestCaseInput,
-  type TestCaseDto,
 } from '@app/shared';
+import { useTestCase, useUpdateTestCase } from '@/lib/test-cases/useTestCases';
+import { testCasesApi } from '@/lib/api/test-cases';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -22,211 +25,404 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatLabel } from '@/lib/format';
-import { ReferenceLinks } from '@/components/test-cases/ReferenceLinks';
-import { CustomFieldsSection } from '@/components/custom-fields/CustomFieldsSection';
-import { CustomFieldEntityType } from '@app/shared';
-import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Save, Undo2, Clock } from 'lucide-react';
+import { CaseEditorSkeleton } from './CaseEditorSkeleton';
+import { StepEditor, type StepData } from './StepEditor';
+import { ReferenceLinks } from './ReferenceLinks';
+import { CaseHistoryPanel } from './CaseHistoryPanel';
+import { toast } from 'sonner';
 
 interface CaseEditorProps {
-  testCase?: TestCaseDto;
-  projectId?: string;
-  onSave: (data: CreateTestCaseInput) => void;
-  onCancel: () => void;
-  isPending: boolean;
-  onInsertSharedSteps?: () => void;
+  projectId: string;
+  caseId: string;
 }
 
-const PRIORITIES = Object.values(CasePriority);
-const TYPES = Object.values(CaseType);
+export function CaseEditor({ projectId, caseId }: CaseEditorProps) {
+  const { data: testCase, isLoading } = useTestCase(projectId, caseId);
+  const updateMutation = useUpdateTestCase(projectId);
+  const queryClient = useQueryClient();
+  const [showHistory, setShowHistory] = useState(false);
+  const [steps, setSteps] = useState<StepData[]>([]);
+  const [saving, setSaving] = useState(false);
+  // Track original steps from server to diff against
+  const originalStepsRef = useRef<TestCaseStepDto[]>([]);
 
-const PRIORITY_DOT_COLORS: Record<CasePriority, string> = {
-  [CasePriority.CRITICAL]: 'bg-red-500',
-  [CasePriority.HIGH]: 'bg-orange-500',
-  [CasePriority.MEDIUM]: 'bg-blue-500',
-  [CasePriority.LOW]: 'bg-gray-400',
-};
-
-export function CaseEditor({ testCase, projectId, onSave, onCancel, isPending, onInsertSharedSteps }: CaseEditorProps) {
   const {
     register,
     handleSubmit,
+    reset,
     control,
     watch,
-    formState: { errors },
-  } = useForm<z.input<typeof CreateTestCaseSchema>>({
-    resolver: zodResolver(CreateTestCaseSchema),
-    defaultValues: {
-      title: testCase?.title ?? '',
-      preconditions: testCase?.preconditions ?? '',
-      templateType: testCase?.templateType ?? TemplateType.TEXT,
-      priority: testCase?.priority ?? CasePriority.MEDIUM,
-      type: testCase?.type ?? CaseType.FUNCTIONAL,
-      estimate: testCase?.estimate ?? null,
-      references: testCase?.references ?? '',
-    },
+    formState: { errors, isDirty },
+  } = useForm<UpdateTestCaseInput>({
+    resolver: zodResolver(UpdateTestCaseSchema),
   });
 
-  const referencesValue = watch('references');
-  const templateValue = watch('templateType');
+  const templateType = watch('templateType');
+
+  useEffect(() => {
+    if (testCase) {
+      reset({
+        title: testCase.title,
+        priority: testCase.priority,
+        type: testCase.type,
+        templateType: testCase.templateType,
+        estimate: testCase.estimate,
+        preconditions: testCase.preconditions ?? '',
+        references: testCase.references ?? '',
+      });
+      const serverSteps = (testCase as unknown as { steps?: TestCaseStepDto[] }).steps ?? [];
+      originalStepsRef.current = serverSteps;
+      setSteps(
+        serverSteps.map((s) => ({
+          id: s.id,
+          description: s.description,
+          expectedResult: s.expectedResult,
+        })),
+      );
+    }
+  }, [testCase, reset]);
+
+  // Check if steps have changed compared to original
+  const stepsChanged = useCallback(() => {
+    const orig = originalStepsRef.current;
+    if (steps.length !== orig.length) return true;
+    return steps.some((step, i) => {
+      const o = orig[i];
+      return step.description !== o.description || step.expectedResult !== o.expectedResult || step.id !== o.id;
+    });
+  }, [steps]);
+
+  const hasChanges = isDirty || stepsChanged();
+
+  const onSubmit = useCallback(
+    async (data: UpdateTestCaseInput) => {
+      setSaving(true);
+      try {
+        // 1. Save case metadata
+        const cleanData = { ...data };
+        // Convert NaN estimate to null
+        if (cleanData.estimate !== undefined && cleanData.estimate !== null && isNaN(cleanData.estimate)) {
+          cleanData.estimate = null;
+        }
+        await updateMutation.mutateAsync({ id: caseId, data: cleanData });
+
+        // 2. Sync steps if template is STEPS
+        const currentTemplate = data.templateType ?? testCase?.templateType;
+        if (currentTemplate === TemplateType.STEPS) {
+          const origSteps = originalStepsRef.current;
+          const origIds = new Set(origSteps.map((s) => s.id));
+
+          // Delete removed steps
+          for (const orig of origSteps) {
+            const stillExists = steps.some((s) => s.id === orig.id);
+            if (!stillExists) {
+              await testCasesApi.deleteStep(projectId, caseId, orig.id);
+            }
+          }
+
+          // Create new steps and update existing
+          for (const step of steps) {
+            if (step.id && origIds.has(step.id)) {
+              // Update existing step
+              const orig = origSteps.find((o) => o.id === step.id);
+              if (orig && (orig.description !== step.description || orig.expectedResult !== step.expectedResult)) {
+                await testCasesApi.updateStep(projectId, caseId, step.id, {
+                  description: step.description,
+                  expectedResult: step.expectedResult,
+                });
+              }
+            } else {
+              // Create new step
+              await testCasesApi.createStep(projectId, caseId, {
+                description: step.description || 'New step',
+                expectedResult: step.expectedResult || 'Expected result',
+              });
+            }
+          }
+
+          // Reorder if needed (get fresh step ids after creates)
+          const freshSteps = await testCasesApi.listSteps(projectId, caseId);
+          if (freshSteps.length > 1) {
+            // Build desired order based on current step descriptions
+            const orderedIds = steps
+              .map((s) => {
+                if (s.id && freshSteps.some((fs) => fs.id === s.id)) return s.id;
+                // For newly created steps, match by description
+                return freshSteps.find(
+                  (fs) => fs.description === (s.description || 'New step') && !steps.some((existing) => existing.id === fs.id),
+                )?.id;
+              })
+              .filter(Boolean) as string[];
+
+            if (orderedIds.length === freshSteps.length) {
+              await testCasesApi.reorderSteps(projectId, caseId, orderedIds);
+            }
+          }
+        }
+
+        // 3. Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ['test-cases'] });
+        toast.success('Test case saved');
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to save');
+      } finally {
+        setSaving(false);
+      }
+    },
+    [caseId, projectId, testCase, steps, updateMutation, queryClient],
+  );
+
+  const handleDiscard = useCallback(() => {
+    if (testCase) {
+      reset({
+        title: testCase.title,
+        priority: testCase.priority,
+        type: testCase.type,
+        templateType: testCase.templateType,
+        estimate: testCase.estimate,
+        preconditions: testCase.preconditions ?? '',
+        references: testCase.references ?? '',
+      });
+      const serverSteps = (testCase as unknown as { steps?: TestCaseStepDto[] }).steps ?? [];
+      setSteps(
+        serverSteps.map((s) => ({
+          id: s.id,
+          description: s.description,
+          expectedResult: s.expectedResult,
+        })),
+      );
+    }
+  }, [testCase, reset]);
+
+  if (isLoading) {
+    return <CaseEditorSkeleton />;
+  }
+
+  if (!testCase) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+        Test case not found.
+      </div>
+    );
+  }
+
+  const effectiveTemplate = templateType ?? testCase.templateType;
 
   return (
-    <form onSubmit={handleSubmit(onSave as Parameters<typeof handleSubmit>[0])} className="space-y-5">
-      {/* Title */}
-      <div className="space-y-1.5">
-        <Label htmlFor="title" className="text-[13px] font-semibold">Title</Label>
-        <Input
-          id="title"
-          {...register('title')}
-          placeholder="Test case title"
-          className="text-[13px]"
-        />
-        {errors.title && (
-          <p className="text-xs text-destructive">{errors.title.message}</p>
-        )}
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex items-center justify-between border-b px-4 py-2.5">
+        <h2 className="truncate text-sm font-semibold">{testCase.title}</h2>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={() => setShowHistory(!showHistory)}
+            aria-label="Toggle history"
+          >
+            <Clock className="size-3.5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDiscard}
+            disabled={!hasChanges}
+          >
+            <Undo2 className="mr-1 size-3" />
+            Discard
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleSubmit(onSubmit)}
+            disabled={!hasChanges || saving}
+          >
+            <Save className="mr-1 size-3" />
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
+        </div>
       </div>
 
-      {/* Template type toggle */}
-      <div className="space-y-1.5">
-        <Label className="text-[13px] font-semibold">Template</Label>
-        <Controller
-          control={control}
-          name="templateType"
-          render={({ field }) => (
-            <div className="inline-flex rounded-lg border p-0.5">
-              {Object.values(TemplateType).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className={cn(
-                    'cursor-pointer rounded-md px-4 py-1.5 text-xs font-medium transition-all',
-                    field.value === t
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                  onClick={() => field.onChange(t)}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-5 p-4"
+        >
+          {/* Title */}
+          <div className="space-y-1.5">
+            <Label htmlFor="case-title">Title</Label>
+            <Input
+              id="case-title"
+              {...register('title')}
+              aria-invalid={!!errors.title}
+            />
+            {errors.title && (
+              <p className="text-xs text-destructive">{errors.title.message}</p>
+            )}
+          </div>
+
+          {/* Template Toggle */}
+          <div className="space-y-1.5">
+            <Label>Template</Label>
+            <Controller
+              name="templateType"
+              control={control}
+              render={({ field }) => (
+                <Tabs
+                  value={field.value ?? TemplateType.STEPS}
+                  onValueChange={(val) => field.onChange(val)}
                 >
-                  {t === TemplateType.TEXT ? 'Text' : 'Steps'}
-                </button>
-              ))}
+                  <TabsList>
+                    <TabsTrigger value={TemplateType.TEXT}>Text</TabsTrigger>
+                    <TabsTrigger value={TemplateType.STEPS}>Steps</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              )}
+            />
+          </div>
+
+          {/* Priority / Type / Estimate row */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label>Priority</Label>
+              <Controller
+                name="priority"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? CasePriority.MEDIUM}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(CasePriority).map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {p.charAt(0) + p.slice(1).toLowerCase()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Type</Label>
+              <Controller
+                name="type"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? CaseType.FUNCTIONAL}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(CaseType).map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t.charAt(0) + t.slice(1).toLowerCase()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="case-estimate">Estimate (min)</Label>
+              <Input
+                id="case-estimate"
+                type="number"
+                min={0}
+                {...register('estimate', { valueAsNumber: true })}
+              />
+            </div>
+          </div>
+
+          {/* Preconditions */}
+          <div className="space-y-1.5">
+            <Label htmlFor="case-preconditions">Preconditions</Label>
+            <Textarea
+              id="case-preconditions"
+              placeholder="Any setup steps or conditions required before running this case..."
+              {...register('preconditions')}
+              className="min-h-16"
+            />
+          </div>
+
+          {/* References */}
+          <div className="space-y-1.5">
+            <Label htmlFor="case-references">References</Label>
+            <Input
+              id="case-references"
+              placeholder="e.g. JIRA-123, REQ-456"
+              {...register('references')}
+            />
+            {testCase.references && (
+              <div className="mt-1">
+                <ReferenceLinks references={testCase.references} />
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* TEXT template body */}
+          {effectiveTemplate === TemplateType.TEXT && (
+            <div className="space-y-1.5">
+              <Label htmlFor="case-body">Test Description</Label>
+              <Textarea
+                id="case-body"
+                placeholder="Describe the test procedure, expected behavior, and any notes..."
+                {...register('preconditions')}
+                className="min-h-[200px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                For text-based test cases, use the preconditions field to describe the full test procedure.
+              </p>
             </div>
           )}
-        />
+
+          {/* Steps (when template is STEPS) */}
+          {effectiveTemplate === TemplateType.STEPS && (
+            <div className="space-y-2">
+              <Label>Test Steps ({steps.length})</Label>
+              <StepEditor steps={steps} onChange={setSteps} />
+            </div>
+          )}
+        </form>
       </div>
 
-      {/* Priority, Type, Estimate row */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="priority" className="text-[13px] font-semibold">Priority</Label>
-          <Controller
-            control={control}
-            name="priority"
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger id="priority" className="text-[13px]">
-                  <div className="flex items-center gap-2">
-                    <span className={cn('inline-block size-2 rounded-full', PRIORITY_DOT_COLORS[field.value as CasePriority])} />
-                    <SelectValue placeholder="Select priority" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {PRIORITIES.map((p) => (
-                    <SelectItem key={p} value={p} className="cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <span className={cn('inline-block size-2 rounded-full', PRIORITY_DOT_COLORS[p])} />
-                        {formatLabel(p)}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="type" className="text-[13px] font-semibold">Type</Label>
-          <Controller
-            control={control}
-            name="type"
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger id="type" className="text-[13px]">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPES.map((t) => (
-                    <SelectItem key={t} value={t} className="cursor-pointer">
-                      {formatLabel(t)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="estimate" className="text-[13px] font-semibold">Estimate (min)</Label>
-          <Input
-            id="estimate"
-            type="number"
-            min={0}
-            {...register('estimate', { valueAsNumber: true })}
-            placeholder="0"
-            className="text-[13px]"
-          />
-        </div>
-      </div>
-
-      {/* Preconditions */}
-      <div className="space-y-1.5">
-        <Label htmlFor="preconditions" className="text-[13px] font-semibold">Preconditions</Label>
-        <Textarea
-          id="preconditions"
-          {...register('preconditions')}
-          placeholder="Pre-conditions for this test case"
-          rows={3}
-          className="text-[13px]"
-        />
-      </div>
-
-      {/* References */}
-      <div className="space-y-1.5">
-        <Label htmlFor="references" className="text-[13px] font-semibold">References</Label>
-        <Input
-          id="references"
-          {...register('references')}
-          placeholder="e.g. REQ-001, https://jira.example.com/PROJ-42"
-          className="text-[13px]"
-        />
-        {errors.references && (
-          <p className="text-xs text-destructive">{errors.references.message}</p>
-        )}
-        {referencesValue && (
-          <div className="mt-1">
-            <ReferenceLinks references={referencesValue} />
+      {/* History slide-in */}
+      {showHistory && (
+        <>
+          <Separator />
+          <div className="max-h-60 overflow-y-auto border-t bg-muted/30">
+            <div className="flex items-center justify-between px-4 py-2">
+              <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Change History
+              </h4>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                onClick={() => setShowHistory(false)}
+              >
+                <span className="sr-only">Close history</span>
+                &times;
+              </Button>
+            </div>
+            <CaseHistoryPanel projectId={projectId} caseId={caseId} />
           </div>
-        )}
-      </div>
-
-      {projectId && testCase && (
-        <CustomFieldsSection
-          projectId={projectId}
-          entityType={CustomFieldEntityType.TEST_CASE}
-          entityId={testCase.id}
-        />
+        </>
       )}
-
-      {/* Action buttons */}
-      <div className="flex gap-2 border-t pt-4">
-        <Button type="submit" disabled={isPending} className="cursor-pointer">
-          {isPending ? 'Saving\u2026' : 'Save'}
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel} className="cursor-pointer">
-          Cancel
-        </Button>
-      </div>
-    </form>
+    </div>
   );
 }

@@ -1,49 +1,68 @@
-import { Progress } from '@/components/ui/progress';
+'use client';
+
 import type { TestRunResultSummary } from '@app/shared';
+import { cn } from '@/lib/utils';
 
 interface ExecutionProgressProps {
   summary: TestRunResultSummary;
 }
 
-const statusSegments = [
-  { key: 'passed', label: 'Passed', dotClass: 'bg-green-500', textClass: 'text-green-700' },
-  { key: 'failed', label: 'Failed', dotClass: 'bg-red-500', textClass: 'text-red-700' },
-  { key: 'blocked', label: 'Blocked', dotClass: 'bg-yellow-500', textClass: 'text-yellow-700' },
-  { key: 'retest', label: 'Retest', dotClass: 'bg-blue-500', textClass: 'text-blue-700' },
-  { key: 'untested', label: 'Untested', dotClass: 'bg-gray-300', textClass: 'text-gray-500' },
-] as const;
-
 export function ExecutionProgress({ summary }: ExecutionProgressProps) {
-  const completed = summary.total - summary.untested;
-  const percent = summary.total > 0 ? Math.round((completed / summary.total) * 100) : 0;
-  const passRate = completed > 0 ? Math.round((summary.passed / completed) * 100) : 0;
+  const { total, passed, failed, blocked, untested } = summary;
+  const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+  const executed = total - untested;
+  const executedPercent = total > 0 ? Math.round((executed / total) * 100) : 0;
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-[13px] font-semibold">
-          Progress: {completed}/{summary.total} ({percent}%)
-        </span>
-        {completed > 0 && (
-          <span className="text-[13px] text-muted-foreground">Pass rate: {passRate}%</span>
-        )}
+    <div className="space-y-3 px-3">
+      {/* Progress bar */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Progress</span>
+          <span className="font-medium tabular-nums">{executedPercent}%</span>
+        </div>
+        <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className={cn(
+              'h-full rounded-full transition-all duration-500 ease-out',
+              passRate >= 80
+                ? 'bg-emerald-500'
+                : passRate >= 50
+                  ? 'bg-amber-500'
+                  : passRate > 0
+                    ? 'bg-red-500'
+                    : 'bg-gray-300',
+            )}
+            style={{ width: `${executedPercent}%` }}
+          />
+        </div>
       </div>
 
-      <Progress value={percent} className="h-2.5" />
-
-      <div className="flex flex-wrap gap-x-5 gap-y-1">
-        {statusSegments.map((seg) => {
-          const count = summary[seg.key];
-          return (
-            <div key={seg.key} className="flex items-center gap-1.5">
-              <span className={`inline-block size-2 rounded-full ${seg.dotClass}`} />
-              <span className={`text-xs font-medium ${seg.textClass}`}>
-                {count} {seg.label.toLowerCase()}
-              </span>
-            </div>
-          );
-        })}
+      {/* Stats row */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+        <StatItem label="Passed" count={passed} dotColor="bg-emerald-500" />
+        <StatItem label="Failed" count={failed} dotColor="bg-red-500" />
+        <StatItem label="Blocked" count={blocked} dotColor="bg-amber-500" />
+        <StatItem label="Untested" count={untested} dotColor="bg-gray-400" />
       </div>
+    </div>
+  );
+}
+
+function StatItem({
+  label,
+  count,
+  dotColor,
+}: {
+  label: string;
+  count: number;
+  dotColor: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={cn('size-2 rounded-full', dotColor)} />
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="ml-auto text-xs font-semibold tabular-nums">{count}</span>
     </div>
   );
 }

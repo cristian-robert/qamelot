@@ -2,46 +2,47 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateProjectInput, UpdateProjectInput } from '@app/shared';
-import { projectsApi } from '../api/projects';
-
-export const PROJECTS_QUERY_KEY = ['projects'] as const;
+import { projectsApi } from '@/lib/api/projects';
 
 export function useProjects() {
-  const queryClient = useQueryClient();
-
-  const { data: projects, isLoading, error } = useQuery({
-    queryKey: PROJECTS_QUERY_KEY,
+  return useQuery({
+    queryKey: ['projects'],
     queryFn: projectsApi.list,
   });
+}
 
-  const createProject = useMutation({
-    mutationFn: (data: CreateProjectInput) => projectsApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
-    },
+export function useProject(id: string) {
+  return useQuery({
+    queryKey: ['projects', id],
+    queryFn: () => projectsApi.getById(id),
+    enabled: !!id,
   });
+}
 
-  const updateProject = useMutation({
+export function useCreateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateProjectInput) => projectsApi.create(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
+  });
+}
+
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateProjectInput }) =>
       projectsApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', id] });
     },
   });
+}
 
-  const deleteProject = useMutation({
+export function useDeleteProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: (id: string) => projectsApi.remove(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
   });
-
-  return {
-    projects: projects ?? [],
-    isLoading,
-    error,
-    createProject,
-    updateProject,
-    deleteProject,
-  };
 }

@@ -1,218 +1,167 @@
 'use client';
 
-import Link from 'next/link';
 import {
   FolderKanban,
   Play,
   CheckCircle2,
   Activity,
-  Plus,
-  ArrowRight,
+  TrendingUp,
+  Clock,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth/useAuth';
-import { useProjects } from '@/lib/projects/useProjects';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useDashboardSummary } from '@/lib/reports/useReports';
-import { buttonVariants } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import type { TestResultStatus } from '@app/shared';
+import { TestResultStatus } from '@app/shared';
+import { formatRelativeTime } from '@/lib/format';
 
-const STATUS_COLORS: Record<TestResultStatus, string> = {
-  PASSED: 'bg-green-100 text-green-800',
-  FAILED: 'bg-red-100 text-red-800',
-  BLOCKED: 'bg-yellow-100 text-yellow-800',
-  RETEST: 'bg-orange-100 text-orange-800',
-  UNTESTED: 'bg-gray-100 text-gray-800',
+const statusColors: Record<string, string> = {
+  [TestResultStatus.PASSED]: 'bg-emerald-500',
+  [TestResultStatus.FAILED]: 'bg-red-500',
+  [TestResultStatus.BLOCKED]: 'bg-amber-500',
+  [TestResultStatus.RETEST]: 'bg-blue-500',
+  [TestResultStatus.UNTESTED]: 'bg-gray-400',
 };
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
-
-function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
-
-interface KpiCardProps {
-  icon: React.ReactNode;
-  value: string | number;
-  label: string;
-  loading?: boolean;
-}
-
-function KpiCard({ icon, value, label, loading }: KpiCardProps) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-4">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-          {icon}
-        </div>
-        <div className="min-w-0">
-          {loading ? (
-            <div className="h-7 w-16 animate-pulse rounded bg-muted" />
-          ) : (
-            <p className="text-2xl font-bold tracking-tight">{value}</p>
-          )}
-          <p className="text-sm text-muted-foreground">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="p-6 space-y-6">
-      <div className="space-y-1">
-        <div className="h-8 w-64 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-48 animate-pulse rounded bg-muted" />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />
-        ))}
-      </div>
-      <div className="h-48 animate-pulse rounded-xl bg-muted" />
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <Card>
-      <CardContent className="flex flex-col items-center py-12 text-center">
-        <div className="flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mb-4">
-          <FolderKanban className="size-7" />
-        </div>
-        <h3 className="text-lg font-semibold">Welcome to Qamelot</h3>
-        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-          Get started by creating your first project. Organize test suites,
-          write test cases, and track your testing progress.
-        </p>
-        <Link href="/projects" className={buttonVariants({ className: 'mt-6' })}>
-          <Plus className="size-4" />
-          Create Your First Project
-        </Link>
-      </CardContent>
-    </Card>
-  );
-}
+const statusBadgeVariant: Record<string, 'default' | 'destructive' | 'secondary' | 'outline'> = {
+  [TestResultStatus.PASSED]: 'default',
+  [TestResultStatus.FAILED]: 'destructive',
+  [TestResultStatus.BLOCKED]: 'secondary',
+  [TestResultStatus.RETEST]: 'outline',
+  [TestResultStatus.UNTESTED]: 'secondary',
+};
 
 export default function DashboardPage() {
-  const { user, isLoading: authLoading } = useAuth();
-  const { projects, isLoading: projectsLoading } = useProjects();
-  const { data: summary, isLoading: summaryLoading } = useDashboardSummary();
-
-  const isLoading = authLoading || projectsLoading;
-
-  if (isLoading) {
-    return <DashboardSkeleton />;
-  }
-
-  const projectCount = projects.length;
-  const hasData = projectCount > 0;
+  const { data: summary, isLoading } = useDashboardSummary();
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Welcome header */}
+    <div className="flex-1 space-y-6 overflow-y-auto p-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Welcome back{user?.name ? `, ${user.name}` : ''}
-        </h1>
-        <p className="text-sm text-muted-foreground">{formatDate(new Date())}</p>
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Overview of your test management activity
+        </p>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          icon={<FolderKanban className="size-5" />}
-          value={summary?.totalProjects ?? projectCount}
-          label="Projects"
-          loading={summaryLoading}
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          icon={FolderKanban}
+          label="Total Projects"
+          value={isLoading ? '—' : String(summary?.totalProjects ?? 0)}
+          color="text-primary"
+          bgColor="bg-primary/10"
         />
-        <KpiCard
-          icon={<Play className="size-5" />}
-          value={summary?.activeRuns ?? 0}
+        <StatCard
+          icon={Play}
           label="Active Runs"
-          loading={summaryLoading}
+          value={isLoading ? '—' : String(summary?.activeRuns ?? 0)}
+          color="text-blue-600"
+          bgColor="bg-blue-50"
         />
-        <KpiCard
-          icon={<CheckCircle2 className="size-5" />}
-          value={summary ? `${summary.overallPassRate}%` : '--'}
+        <StatCard
+          icon={CheckCircle2}
           label="Pass Rate"
-          loading={summaryLoading}
+          value={isLoading ? '—' : `${Math.round(summary?.overallPassRate ?? 0)}%`}
+          color="text-emerald-600"
+          bgColor="bg-emerald-50"
         />
-        <KpiCard
-          icon={<Activity className="size-5" />}
-          value={summary?.recentActivityCount ?? 0}
+        <StatCard
+          icon={Activity}
           label="Recent Activity"
-          loading={summaryLoading}
+          value={isLoading ? '—' : String(summary?.recentActivityCount ?? 0)}
+          subtitle="last 7 days"
+          color="text-amber-600"
+          bgColor="bg-amber-50"
         />
       </div>
 
-      {hasData ? (
-        <>
-          {/* Recent Results */}
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold">Recent Results</h2>
-            {summary?.recentResults && summary.recentResults.length > 0 ? (
-              <Card>
-                <CardContent className="divide-y p-0">
-                  {summary.recentResults.map((result) => (
-                    <div key={result.id} className="flex items-center justify-between px-4 py-3">
-                      <div className="space-y-0.5">
-                        <p className="text-sm font-medium">
-                          {result.runName} / {result.caseName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          by {result.userName} &middot; {timeAgo(result.createdAt)}
-                        </p>
-                      </div>
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[result.status]}`}>
-                        {result.status}
-                      </span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="flex flex-col items-center py-8 text-center">
-                  <Activity className="size-8 text-muted-foreground/50 mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    No test results yet. Create a test plan and execute runs to see activity here.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="flex flex-wrap gap-3">
-            <Link href="/projects" className={buttonVariants()}>
-              <Plus className="size-4" />
-              New Project
-            </Link>
-            <Link href="/projects" className={buttonVariants({ variant: 'outline' })}>
-              View All Projects
-              <ArrowRight className="size-4" />
-            </Link>
-          </div>
-        </>
-      ) : (
-        <EmptyState />
-      )}
+      {/* Recent Results */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Clock className="size-4 text-muted-foreground" />
+            Recent Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="size-2 rounded-full bg-muted animate-pulse" />
+                  <div className="h-4 flex-1 rounded bg-muted animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : summary?.recentResults?.length ? (
+            <div className="space-y-3">
+              {summary.recentResults.map((result) => (
+                <div
+                  key={result.id}
+                  className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50"
+                >
+                  <div
+                    className={`size-2 rounded-full ${statusColors[result.status] ?? 'bg-gray-400'}`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm font-medium">{result.caseName}</span>
+                    <span className="mx-2 text-muted-foreground">in</span>
+                    <span className="text-sm text-muted-foreground">
+                      {result.runName}
+                    </span>
+                  </div>
+                  <Badge variant={statusBadgeVariant[result.status] ?? 'secondary'} className="text-[10px]">
+                    {result.status}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatRelativeTime(result.createdAt)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <TrendingUp className="size-8 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                No recent activity. Start a test run to see results here.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  subtitle,
+  color,
+  bgColor,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  subtitle?: string;
+  color: string;
+  bgColor: string;
+}) {
+  return (
+    <Card className="animate-in">
+      <CardContent className="flex items-center gap-4 p-5">
+        <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${bgColor}`}>
+          <Icon className={`size-5 ${color}`} />
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="text-2xl font-bold tracking-tight">{value}</p>
+          {subtitle && (
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

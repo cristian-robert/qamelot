@@ -18,7 +18,6 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
-  adminOnly?: boolean;
 }
 
 const mainNav: NavItem[] = [
@@ -27,7 +26,7 @@ const mainNav: NavItem[] = [
 ];
 
 const adminNav: NavItem[] = [
-  { label: 'Users', href: '/users', icon: Users, adminOnly: true },
+  { label: 'Users', href: '/users', icon: Users },
 ];
 
 const bottomNav: NavItem[] = [
@@ -41,7 +40,7 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
   return (
     <Link
       href={item.href}
-      className={`flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-[13px] font-medium transition-all ${
+      className={`flex items-center gap-3 rounded-md px-3 py-2 text-[13px] font-medium transition-all ${
         isActive
           ? 'border-l-2 border-sidebar-accent bg-white/10 text-white'
           : 'border-l-2 border-transparent text-sidebar-foreground/70 hover:bg-white/5 hover:text-sidebar-foreground'
@@ -65,9 +64,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
       <aside className="flex w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
-        {/* Logo */}
         <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-5">
           <Shield className="size-5 text-sidebar-accent" />
           <span className="text-lg font-bold tracking-tight text-white">
@@ -75,7 +72,6 @@ export default function DashboardLayout({
           </span>
         </div>
 
-        {/* Main nav */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 pt-4">
           <p className="mb-2 px-3 text-[11px] font-semibold tracking-widest text-sidebar-muted uppercase">
             Main
@@ -84,7 +80,6 @@ export default function DashboardLayout({
             <NavLink key={item.href} item={item} pathname={pathname} />
           ))}
 
-          {/* Admin nav */}
           {isAdmin && (
             <>
               <p className="mb-2 mt-6 px-3 text-[11px] font-semibold tracking-widest text-sidebar-muted uppercase">
@@ -97,13 +92,11 @@ export default function DashboardLayout({
           )}
         </nav>
 
-        {/* Bottom section */}
         <div className="space-y-1 border-t border-white/10 px-3 py-3">
           {bottomNav.map((item) => (
             <NavLink key={item.href} item={item} pathname={pathname} />
           ))}
 
-          {/* User info + logout */}
           {user && (
             <div className="mt-2 flex items-center gap-3 rounded-md px-3 py-2">
               <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sidebar-accent/20 text-xs font-semibold text-sidebar-accent">
@@ -119,9 +112,9 @@ export default function DashboardLayout({
               </div>
               <Button
                 variant="ghost"
-                size="icon-xs"
+                size="icon"
                 onClick={() => logout.mutate()}
-                className="shrink-0 text-sidebar-muted hover:bg-white/10 hover:text-white"
+                className="size-7 shrink-0 text-sidebar-muted hover:bg-white/10 hover:text-white"
                 aria-label="Sign out"
               >
                 <LogOut className="size-3.5" />
@@ -131,9 +124,8 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-6">{children}</div>
+      <main className="dot-grid-bg flex min-h-0 flex-1 flex-col overflow-hidden">
+        {children}
       </main>
     </div>
   );

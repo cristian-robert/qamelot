@@ -2,49 +2,43 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { authApi } from '../api/auth';
-import type { LoginInput, RegisterInput } from '@app/shared';
-
-export const AUTH_QUERY_KEY = ['auth', 'me'] as const;
+import type { UserDto, LoginInput, RegisterInput } from '@app/shared';
+import { authApi } from '@/lib/api/auth';
 
 export function useAuth() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  const { data: user, isLoading } = useQuery({
-    queryKey: AUTH_QUERY_KEY,
+  const { data: user, isLoading, error } = useQuery<UserDto>({
+    queryKey: ['auth', 'me'],
     queryFn: authApi.me,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
 
-  const loginMutation = useMutation({
+  const login = useMutation({
     mutationFn: (data: LoginInput) => authApi.login(data),
-    onSuccess: (user) => {
-      queryClient.setQueryData(AUTH_QUERY_KEY, user);
+    onSuccess: (data) => {
+      queryClient.setQueryData(['auth', 'me'], data);
       router.push('/dashboard');
     },
   });
 
-  const registerMutation = useMutation({
+  const register = useMutation({
     mutationFn: (data: RegisterInput) => authApi.register(data),
-    onSuccess: () => router.push('/login'),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['auth', 'me'], data);
+      router.push('/dashboard');
+    },
   });
 
-  const logoutMutation = useMutation({
+  const logout = useMutation({
     mutationFn: authApi.logout,
     onSuccess: () => {
-      queryClient.removeQueries({ queryKey: AUTH_QUERY_KEY });
+      queryClient.clear();
       router.push('/login');
     },
   });
 
-  return {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    login: loginMutation,
-    register: registerMutation,
-    logout: logoutMutation,
-  };
+  return { user: user ?? null, isLoading, error, login, register, logout };
 }

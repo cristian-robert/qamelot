@@ -1,13 +1,29 @@
-/**
- * Compute the cartesian product of multiple arrays.
- * cartesian([[a, b], [x, y]]) => [[a, x], [a, y], [b, x], [b, y]]
- */
-export function cartesian<T>(arrays: T[][]): T[][] {
-  if (arrays.length === 0) return [];
-  if (arrays.some((arr) => arr.length === 0)) return [];
+import type { ConfigGroupWithItemsDto } from '@app/shared';
 
-  return arrays.reduce<T[][]>(
-    (acc, curr) => acc.flatMap((combo) => curr.map((item) => [...combo, item])),
-    [[]],
-  );
+export interface CartesianEntry {
+  label: string;
+  items: Array<{ groupId: string; itemId: string; name: string }>;
+}
+
+export function cartesianProduct(groups: ConfigGroupWithItemsDto[]): CartesianEntry[] {
+  if (groups.length === 0) return [];
+  const result: CartesianEntry[] = [];
+
+  function recurse(index: number, current: CartesianEntry['items'], labels: string[]) {
+    if (index === groups.length) {
+      result.push({ label: labels.join(' / '), items: [...current] });
+      return;
+    }
+    const group = groups[index];
+    for (const item of group.items) {
+      recurse(
+        index + 1,
+        [...current, { groupId: group.id, itemId: item.id, name: item.name }],
+        [...labels, item.name],
+      );
+    }
+  }
+
+  recurse(0, [], []);
+  return result;
 }

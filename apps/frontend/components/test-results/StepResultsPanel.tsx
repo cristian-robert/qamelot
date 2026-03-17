@@ -1,27 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { CheckCheck } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import type { TestCaseStepDto } from '@app/shared';
+import { TestResultStatus } from '@app/shared';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { ResultStatusBadge } from './ResultStatusBadge';
-import { TestResultStatus } from '@app/shared';
 import { cn } from '@/lib/utils';
-import type { TestCaseStepDto, TestStepResultDto, StepResultInput } from '@app/shared';
 
-const STATUS_OPTIONS: Array<{
-  value: TestResultStatus;
-  label: string;
-  activeClass: string;
-}> = [
-  { value: TestResultStatus.PASSED, label: 'Pass', activeClass: 'bg-green-600 hover:bg-green-700 text-white border-green-600' },
-  { value: TestResultStatus.FAILED, label: 'Fail', activeClass: 'bg-red-600 hover:bg-red-700 text-white border-red-600' },
-  { value: TestResultStatus.BLOCKED, label: 'Block', activeClass: 'bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600' },
-  { value: TestResultStatus.RETEST, label: 'Retest', activeClass: 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600' },
-];
-
-interface StepState {
+interface StepResult {
   testCaseStepId: string;
   status: TestResultStatus;
   actualResult: string;
@@ -29,251 +15,173 @@ interface StepState {
 
 interface StepResultsPanelProps {
   steps: TestCaseStepDto[];
-  existingStepResults?: TestStepResultDto[];
-  onSubmitSteps: (
-    stepResults: StepResultInput[],
-    overallStatus: string,
-    isOverride: boolean,
-  ) => void;
-  isPending: boolean;
-  disabled: boolean;
+  stepResults: Map<string, StepResult>;
+  onStepStatusChange: (stepId: string, status: TestResultStatus) => void;
+  onActualResultChange: (stepId: string, value: string) => void;
+  activeStepIndex: number;
 }
 
-/** Derive overall status from step statuses (mirrors backend logic) */
-function deriveOverallStatus(stepStates: StepState[]): TestResultStatus {
-  if (stepStates.length === 0) return TestResultStatus.UNTESTED;
-
-  if (stepStates.some((s) => s.status === TestResultStatus.FAILED)) {
-    return TestResultStatus.FAILED;
-  }
-  if (stepStates.some((s) => s.status === TestResultStatus.BLOCKED)) {
-    return TestResultStatus.BLOCKED;
-  }
-  if (stepStates.some((s) => s.status === TestResultStatus.RETEST)) {
-    return TestResultStatus.RETEST;
-  }
-  if (stepStates.some((s) => s.status === TestResultStatus.UNTESTED)) {
-    return TestResultStatus.RETEST;
-  }
-  return TestResultStatus.PASSED;
-}
+const borderByStatus: Record<TestResultStatus, string> = {
+  [TestResultStatus.PASSED]: 'border-l-emerald-500',
+  [TestResultStatus.FAILED]: 'border-l-red-500',
+  [TestResultStatus.BLOCKED]: 'border-l-amber-500',
+  [TestResultStatus.RETEST]: 'border-l-blue-500',
+  [TestResultStatus.UNTESTED]: 'border-l-gray-300',
+};
 
 export function StepResultsPanel({
   steps,
-  existingStepResults,
-  onSubmitSteps,
-  isPending,
-  disabled,
+  stepResults,
+  onStepStatusChange,
+  onActualResultChange,
+  activeStepIndex,
 }: StepResultsPanelProps) {
-  const [stepStates, setStepStates] = useState<StepState[]>(() =>
-    steps.map((step) => {
-      const existing = existingStepResults?.find(
-        (sr) => sr.testCaseStepId === step.id,
-      );
-      return {
-        testCaseStepId: step.id,
-        status: (existing?.status as TestResultStatus) ?? TestResultStatus.UNTESTED,
-        actualResult: existing?.actualResult ?? '',
-      };
-    }),
-  );
-
-  const [overrideStatus, setOverrideStatus] = useState<TestResultStatus | null>(null);
-
-  const derivedStatus = deriveOverallStatus(stepStates);
-  const displayStatus = overrideStatus ?? derivedStatus;
-
-  const handleStepStatusChange = useCallback(
-    (stepId: string, status: TestResultStatus) => {
-      setStepStates((prev) =>
-        prev.map((s) =>
-          s.testCaseStepId === stepId ? { ...s, status } : s,
-        ),
-      );
-      setOverrideStatus(null);
-    },
-    [],
-  );
-
-  const handleActualResultChange = useCallback(
-    (stepId: string, value: string) => {
-      setStepStates((prev) =>
-        prev.map((s) =>
-          s.testCaseStepId === stepId ? { ...s, actualResult: value } : s,
-        ),
-      );
-    },
-    [],
-  );
-
-  const handleOverrideClick = useCallback(
-    (status: TestResultStatus) => {
-      setOverrideStatus(status === overrideStatus ? null : status);
-    },
-    [overrideStatus],
-  );
-
-  const handleSubmit = useCallback(() => {
-    const stepResults: StepResultInput[] = stepStates.map((s) => ({
-      testCaseStepId: s.testCaseStepId,
-      status: s.status,
-      ...(s.actualResult && { actualResult: s.actualResult }),
-    }));
-
-    const isOverride = overrideStatus !== null;
-    const finalStatus = isOverride ? overrideStatus : derivedStatus;
-
-    onSubmitSteps(stepResults, finalStatus, isOverride);
-  }, [stepStates, overrideStatus, derivedStatus, onSubmitSteps]);
-
-  const allStepsSet = stepStates.every(
-    (s) => s.status !== TestResultStatus.UNTESTED,
-  );
-
-  const handlePassAll = useCallback(() => {
-    setStepStates((prev) =>
-      prev.map((s) => ({ ...s, status: TestResultStatus.PASSED })),
+  if (steps.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-12 text-center">
+        <p className="text-sm text-muted-foreground">
+          This test case has no steps. Use the action buttons above to set the overall result.
+        </p>
+      </div>
     );
-    setOverrideStatus(null);
-  }, []);
+  }
 
   return (
     <div className="space-y-3">
-      {/* Header with Pass All shortcut */}
-      <div className="flex items-center justify-between">
-        <h4 className="text-[13px] font-semibold">Step-Level Results</h4>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handlePassAll}
-          disabled={disabled}
-          className="h-7 cursor-pointer gap-1.5 border-green-300 text-xs text-green-700 hover:bg-green-50 hover:text-green-800"
-        >
-          <CheckCheck className="size-3.5" />
-          Pass All Steps
-        </Button>
-      </div>
+      {steps.map((step, index) => {
+        const result = stepResults.get(step.id);
+        const status = result?.status ?? TestResultStatus.UNTESTED;
+        const isActive = index === activeStepIndex;
+        const hasResult = result && result.status !== TestResultStatus.UNTESTED;
 
-      {/* Step cards */}
-      <div className="space-y-2">
-        {steps.map((step, idx) => {
-          const stepState = stepStates[idx];
-          return (
-            <div
-              key={step.id}
-              className="rounded-lg border bg-card p-3 transition-shadow hover:shadow-sm"
-            >
-              <div className="flex gap-3">
-                {/* Step number */}
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+        return (
+          <div
+            key={step.id}
+            className={cn(
+              'rounded-lg border-l-4 bg-card ring-1 ring-foreground/5 transition-all',
+              borderByStatus[status],
+              isActive && 'ring-2 ring-emerald-400/50 shadow-sm',
+            )}
+          >
+            <div className="p-4">
+              {/* Step header */}
+              <div className="flex items-start gap-3">
+                <span
+                  className={cn(
+                    'flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                    isActive
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : status === TestResultStatus.PASSED
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : status === TestResultStatus.FAILED
+                          ? 'bg-red-100 text-red-700'
+                          : status === TestResultStatus.BLOCKED
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-gray-100 text-gray-600',
+                  )}
+                >
                   {step.stepNumber}
                 </span>
 
-                <div className="flex-1 space-y-2">
+                <div className="min-w-0 flex-1 space-y-2">
                   {/* Description */}
-                  <div>
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Description</p>
-                    <p className="mt-0.5 whitespace-pre-wrap text-[13px]">{step.description}</p>
-                  </div>
+                  <p className="text-sm leading-relaxed">{step.description}</p>
 
                   {/* Expected result */}
-                  <div>
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Expected Result</p>
-                    <p className="mt-0.5 whitespace-pre-wrap text-[13px] text-muted-foreground">{step.expectedResult}</p>
-                  </div>
-
-                  {/* Actual result */}
-                  <div>
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Actual Result</p>
-                    <Textarea
-                      placeholder="Enter actual result..."
-                      value={stepState.actualResult}
-                      onChange={(e) =>
-                        handleActualResultChange(step.id, e.target.value)
-                      }
-                      rows={1}
-                      className="mt-0.5 min-h-[32px] resize-none text-[13px]"
-                      disabled={disabled}
-                    />
-                  </div>
-
-                  {/* Status buttons */}
-                  <div className="flex gap-1.5">
-                    {STATUS_OPTIONS.map((opt) => (
-                      <Button
-                        key={opt.value}
-                        size="sm"
-                        variant="outline"
-                        className={cn(
-                          'h-7 cursor-pointer px-3 text-xs font-medium transition-all',
-                          stepState.status === opt.value
-                            ? opt.activeClass
-                            : 'hover:bg-muted',
-                        )}
-                        onClick={() =>
-                          handleStepStatusChange(step.id, opt.value)
-                        }
-                        disabled={disabled}
-                      >
-                        {opt.label}
-                      </Button>
-                    ))}
-                  </div>
+                  {step.expectedResult && (
+                    <div>
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Expected
+                      </span>
+                      <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
+                        {step.expectedResult}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
 
-      {/* Overall status bar */}
-      <div className="flex items-center justify-between rounded-lg border bg-card px-4 py-3">
-        <div className="flex items-center gap-3">
-          <span className="text-[13px] font-semibold">Overall:</span>
-          <ResultStatusBadge status={displayStatus} />
-          {overrideStatus !== null && (
-            <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-200 bg-amber-50">
-              Manual Override
-            </Badge>
-          )}
-          {derivedStatus !== displayStatus && (
-            <span className="text-[11px] text-muted-foreground">
-              (auto-derived: {derivedStatus})
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground">Override:</span>
-          {STATUS_OPTIONS.map((opt) => (
-            <Button
-              key={opt.value}
-              size="sm"
-              variant="outline"
-              className={cn(
-                'h-6 cursor-pointer px-2 text-[10px] font-medium',
-                overrideStatus === opt.value
-                  ? opt.activeClass
-                  : 'hover:bg-muted',
+              {/* Action buttons */}
+              <div className="mt-3 flex items-center gap-2 pl-10">
+                <StatusButton
+                  label="Pass"
+                  icon={<CheckCircle2 className="size-3.5" />}
+                  isSelected={status === TestResultStatus.PASSED}
+                  variant="pass"
+                  onClick={() => onStepStatusChange(step.id, TestResultStatus.PASSED)}
+                />
+                <StatusButton
+                  label="Fail"
+                  icon={<XCircle className="size-3.5" />}
+                  isSelected={status === TestResultStatus.FAILED}
+                  variant="fail"
+                  onClick={() => onStepStatusChange(step.id, TestResultStatus.FAILED)}
+                />
+                <StatusButton
+                  label="Block"
+                  icon={<AlertTriangle className="size-3.5" />}
+                  isSelected={status === TestResultStatus.BLOCKED}
+                  variant="block"
+                  onClick={() => onStepStatusChange(step.id, TestResultStatus.BLOCKED)}
+                />
+              </div>
+
+              {/* Actual result textarea - shown when step is active or has a result */}
+              {(isActive || hasResult) && (
+                <div className="mt-3 pl-10 animate-in">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Actual Result
+                  </label>
+                  <Textarea
+                    className="mt-1 min-h-[60px] text-sm"
+                    placeholder="Describe the actual result..."
+                    value={result?.actualResult ?? ''}
+                    onChange={(e) => onActualResultChange(step.id, e.target.value)}
+                  />
+                </div>
               )}
-              onClick={() => handleOverrideClick(opt.value)}
-              disabled={disabled}
-            >
-              {opt.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      {/* Submit button */}
-      <div className="flex justify-end">
-        <Button
-          onClick={handleSubmit}
-          className="cursor-pointer"
-          disabled={isPending || disabled || (!allStepsSet && overrideStatus === null)}
-        >
-          {isPending ? 'Submitting...' : 'Submit Step Results'}
-        </Button>
-      </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+function StatusButton({
+  label,
+  icon,
+  isSelected,
+  variant,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  isSelected: boolean;
+  variant: 'pass' | 'fail' | 'block';
+  onClick: () => void;
+}) {
+  const styles = {
+    pass: isSelected
+      ? 'bg-emerald-100 text-emerald-700 border-emerald-300 ring-1 ring-emerald-200'
+      : 'text-muted-foreground hover:bg-emerald-50 hover:text-emerald-600 border-border',
+    fail: isSelected
+      ? 'bg-red-100 text-red-700 border-red-300 ring-1 ring-red-200'
+      : 'text-muted-foreground hover:bg-red-50 hover:text-red-600 border-border',
+    block: isSelected
+      ? 'bg-amber-100 text-amber-700 border-amber-300 ring-1 ring-amber-200'
+      : 'text-muted-foreground hover:bg-amber-50 hover:text-amber-600 border-border',
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="xs"
+      onClick={onClick}
+      className={cn('gap-1 transition-all', styles[variant])}
+    >
+      {icon}
+      {label}
+    </Button>
   );
 }

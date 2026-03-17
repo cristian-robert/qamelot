@@ -1,69 +1,118 @@
 'use client';
 
-import { Role, type UserDto } from '@app/shared';
-import { TableRow, TableCell } from '@/components/ui/table';
+import { useState } from 'react';
+import { MoreHorizontal, Trash2 } from 'lucide-react';
+import type { UserDto } from '@app/shared';
+import { Role } from '@app/shared';
+import { useUpdateUserRole, useDeleteUser } from '@/lib/users/useUsers';
+import { formatDate } from '@/lib/format';
 import { Button } from '@/components/ui/button';
+import { TableRow, TableCell } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { RoleBadge } from './role-badge';
-
-const ROLE_OPTIONS = [Role.ADMIN, Role.LEAD, Role.TESTER, Role.VIEWER] as const;
 
 interface UserRowProps {
   user: UserDto;
   currentUserId: string | undefined;
-  onRoleChange: (userId: string, role: Role) => void;
-  onDeactivate: (userId: string) => void;
-  isUpdating: boolean;
 }
 
-export function UserRow({
-  user,
-  currentUserId,
-  onRoleChange,
-  onDeactivate,
-  isUpdating,
-}: UserRowProps) {
+export function UserRow({ user, currentUserId }: UserRowProps) {
+  const updateRole = useUpdateUserRole();
+  const deleteUser = useDeleteUser();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
   const isSelf = user.id === currentUserId;
 
+  function handleRoleChange(role: Role) {
+    updateRole.mutate({ id: user.id, data: { role } });
+  }
+
+  function handleDelete() {
+    deleteUser.mutate(user.id, {
+      onSuccess: () => setDeleteOpen(false),
+    });
+  }
+
   return (
-    <TableRow>
-      <TableCell className="font-medium">{user.name}</TableCell>
-      <TableCell>{user.email}</TableCell>
-      <TableCell>
-        {isSelf ? (
+    <>
+      <TableRow>
+        <TableCell className="font-medium">{user.name}</TableCell>
+        <TableCell className="text-muted-foreground">{user.email}</TableCell>
+        <TableCell>
           <RoleBadge role={user.role} />
-        ) : (
-          <select
-            aria-label={`Change role for ${user.name}`}
-            value={user.role}
-            onChange={(e) => onRoleChange(user.id, e.target.value as Role)}
-            disabled={isUpdating}
-            className="h-7 rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
-          >
-            {ROLE_OPTIONS.map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
-            ))}
-          </select>
-        )}
-      </TableCell>
-      <TableCell>
-        <span className="text-xs text-muted-foreground">
-          {new Date(user.createdAt).toLocaleDateString()}
-        </span>
-      </TableCell>
-      <TableCell>
-        {!isSelf && (
-          <Button
-            variant="destructive"
-            size="sm"
-            disabled={isUpdating}
-            onClick={() => onDeactivate(user.id)}
-          >
-            Deactivate
-          </Button>
-        )}
-      </TableCell>
-    </TableRow>
+        </TableCell>
+        <TableCell className="text-muted-foreground">
+          {formatDate(user.createdAt)}
+        </TableCell>
+        <TableCell className="text-right">
+          {!isSelf && (
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />}>
+                <MoreHorizontal className="size-4" />
+                <span className="sr-only">Actions</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Change Role</DropdownMenuLabel>
+                {Object.values(Role).map((role) => (
+                  <DropdownMenuItem
+                    key={role}
+                    disabled={role === user.role}
+                    onClick={() => handleRoleChange(role)}
+                  >
+                    {role}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 className="size-4" />
+                  Delete User
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </TableCell>
+      </TableRow>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {user.name}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteUser.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteUser.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

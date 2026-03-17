@@ -49,3 +49,6 @@ packages/shared/src/**/*.d.ts.map
 
 # Uploads
 uploads/
+
+# Test integration playground
+test-integration/

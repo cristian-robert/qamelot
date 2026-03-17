@@ -130,7 +130,9 @@ export class QamelotReporter implements Reporter {
 
   private buildTestId(test: TestCase): string {
     const filePath = test.location.file;
-    const titlePath = test.titlePath().slice(1);
+    // titlePath() returns ['', '', 'file.spec.ts', 'Describe', 'test name']
+    // Filter out empty strings and the file name element to get just describe + test
+    const titlePath = test.titlePath().filter((s) => s.length > 0 && !s.endsWith('.spec.ts') && !s.endsWith('.test.ts'));
     return `${filePath} > ${titlePath.join(' > ')}`;
   }
 

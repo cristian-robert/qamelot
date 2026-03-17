@@ -95,6 +95,7 @@ export class AutomationService {
       log?: string;
     },
     apiKeyProjectId: string,
+    apiKeyId: string,
   ) {
     const testRunCase = await this.prisma.testRunCase.findFirst({
       where: {
@@ -124,11 +125,18 @@ export class AutomationService {
 
     const status = RESULT_STATUS_MAP[data.status] ?? TestResultStatus.FAILED;
 
+    // Resolve executor: use the API key creator as the "executed by" user
+    const apiKey = await this.prisma.apiKey.findUnique({
+      where: { id: apiKeyId },
+      select: { createdById: true },
+    });
+    const executedById = apiKey?.createdById ?? 'system';
+
     const result = await this.prisma.testResult.create({
       data: {
         testRunCaseId: testRunCase.id,
         testRunId: runId,
-        executedById: 'system',
+        executedById,
         status,
         elapsed: data.duration ? Math.round(data.duration / 1000) : null,
         comment: data.error ?? null,

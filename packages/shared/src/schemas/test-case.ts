@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CasePriority, CaseType, TemplateType } from '../types/index';
+import { CasePriority, CaseType, TemplateType, AutomationStatus } from '../types/index';
 
 // ── Step schemas ──
 
@@ -76,6 +76,9 @@ export const UpdateTestCaseSchema = z.object({
     .max(1000, 'References must be 1000 characters or less')
     .nullable()
     .optional(),
+  automationId: z.string().max(500).nullable().optional(),
+  automationFilePath: z.string().max(500).nullable().optional(),
+  automationStatus: z.nativeEnum(AutomationStatus).optional(),
 });
 
 export const CopyMoveTestCaseSchema = z.object({

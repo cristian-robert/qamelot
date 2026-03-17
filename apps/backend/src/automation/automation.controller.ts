@@ -40,6 +40,7 @@ export class AutomationController {
         runId,
         result,
         req.apiKey.projectId,
+        req.apiKey.id,
       );
       if (saved) submitted++;
     }

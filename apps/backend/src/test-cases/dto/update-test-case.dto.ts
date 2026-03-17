@@ -9,7 +9,7 @@ import {
   MinLength,
   MaxLength,
 } from 'class-validator';
-import { CasePriority, CaseType, TemplateType } from '@app/shared';
+import { CasePriority, CaseType, TemplateType, AutomationStatus } from '@app/shared';
 
 export class UpdateTestCaseDto {
   @ApiPropertyOptional({ example: 'Updated test title', maxLength: 300 })
@@ -54,4 +54,23 @@ export class UpdateTestCaseDto {
   @IsOptional()
   @MaxLength(1000)
   references?: string | null;
+
+  @ApiPropertyOptional({ example: 'tests/login.spec.ts > Auth > should login', nullable: true })
+  @ValidateIf((o) => o.automationId !== null)
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  automationId?: string | null;
+
+  @ApiPropertyOptional({ example: 'tests/login.spec.ts', nullable: true })
+  @ValidateIf((o) => o.automationFilePath !== null)
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  automationFilePath?: string | null;
+
+  @ApiPropertyOptional({ enum: AutomationStatus })
+  @IsIn(Object.values(AutomationStatus))
+  @IsOptional()
+  automationStatus?: AutomationStatus;
 }

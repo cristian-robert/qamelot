@@ -18,6 +18,8 @@ import { AttachmentsModule } from './attachments/attachments.module';
 import { SharedStepsModule } from './shared-steps/shared-steps.module';
 import { ConfigsModule } from './configs/configs.module';
 import { CustomFieldsModule } from './custom-fields/custom-fields.module';
+import { ApiKeysModule } from './api-keys/api-keys.module';
+import { AutomationModule } from './automation/automation.module';
 
 @Module({
   imports: [
@@ -38,6 +40,8 @@ import { CustomFieldsModule } from './custom-fields/custom-fields.module';
     SharedStepsModule,
     ConfigsModule,
     CustomFieldsModule,
+    ApiKeysModule,
+    AutomationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

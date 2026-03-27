@@ -89,7 +89,7 @@ export default function DashboardPage() {
           <StatCard
             icon={FolderKanban}
             label="Projects"
-            value={isLoading ? null : (summary?.totalProjects ?? 0)}
+            value={projectsLoading ? null : (projects?.length ?? 0)}
             color="text-primary"
             bgColor="bg-primary/10"
           />

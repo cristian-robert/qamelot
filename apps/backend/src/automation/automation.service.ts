@@ -12,6 +12,15 @@ const RESULT_STATUS_MAP: Record<string, TestResultStatus> = {
   BLOCKED: TestResultStatus.BLOCKED,
 };
 
+/**
+ * Detects whether an automation ID contains an absolute file path and returns
+ * true if so. Used to migrate old-style IDs that exposed workstation paths.
+ */
+function hasAbsolutePath(automationId: string): boolean {
+  const filePart = automationId.split(' > ')[0];
+  return filePart.startsWith('/') || /^[A-Za-z]:\\/.test(filePart);
+}
+
 @Injectable()
 export class AutomationService {
   private readonly logger = new Logger(AutomationService.name);
@@ -44,6 +53,50 @@ export class AutomationService {
       },
       select: { id: true, automationId: true },
     });
+
+    // Track which incoming IDs were matched (exact or suffix)
+    const matchedIncomingIds = new Set(
+      data.automationIds.filter((aid) =>
+        cases.some((c) => c.automationId === aid),
+      ),
+    );
+
+    // Suffix fallback for unmatched IDs: handles absolute→relative migration
+    const unmatchedIncoming = data.automationIds.filter(
+      (aid) => !matchedIncomingIds.has(aid),
+    );
+    if (unmatchedIncoming.length > 0) {
+      const allAutomated = await this.prisma.testCase.findMany({
+        where: {
+          projectId: apiKeyProjectId,
+          automationId: { not: null },
+          deletedAt: null,
+        },
+        select: { id: true, automationId: true },
+      });
+      const matchedCaseIds = new Set(cases.map((c) => c.id));
+      let suffixCount = 0;
+      for (const aid of unmatchedIncoming) {
+        const match = allAutomated.find(
+          (c) =>
+            !matchedCaseIds.has(c.id) &&
+            c.automationId &&
+            hasAbsolutePath(c.automationId) &&
+            c.automationId.endsWith(aid),
+        );
+        if (match) {
+          cases.push({ id: match.id, automationId: match.automationId });
+          matchedCaseIds.add(match.id);
+          matchedIncomingIds.add(aid);
+          suffixCount++;
+        }
+      }
+      if (suffixCount > 0) {
+        this.logger.warn(
+          `createRun: matched ${suffixCount} case(s) via suffix fallback — run sync to migrate automation IDs`,
+        );
+      }
+    }
 
     if (cases.length === 0) {
       throw new BadRequestException(
@@ -80,7 +133,7 @@ export class AutomationService {
     return {
       ...run,
       unmatchedIds: data.automationIds.filter(
-        (aid) => !cases.some((c) => c.automationId === aid),
+        (aid) => !matchedIncomingIds.has(aid),
       ),
     };
   }
@@ -247,24 +300,67 @@ export class AutomationService {
       select: { id: true, automationId: true },
     });
 
+    // Build exact-match map and a list of old absolute-path entries for suffix matching
     const existingMap = new Map(
       existing.map((c) => [c.automationId, c.id]),
     );
-    const incomingIds = new Set(tests.map((t) => t.automationId));
+    const absolutePathEntries = existing.filter(
+      (c) => c.automationId && hasAbsolutePath(c.automationId),
+    );
 
-    // Update matched cases with current file path and status
-    const matched = tests.filter((t) => existingMap.has(t.automationId));
-    for (const t of matched) {
+    const matchedTests: typeof tests = [];
+    const migratedCount = { value: 0 };
+
+    for (const t of tests) {
+      // Try exact match first
+      if (existingMap.has(t.automationId)) {
+        matchedTests.push(t);
+        continue;
+      }
+
+      // Suffix match: find an old absolute-path ID that ends with the new relative ID
+      const suffixMatch = absolutePathEntries.find(
+        (e) => e.automationId!.endsWith(t.automationId),
+      );
+      if (suffixMatch) {
+        const oldId = suffixMatch.automationId!;
+        // Migrate: update the automationId to the new relative version
+        await this.prisma.testCase.update({
+          where: { id: suffixMatch.id },
+          data: {
+            automationId: t.automationId,
+            automationFilePath: t.filePath,
+            automationStatus: 'AUTOMATED',
+          },
+        });
+        // Update maps so stale detection sees the migrated entry
+        existingMap.delete(oldId);
+        existingMap.set(t.automationId, suffixMatch.id);
+        matchedTests.push(t);
+        migratedCount.value++;
+        this.logger.log(
+          `Migrated automationId from absolute to relative: "${t.automationId}"`,
+        );
+      }
+    }
+
+    // Update exact-matched cases with current file path and status
+    const exactMatched = matchedTests.filter((t) =>
+      existing.some((e) => e.automationId === t.automationId),
+    );
+    for (const t of exactMatched) {
       await this.prisma.testCase.updateMany({
         where: { automationId: t.automationId, projectId },
         data: { automationFilePath: t.filePath, automationStatus: 'AUTOMATED' },
       });
     }
 
+    const incomingIds = new Set(tests.map((t) => t.automationId));
+
     // Mark stale cases (exist in DB but not in incoming test list)
-    const staleIds = existing
-      .filter((e) => e.automationId && !incomingIds.has(e.automationId))
-      .map((e) => e.id);
+    const staleIds = [...existingMap.entries()]
+      .filter(([aid]) => aid && !incomingIds.has(aid))
+      .map(([, id]) => id);
 
     if (staleIds.length > 0) {
       await this.prisma.testCase.updateMany({
@@ -274,9 +370,20 @@ export class AutomationService {
     }
 
     const unmatched = tests
-      .filter((t) => !existingMap.has(t.automationId))
+      .filter((t) => !matchedTests.includes(t))
       .map((t) => t.automationId);
 
-    return { matched: matched.length, created: 0, stale: staleIds.length, unmatched };
+    if (migratedCount.value > 0) {
+      this.logger.log(
+        `Sync: migrated ${migratedCount.value} automation ID(s) from absolute to relative paths`,
+      );
+    }
+
+    return {
+      matched: matchedTests.length,
+      created: 0,
+      stale: staleIds.length,
+      unmatched,
+    };
   }
 }

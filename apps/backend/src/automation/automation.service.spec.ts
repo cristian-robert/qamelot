@@ -9,7 +9,7 @@ describe('AutomationService', () => {
   const mockPrisma = {
     project: { findFirst: jest.fn(), create: jest.fn() },
     testPlan: { findFirst: jest.fn(), create: jest.fn() },
-    testCase: { findMany: jest.fn(), updateMany: jest.fn() },
+    testCase: { findMany: jest.fn(), updateMany: jest.fn(), update: jest.fn() },
     testRun: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     testRunCase: { findFirst: jest.fn() },
     testResult: { create: jest.fn() },
@@ -64,10 +64,35 @@ describe('AutomationService', () => {
 
     it('throws BadRequestException when no cases match', async () => {
       mockPrisma.testPlan.findFirst.mockResolvedValue({ id: 'plan-1', projectId: 'proj-1' });
-      mockPrisma.testCase.findMany.mockResolvedValue([]);
+      mockPrisma.testCase.findMany
+        .mockResolvedValueOnce([])   // exact match
+        .mockResolvedValueOnce([]);  // suffix fallback: allAutomated
       await expect(service.createRun({
         projectId: 'proj-1', planId: 'plan-1', name: 'Run', automationIds: ['no-match'],
       }, 'proj-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('matches cases via suffix fallback when DB has absolute paths', async () => {
+      mockPrisma.testPlan.findFirst.mockResolvedValue({ id: 'plan-1', projectId: 'proj-1' });
+      // First call: exact match finds nothing
+      mockPrisma.testCase.findMany
+        .mockResolvedValueOnce([])
+        // Second call: suffix fallback loads all automated cases
+        .mockResolvedValueOnce([
+          { id: 'case-1', automationId: '/Users/dev/project/tests/login.spec.ts > Auth > should login' },
+        ]);
+      mockPrisma.testRun.create.mockResolvedValue({
+        id: 'run-1', name: 'CI Run', executionType: 'AUTOMATED', status: 'PENDING',
+        testRunCases: [{ id: 'trc-1', testCaseId: 'case-1', testCase: { id: 'case-1', title: 'Login', automationId: 'tests/login.spec.ts > Auth > should login' } }],
+      });
+
+      const result = await service.createRun({
+        projectId: 'proj-1', planId: 'plan-1', name: 'CI Run',
+        automationIds: ['tests/login.spec.ts > Auth > should login'],
+      }, 'proj-1');
+
+      expect(result.id).toBe('run-1');
+      expect(result.unmatchedIds).toEqual([]);
     });
   });
 
@@ -157,6 +182,31 @@ describe('AutomationService', () => {
       expect(result.matched).toBe(1);
       expect(result.stale).toBe(1);
       expect(result.unmatched).toEqual(['test-new']);
+    });
+
+    it('migrates absolute-path automation IDs to relative via suffix matching', async () => {
+      mockPrisma.testCase.findMany.mockResolvedValue([
+        { id: 'case-1', automationId: '/Users/dev/project/tests/login.spec.ts > Auth > should login' },
+      ]);
+      mockPrisma.testCase.update.mockResolvedValue({});
+      mockPrisma.testCase.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await service.syncTests('proj-1', [
+        { automationId: 'tests/login.spec.ts > Auth > should login', title: 'Login', filePath: 'tests/login.spec.ts' },
+      ]);
+
+      expect(result.matched).toBe(1);
+      expect(result.stale).toBe(0);
+      expect(result.unmatched).toEqual([]);
+      // Should have updated the automationId to the relative version
+      expect(mockPrisma.testCase.update).toHaveBeenCalledWith({
+        where: { id: 'case-1' },
+        data: {
+          automationId: 'tests/login.spec.ts > Auth > should login',
+          automationFilePath: 'tests/login.spec.ts',
+          automationStatus: 'AUTOMATED',
+        },
+      });
     });
   });
 

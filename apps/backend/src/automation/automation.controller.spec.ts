@@ -11,6 +11,7 @@ describe('AutomationController', () => {
     completeRun: jest.fn(),
     listAutomatedCases: jest.fn(),
     syncTests: jest.fn(),
+    setupProject: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -101,5 +102,21 @@ describe('AutomationController', () => {
     const result = await controller.sync(dto);
     expect(mockService.syncTests).toHaveBeenCalledWith('proj-1', dto.tests);
     expect(result.matched).toBe(1);
+  });
+
+  it('setup delegates to service', async () => {
+    mockService.setupProject.mockResolvedValue({
+      projectId: 'proj-1',
+      planId: 'plan-1',
+      created: false,
+    });
+    const dto = {
+      projectName: 'Playwright Integration Test',
+      planName: 'Automation Plan',
+    };
+    const result = await controller.setup(dto);
+    expect(mockService.setupProject).toHaveBeenCalledWith(dto);
+    expect(result.projectId).toBe('proj-1');
+    expect(result.created).toBe(false);
   });
 });

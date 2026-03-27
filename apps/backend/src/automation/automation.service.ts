@@ -45,7 +45,7 @@ export class AutomationService {
     });
     if (!plan) throw new NotFoundException('Test plan not found');
 
-    let cases = await this.prisma.testCase.findMany({
+    const cases = await this.prisma.testCase.findMany({
       where: {
         projectId: apiKeyProjectId,
         automationId: { in: data.automationIds },
@@ -54,8 +54,18 @@ export class AutomationService {
       select: { id: true, automationId: true },
     });
 
-    // Fallback: if no exact matches, try suffix matching for absolute→relative migration
-    if (cases.length === 0) {
+    // Track which incoming IDs were matched (exact or suffix)
+    const matchedIncomingIds = new Set(
+      data.automationIds.filter((aid) =>
+        cases.some((c) => c.automationId === aid),
+      ),
+    );
+
+    // Suffix fallback for unmatched IDs: handles absolute→relative migration
+    const unmatchedIncoming = data.automationIds.filter(
+      (aid) => !matchedIncomingIds.has(aid),
+    );
+    if (unmatchedIncoming.length > 0) {
       const allAutomated = await this.prisma.testCase.findMany({
         where: {
           projectId: apiKeyProjectId,
@@ -64,15 +74,26 @@ export class AutomationService {
         },
         select: { id: true, automationId: true },
       });
-      const suffixMatched = allAutomated.filter((c) =>
-        c.automationId &&
-        hasAbsolutePath(c.automationId) &&
-        data.automationIds.some((aid) => c.automationId!.endsWith(aid)),
-      );
-      if (suffixMatched.length > 0) {
-        cases = suffixMatched;
+      const matchedCaseIds = new Set(cases.map((c) => c.id));
+      let suffixCount = 0;
+      for (const aid of unmatchedIncoming) {
+        const match = allAutomated.find(
+          (c) =>
+            !matchedCaseIds.has(c.id) &&
+            c.automationId &&
+            hasAbsolutePath(c.automationId) &&
+            c.automationId.endsWith(aid),
+        );
+        if (match) {
+          cases.push({ id: match.id, automationId: match.automationId });
+          matchedCaseIds.add(match.id);
+          matchedIncomingIds.add(aid);
+          suffixCount++;
+        }
+      }
+      if (suffixCount > 0) {
         this.logger.warn(
-          `createRun: matched ${cases.length} case(s) via suffix fallback — run sync to migrate automation IDs`,
+          `createRun: matched ${suffixCount} case(s) via suffix fallback — run sync to migrate automation IDs`,
         );
       }
     }
@@ -112,7 +133,7 @@ export class AutomationService {
     return {
       ...run,
       unmatchedIds: data.automationIds.filter(
-        (aid) => !cases.some((c) => c.automationId === aid),
+        (aid) => !matchedIncomingIds.has(aid),
       ),
     };
   }

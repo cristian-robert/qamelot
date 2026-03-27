@@ -16,6 +16,7 @@ export class QamelotReporter implements Reporter {
   private resultBuffer: AutomationResult[] = [];
   private automationIds: string[] = [];
   private flushPromise: Promise<void> = Promise.resolve();
+  private rootDir = '';
   private readonly BATCH_SIZE = 50;
 
   constructor(config: QamelotReporterConfig) {
@@ -23,7 +24,8 @@ export class QamelotReporter implements Reporter {
     this.client = new QamelotClient(config);
   }
 
-  onBegin(_config: FullConfig, suite: Suite): void {
+  onBegin(config: FullConfig, suite: Suite): void {
+    this.rootDir = config.rootDir;
     this.automationIds = this.collectTestIds(suite);
     if (this.automationIds.length === 0) {
       console.warn('[qamelot] No tests found to report');
@@ -135,8 +137,12 @@ export class QamelotReporter implements Reporter {
       return qamTag.slice(5); // strip "@QAM:" prefix
     }
 
-    // Fallback: build from file path + title path
-    const filePath = test.location.file;
+    // Fallback: build from project-relative file path + title path
+    const absolutePath = test.location.file;
+    const prefix = this.rootDir && absolutePath.startsWith(this.rootDir)
+      ? this.rootDir.endsWith('/') ? this.rootDir : this.rootDir + '/'
+      : '';
+    const filePath = prefix ? absolutePath.slice(prefix.length) : absolutePath;
     const titlePath = test.titlePath().filter(
       (s) => s.length > 0 && !s.endsWith('.spec.ts') && !s.endsWith('.test.ts'),
     );

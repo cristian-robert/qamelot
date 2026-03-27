@@ -50,8 +50,10 @@ packages/shared/src/**/*.d.ts.map
 # Uploads
 uploads/
 
-# Test integration playground
-test-integration/
+# Test integration — track scripts, ignore runtime artifacts
+test-integration/.env
+test-integration/node_modules/
+test-integration/test-results/
 
 # Local-only directories
 .playwright-cli/

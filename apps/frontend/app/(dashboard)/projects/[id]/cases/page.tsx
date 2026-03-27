@@ -29,7 +29,7 @@ import { CaseEditorPanel } from '@/components/test-cases/CaseEditorPanel';
 import { BulkToolbar } from '@/components/test-cases/BulkToolbar';
 import { CsvExportButton } from '@/components/test-cases/CsvExportButton';
 import { CsvImportWizard } from '@/components/test-cases/CsvImportWizard';
-import { ConfirmDialog } from '@/components/test-cases/ConfirmDialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
 
 type BulkDialogType = 'move' | 'priority' | 'type' | null;

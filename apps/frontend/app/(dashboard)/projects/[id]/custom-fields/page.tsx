@@ -44,6 +44,7 @@ import {
   DialogFooter,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 const fieldTypeLabels: Record<string, string> = {
   [CustomFieldType.STRING]: 'Text',
@@ -65,6 +66,7 @@ export default function CustomFieldsPage({
   const deleteDefinition = useDeleteCustomFieldDefinition(projectId);
 
   const [open, setOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CustomFieldDefinitionDto | null>(null);
   const [name, setName] = useState('');
   const [fieldType, setFieldType] = useState<string>(CustomFieldType.STRING);
   const [entityType, setEntityType] = useState<string>(CustomFieldEntityType.TEST_CASE);
@@ -284,11 +286,7 @@ export default function CustomFieldsPage({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      if (confirm('Delete this custom field definition?')) {
-                        deleteDefinition.mutate(def.id);
-                      }
-                    }}
+                    onClick={() => setDeleteTarget(def)}
                     className="text-destructive hover:text-destructive"
                   >
                     Delete
@@ -310,6 +308,23 @@ export default function CustomFieldsPage({
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete Custom Field"
+        description={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteDefinition.mutate(deleteTarget.id, {
+              onSuccess: () => setDeleteTarget(null),
+            });
+          }
+        }}
+        loading={deleteDefinition.isPending}
+      />
     </div>
   );
 }

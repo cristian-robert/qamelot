@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -8,6 +8,7 @@ import { useProject, useDeleteProject } from '@/lib/projects/useProjects';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ProjectOverview } from './ProjectOverview';
 
 const tabs = [
@@ -32,11 +33,11 @@ export default function ProjectDetailPage({
   const router = useRouter();
   const { data: project, isLoading } = useProject(id);
   const deleteProject = useDeleteProject();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const basePath = `/projects/${id}`;
 
   function handleDelete() {
-    if (!confirm('Are you sure you want to delete this project?')) return;
     deleteProject.mutate(id, {
       onSuccess: () => router.push('/projects'),
     });
@@ -67,8 +68,9 @@ export default function ProjectDetailPage({
           <Button
             variant="outline"
             size="sm"
-            onClick={handleDelete}
+            onClick={() => setDeleteOpen(true)}
             disabled={deleteProject.isPending}
+            className="text-destructive hover:text-destructive"
           >
             <Trash2 className="size-3.5" />
             Delete
@@ -100,6 +102,17 @@ export default function ProjectDetailPage({
       </nav>
 
       <ProjectOverview projectId={id} />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete Project"
+        description="Are you sure you want to delete this project? This action cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDelete}
+        loading={deleteProject.isPending}
+      />
     </div>
   );
 }

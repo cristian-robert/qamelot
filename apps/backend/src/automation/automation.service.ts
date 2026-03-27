@@ -235,12 +235,15 @@ export class AutomationService {
     }));
   }
 
-  async setupProject(data: {
-    projectName?: string;
-    projectId?: string;
-    planName?: string;
-    planId?: string;
-  }): Promise<{ projectId: string; planId: string }> {
+  async setupProject(
+    data: {
+      projectName?: string;
+      projectId?: string;
+      planName?: string;
+      planId?: string;
+    },
+    apiKeyProjectId: string,
+  ): Promise<{ projectId: string; planId: string }> {
     if (!data.projectId && !data.projectName) {
       throw new BadRequestException(
         'Either projectId or projectName must be provided.',
@@ -252,13 +255,24 @@ export class AutomationService {
       );
     }
 
-    // Look up project by ID or name — never create
-    const project = await this.prisma.project.findFirst({
-      where: {
-        ...(data.projectId ? { id: data.projectId } : { name: data.projectName }),
-        deletedAt: null,
-      },
-    });
+    // Look up project by ID or name, scoped to the API key's project
+    let project;
+
+    if (data.projectId) {
+      project = await this.prisma.project.findFirst({
+        where: { id: data.projectId, deletedAt: null },
+      });
+    } else {
+      const projects = await this.prisma.project.findMany({
+        where: { name: data.projectName, deletedAt: null },
+      });
+      if (projects.length > 1) {
+        throw new BadRequestException(
+          `Multiple projects found with name "${data.projectName}". Please specify projectId to disambiguate.`,
+        );
+      }
+      project = projects[0];
+    }
 
     if (!project) {
       const identifier = data.projectId ?? data.projectName;
@@ -267,14 +281,31 @@ export class AutomationService {
       );
     }
 
+    // Enforce API key project scope
+    if (project.id !== apiKeyProjectId) {
+      throw new NotFoundException(
+        `Project "${data.projectId ?? data.projectName}" not found. The API key is not authorized for this project.`,
+      );
+    }
+
     // Look up plan by ID or name within the project — never create
-    const plan = await this.prisma.testPlan.findFirst({
-      where: {
-        ...(data.planId ? { id: data.planId } : { name: data.planName }),
-        projectId: project.id,
-        deletedAt: null,
-      },
-    });
+    let plan;
+
+    if (data.planId) {
+      plan = await this.prisma.testPlan.findFirst({
+        where: { id: data.planId, projectId: project.id, deletedAt: null },
+      });
+    } else {
+      const plans = await this.prisma.testPlan.findMany({
+        where: { name: data.planName, projectId: project.id, deletedAt: null },
+      });
+      if (plans.length > 1) {
+        throw new BadRequestException(
+          `Multiple test plans found with name "${data.planName}" in project "${project.name}". Please specify planId to disambiguate.`,
+        );
+      }
+      plan = plans[0];
+    }
 
     if (!plan) {
       const identifier = data.planId ?? data.planName;

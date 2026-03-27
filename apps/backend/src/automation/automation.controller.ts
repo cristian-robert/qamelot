@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, Req } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Req, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
 import { ApiKeyAuth } from '../auth/decorators/api-key-auth.decorator';
 import { AutomationService } from './automation.service';
@@ -84,6 +84,7 @@ export class AutomationController {
   }
 
   @Post('setup')
+  @HttpCode(200)
   @ApiKeyAuth()
   @ApiHeader({ name: 'X-API-Key', required: true, description: 'Project API key' })
   @ApiOperation({
@@ -92,7 +93,10 @@ export class AutomationController {
   })
   @ApiResponse({ status: 200, description: 'Project and plan IDs returned' })
   @ApiResponse({ status: 404, description: 'Project or plan not found' })
-  setup(@Body() dto: SetupAutomationProjectDto) {
-    return this.automationService.setupProject(dto);
+  setup(
+    @Body() dto: SetupAutomationProjectDto,
+    @Req() req: { apiKey: { id: string; projectId: string } },
+  ) {
+    return this.automationService.setupProject(dto, req.apiKey.projectId);
   }
 }

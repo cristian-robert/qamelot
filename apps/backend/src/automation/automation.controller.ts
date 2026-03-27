@@ -1,7 +1,6 @@
-import { Controller, Post, Get, Body, Param, Req } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Req, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
 import { ApiKeyAuth } from '../auth/decorators/api-key-auth.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { AutomationService } from './automation.service';
 import { CreateAutomationRunDto } from './dto/create-automation-run.dto';
 import {
@@ -9,7 +8,6 @@ import {
   SyncAutomationTestsDto,
 } from './dto/submit-automation-result.dto';
 import { SetupAutomationProjectDto } from './dto/setup-automation-project.dto';
-import { Role } from '@app/shared';
 
 @ApiTags('automation')
 @Controller('automation')
@@ -86,10 +84,19 @@ export class AutomationController {
   }
 
   @Post('setup')
-  @Roles(Role.ADMIN, Role.LEAD)
-  @ApiOperation({ summary: 'Idempotent project+plan setup for automation' })
-  @ApiResponse({ status: 201, description: 'Project and plan IDs returned' })
-  setup(@Body() dto: SetupAutomationProjectDto) {
-    return this.automationService.setupProject(dto);
+  @HttpCode(200)
+  @ApiKeyAuth()
+  @ApiHeader({ name: 'X-API-Key', required: true, description: 'Project API key' })
+  @ApiOperation({
+    summary: 'Look up existing project and plan for automation',
+    description: 'Resolves project/plan by ID or name. Returns 404 if not found. Automation cannot create projects or plans — create them in the Qamelot UI first.',
+  })
+  @ApiResponse({ status: 200, description: 'Project and plan IDs returned' })
+  @ApiResponse({ status: 404, description: 'Project or plan not found' })
+  setup(
+    @Body() dto: SetupAutomationProjectDto,
+    @Req() req: { apiKey: { id: string; projectId: string } },
+  ) {
+    return this.automationService.setupProject(dto, req.apiKey.projectId);
   }
 }

@@ -235,52 +235,90 @@ export class AutomationService {
     }));
   }
 
-  async setupProject(data: {
-    projectName: string;
-    planName: string;
-    projectDescription?: string;
-  }): Promise<{ projectId: string; planId: string; created: boolean }> {
-    // Find or create project by name
-    let project = await this.prisma.project.findFirst({
-      where: { name: data.projectName, deletedAt: null },
-    });
+  async setupProject(
+    data: {
+      projectName?: string;
+      projectId?: string;
+      planName?: string;
+      planId?: string;
+    },
+    apiKeyProjectId: string,
+  ): Promise<{ projectId: string; planId: string }> {
+    if (!data.projectId && !data.projectName) {
+      throw new BadRequestException(
+        'Either projectId or projectName must be provided.',
+      );
+    }
+    if (!data.planId && !data.planName) {
+      throw new BadRequestException(
+        'Either planId or planName must be provided.',
+      );
+    }
 
-    const created = !project;
+    // Look up project by ID or name, scoped to the API key's project
+    let project;
+
+    if (data.projectId) {
+      project = await this.prisma.project.findFirst({
+        where: { id: data.projectId, deletedAt: null },
+      });
+    } else {
+      const projects = await this.prisma.project.findMany({
+        where: { name: data.projectName, deletedAt: null },
+      });
+      if (projects.length > 1) {
+        throw new BadRequestException(
+          `Multiple projects found with name "${data.projectName}". Please specify projectId to disambiguate.`,
+        );
+      }
+      project = projects[0];
+    }
 
     if (!project) {
-      project = await this.prisma.project.create({
-        data: {
-          name: data.projectName,
-          ...(data.projectDescription && { description: data.projectDescription }),
-        },
-      });
-      this.logger.log(`Created project "${data.projectName}" (${project.id})`);
-    } else {
-      this.logger.log(`Reusing project "${data.projectName}" (${project.id})`);
+      const identifier = data.projectId ?? data.projectName;
+      throw new NotFoundException(
+        `Project "${identifier}" not found. Automation cannot create projects — please create it in the Qamelot UI first.`,
+      );
     }
 
-    // Find or create plan within that project
-    let plan = await this.prisma.testPlan.findFirst({
-      where: {
-        name: data.planName,
-        projectId: project.id,
-        deletedAt: null,
-      },
-    });
+    // Enforce API key project scope
+    if (project.id !== apiKeyProjectId) {
+      throw new NotFoundException(
+        `Project "${data.projectId ?? data.projectName}" not found. The API key is not authorized for this project.`,
+      );
+    }
+
+    // Look up plan by ID or name within the project — never create
+    let plan;
+
+    if (data.planId) {
+      plan = await this.prisma.testPlan.findFirst({
+        where: { id: data.planId, projectId: project.id, deletedAt: null },
+      });
+    } else {
+      const plans = await this.prisma.testPlan.findMany({
+        where: { name: data.planName, projectId: project.id, deletedAt: null },
+      });
+      if (plans.length > 1) {
+        throw new BadRequestException(
+          `Multiple test plans found with name "${data.planName}" in project "${project.name}". Please specify planId to disambiguate.`,
+        );
+      }
+      plan = plans[0];
+    }
 
     if (!plan) {
-      plan = await this.prisma.testPlan.create({
-        data: {
-          name: data.planName,
-          projectId: project.id,
-        },
-      });
-      this.logger.log(`Created plan "${data.planName}" (${plan.id})`);
-    } else {
-      this.logger.log(`Reusing plan "${data.planName}" (${plan.id})`);
+      const identifier = data.planId ?? data.planName;
+      throw new NotFoundException(
+        `Test plan "${identifier}" not found in project "${project.name}". Automation cannot create test plans — please create it in the Qamelot UI first.`,
+      );
     }
 
-    return { projectId: project.id, planId: plan.id, created };
+    this.logger.log(
+      `Setup: resolved project "${project.name}" (${project.id}), plan "${plan.name}" (${plan.id})`,
+    );
+
+    return { projectId: project.id, planId: plan.id };
   }
 
   async syncTests(

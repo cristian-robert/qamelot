@@ -104,19 +104,18 @@ describe('AutomationController', () => {
     expect(result.matched).toBe(1);
   });
 
-  it('setup delegates to service', async () => {
+  it('setup delegates to service with apiKey projectId', async () => {
     mockService.setupProject.mockResolvedValue({
       projectId: 'proj-1',
       planId: 'plan-1',
-      created: false,
     });
     const dto = {
       projectName: 'Playwright Integration Test',
       planName: 'Automation Plan',
     };
-    const result = await controller.setup(dto);
-    expect(mockService.setupProject).toHaveBeenCalledWith(dto);
+    const result = await controller.setup(dto, mockReq);
+    expect(mockService.setupProject).toHaveBeenCalledWith(dto, 'proj-1');
     expect(result.projectId).toBe('proj-1');
-    expect(result.created).toBe(false);
+    expect(result.planId).toBe('plan-1');
   });
 });

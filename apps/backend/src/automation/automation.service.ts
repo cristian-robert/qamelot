@@ -182,6 +182,54 @@ export class AutomationService {
     }));
   }
 
+  async setupProject(data: {
+    projectName: string;
+    planName: string;
+    projectDescription?: string;
+  }): Promise<{ projectId: string; planId: string; created: boolean }> {
+    // Find or create project by name
+    let project = await this.prisma.project.findFirst({
+      where: { name: data.projectName, deletedAt: null },
+    });
+
+    const created = !project;
+
+    if (!project) {
+      project = await this.prisma.project.create({
+        data: {
+          name: data.projectName,
+          ...(data.projectDescription && { description: data.projectDescription }),
+        },
+      });
+      this.logger.log(`Created project "${data.projectName}" (${project.id})`);
+    } else {
+      this.logger.log(`Reusing project "${data.projectName}" (${project.id})`);
+    }
+
+    // Find or create plan within that project
+    let plan = await this.prisma.testPlan.findFirst({
+      where: {
+        name: data.planName,
+        projectId: project.id,
+        deletedAt: null,
+      },
+    });
+
+    if (!plan) {
+      plan = await this.prisma.testPlan.create({
+        data: {
+          name: data.planName,
+          projectId: project.id,
+        },
+      });
+      this.logger.log(`Created plan "${data.planName}" (${plan.id})`);
+    } else {
+      this.logger.log(`Reusing plan "${data.planName}" (${plan.id})`);
+    }
+
+    return { projectId: project.id, planId: plan.id, created };
+  }
+
   async syncTests(
     projectId: string,
     tests: Array<{

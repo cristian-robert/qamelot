@@ -1,21 +1,24 @@
 import { Controller, Post, Get, Body, Param, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
 import { ApiKeyAuth } from '../auth/decorators/api-key-auth.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { AutomationService } from './automation.service';
 import { CreateAutomationRunDto } from './dto/create-automation-run.dto';
 import {
   BulkSubmitAutomationResultsDto,
   SyncAutomationTestsDto,
 } from './dto/submit-automation-result.dto';
+import { SetupAutomationProjectDto } from './dto/setup-automation-project.dto';
+import { Role } from '@app/shared';
 
 @ApiTags('automation')
 @Controller('automation')
-@ApiHeader({ name: 'X-API-Key', required: true, description: 'Project API key' })
 export class AutomationController {
   constructor(private readonly automationService: AutomationService) {}
 
   @Post('runs')
   @ApiKeyAuth()
+  @ApiHeader({ name: 'X-API-Key', required: true, description: 'Project API key' })
   @ApiOperation({ summary: 'Create an automated test run' })
   @ApiResponse({ status: 201, description: 'Automated run created' })
   createRun(
@@ -27,6 +30,7 @@ export class AutomationController {
 
   @Post('runs/:runId/results')
   @ApiKeyAuth()
+  @ApiHeader({ name: 'X-API-Key', required: true, description: 'Project API key' })
   @ApiOperation({ summary: 'Submit automation results in bulk' })
   @ApiResponse({ status: 201, description: 'Results submitted' })
   async submitResults(
@@ -49,6 +53,7 @@ export class AutomationController {
 
   @Post('runs/:runId/complete')
   @ApiKeyAuth()
+  @ApiHeader({ name: 'X-API-Key', required: true, description: 'Project API key' })
   @ApiOperation({ summary: 'Mark automated run as completed' })
   @ApiResponse({ status: 200, description: 'Run marked complete' })
   completeRun(
@@ -60,6 +65,7 @@ export class AutomationController {
 
   @Get('cases/:projectId')
   @ApiKeyAuth()
+  @ApiHeader({ name: 'X-API-Key', required: true, description: 'Project API key' })
   @ApiOperation({ summary: 'List test cases with automation IDs' })
   @ApiResponse({ status: 200, description: 'List of automated case mappings' })
   listCases(
@@ -70,11 +76,20 @@ export class AutomationController {
 
   @Post('sync')
   @ApiKeyAuth()
+  @ApiHeader({ name: 'X-API-Key', required: true, description: 'Project API key' })
   @ApiOperation({ summary: 'Sync Playwright test discovery with Qamelot cases' })
   @ApiResponse({ status: 200, description: 'Sync results' })
   sync(
     @Body() dto: SyncAutomationTestsDto,
   ) {
     return this.automationService.syncTests(dto.projectId, dto.tests);
+  }
+
+  @Post('setup')
+  @Roles(Role.ADMIN, Role.LEAD)
+  @ApiOperation({ summary: 'Idempotent project+plan setup for automation' })
+  @ApiResponse({ status: 201, description: 'Project and plan IDs returned' })
+  setup(@Body() dto: SetupAutomationProjectDto) {
+    return this.automationService.setupProject(dto);
   }
 }

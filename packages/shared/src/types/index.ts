@@ -295,6 +295,7 @@ export interface TestCaseStepDto {
 export interface TestCaseDto extends BaseEntity {
   title: string;
   preconditions: string | null;
+  body: string | null;
   templateType: TemplateType;
   priority: CasePriority;
   type: CaseType;

@@ -45,6 +45,11 @@ export const CreateTestCaseSchema = z.object({
     .max(2000, 'Preconditions must be 2000 characters or less')
     .transform((v) => (v === '' ? undefined : v))
     .optional(),
+  body: z
+    .string()
+    .max(10000, 'Body must be 10000 characters or less')
+    .nullable()
+    .optional(),
   templateType: z.nativeEnum(TemplateType).optional(),
   priority: z.nativeEnum(CasePriority).optional(),
   type: z.nativeEnum(CaseType).optional(),
@@ -65,6 +70,11 @@ export const UpdateTestCaseSchema = z.object({
   preconditions: z
     .string()
     .max(2000, 'Preconditions must be 2000 characters or less')
+    .nullable()
+    .optional(),
+  body: z
+    .string()
+    .max(10000, 'Body must be 10000 characters or less')
     .nullable()
     .optional(),
   templateType: z.nativeEnum(TemplateType).optional(),

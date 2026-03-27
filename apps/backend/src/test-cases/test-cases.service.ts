@@ -34,6 +34,7 @@ export class TestCasesService {
       data: {
         title: data.title,
         ...(data.preconditions !== undefined && { preconditions: data.preconditions }),
+        ...(data.body !== undefined && { body: data.body }),
         ...(data.templateType !== undefined && { templateType: data.templateType }),
         ...(data.priority !== undefined && { priority: data.priority }),
         ...(data.type !== undefined && { type: data.type }),
@@ -126,6 +127,7 @@ export class TestCasesService {
       data: {
         ...(data.title !== undefined && { title: data.title }),
         ...(data.preconditions !== undefined && { preconditions: data.preconditions }),
+        ...(data.body !== undefined && { body: data.body }),
         ...(data.templateType !== undefined && { templateType: data.templateType }),
         ...(data.priority !== undefined && { priority: data.priority }),
         ...(data.type !== undefined && { type: data.type }),
@@ -257,6 +259,7 @@ export class TestCasesService {
       data: {
         title: original.title,
         preconditions: original.preconditions,
+        body: original.body,
         templateType: original.templateType,
         priority: original.priority,
         type: original.type,
@@ -577,6 +580,7 @@ export class TestCasesService {
     const trackedFields = [
       'title',
       'preconditions',
+      'body',
       'templateType',
       'priority',
       'type',

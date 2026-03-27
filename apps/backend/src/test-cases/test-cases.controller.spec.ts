@@ -9,6 +9,7 @@ const mockTestCase = {
   id: 'case-1',
   title: 'Verify login',
   preconditions: null,
+  body: null,
   templateType: 'TEXT',
   priority: 'MEDIUM',
   type: 'FUNCTIONAL',

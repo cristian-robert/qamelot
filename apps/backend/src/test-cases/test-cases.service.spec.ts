@@ -12,6 +12,7 @@ const mockTestCase = {
   id: 'case-1',
   title: 'Verify login with valid credentials',
   preconditions: 'User exists in the system',
+  body: null,
   templateType: 'TEXT',
   priority: 'MEDIUM',
   type: 'FUNCTIONAL',
@@ -310,6 +311,24 @@ describe('TestCasesService', () => {
         include: { steps: { orderBy: { stepNumber: 'asc' } } },
       });
       expect(result).toEqual(updated);
+    });
+
+    it('updates the body field independently of preconditions', async () => {
+      const existing = { ...mockTestCase, preconditions: 'Keep me', body: null };
+      const updated = { ...existing, body: 'Full test description' };
+      mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
+      mockPrisma.testCase.findFirst.mockResolvedValue(existing);
+      mockPrisma.testCase.update.mockResolvedValue(updated);
+
+      const result = await service.update(PROJECT_ID, 'case-1', { body: 'Full test description' });
+
+      expect(mockPrisma.testCase.update).toHaveBeenCalledWith({
+        where: { id: 'case-1' },
+        data: { body: 'Full test description' },
+        include: { steps: { orderBy: { stepNumber: 'asc' } } },
+      });
+      expect(result.body).toBe('Full test description');
+      expect(result.preconditions).toBe('Keep me');
     });
 
     it('throws NotFoundException when case does not exist', async () => {

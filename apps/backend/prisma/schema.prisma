@@ -143,6 +143,7 @@ model TestCase {
   id            String         @id @default(cuid())
   title         String
   preconditions String?
+  body          String?        // TEXT template body — separate from preconditions
   templateType  TemplateType   @default(TEXT)
   priority      CasePriority   @default(MEDIUM)
   type          CaseType       @default(FUNCTIONAL)

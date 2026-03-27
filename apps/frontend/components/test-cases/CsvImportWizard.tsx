@@ -169,7 +169,7 @@ export function CsvImportWizard({
               <div
                 className={`flex size-6 items-center justify-center rounded-full text-xs font-semibold ${
                   i + 1 <= step
-                    ? 'bg-emerald-500 text-white'
+                    ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground'
                 }`}
               >
@@ -185,7 +185,7 @@ export function CsvImportWizard({
           <div
             className={`flex flex-col items-center gap-3 rounded-lg border-2 border-dashed p-8 transition-colors ${
               dragActive
-                ? 'border-emerald-400 bg-emerald-50'
+                ? 'border-primary bg-primary/5'
                 : 'border-muted-foreground/20'
             }`}
             onDragOver={(e) => {
@@ -307,7 +307,7 @@ export function CsvImportWizard({
         {step === 4 && result && (
           <div className="space-y-3">
             {result.imported > 0 && (
-              <div className="flex items-center gap-2 rounded-md bg-emerald-50 p-3 text-emerald-700">
+              <div className="flex items-center gap-2 rounded-md bg-status-passed/10 p-3 text-status-passed">
                 <CheckCircle2 className="size-5 shrink-0" />
                 <p className="text-sm font-medium">
                   Successfully imported {result.imported} test case

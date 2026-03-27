@@ -23,6 +23,12 @@ export class CreateTestCaseDto {
   @MaxLength(2000)
   preconditions?: string;
 
+  @ApiPropertyOptional({ example: 'Full test description for TEXT template', maxLength: 10000 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(10000)
+  body?: string;
+
   @ApiPropertyOptional({ enum: TemplateType, default: 'TEXT' })
   @IsIn(Object.values(TemplateType))
   @IsOptional()

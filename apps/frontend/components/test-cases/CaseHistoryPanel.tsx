@@ -30,7 +30,7 @@ function HistoryEntry({ entry }: { entry: CaseHistoryDto }) {
         </div>
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
           {entry.oldValue && (
-            <span className="rounded bg-red-50 px-1.5 py-0.5 text-red-600 line-through">
+            <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-destructive line-through">
               {entry.oldValue}
             </span>
           )}
@@ -38,7 +38,7 @@ function HistoryEntry({ entry }: { entry: CaseHistoryDto }) {
             <ArrowRight className="size-3" />
           )}
           {entry.newValue && (
-            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-600">
+            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">
               {entry.newValue}
             </span>
           )}

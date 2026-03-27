@@ -6,6 +6,7 @@ import { TestResultStatus } from '@app/shared';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { statusBorderStyles, statusCircleStyles, statusActionButtonStyles } from '@/lib/constants';
 
 interface StepResult {
   testCaseStepId: string;
@@ -20,14 +21,6 @@ interface StepResultsPanelProps {
   onActualResultChange: (stepId: string, value: string) => void;
   activeStepIndex: number;
 }
-
-const borderByStatus: Record<TestResultStatus, string> = {
-  [TestResultStatus.PASSED]: 'border-l-emerald-500',
-  [TestResultStatus.FAILED]: 'border-l-red-500',
-  [TestResultStatus.BLOCKED]: 'border-l-amber-500',
-  [TestResultStatus.RETEST]: 'border-l-blue-500',
-  [TestResultStatus.UNTESTED]: 'border-l-gray-300',
-};
 
 export function StepResultsPanel({
   steps,
@@ -59,8 +52,8 @@ export function StepResultsPanel({
             key={step.id}
             className={cn(
               'rounded-lg border-l-4 bg-card ring-1 ring-foreground/5 transition-all',
-              borderByStatus[status],
-              isActive && 'ring-2 ring-emerald-400/50 shadow-sm',
+              statusBorderStyles[status],
+              isActive && 'ring-2 ring-primary/50 shadow-sm',
             )}
           >
             <div className="p-4">
@@ -70,14 +63,8 @@ export function StepResultsPanel({
                   className={cn(
                     'flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
                     isActive
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : status === TestResultStatus.PASSED
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : status === TestResultStatus.FAILED
-                          ? 'bg-red-100 text-red-700'
-                          : status === TestResultStatus.BLOCKED
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-gray-100 text-gray-600',
+                      ? 'bg-primary/15 text-primary'
+                      : statusCircleStyles[status],
                   )}
                 >
                   {step.stepNumber}
@@ -161,24 +148,15 @@ function StatusButton({
   variant: 'pass' | 'fail' | 'block';
   onClick: () => void;
 }) {
-  const styles = {
-    pass: isSelected
-      ? 'bg-emerald-100 text-emerald-700 border-emerald-300 ring-1 ring-emerald-200'
-      : 'text-muted-foreground hover:bg-emerald-50 hover:text-emerald-600 border-border',
-    fail: isSelected
-      ? 'bg-red-100 text-red-700 border-red-300 ring-1 ring-red-200'
-      : 'text-muted-foreground hover:bg-red-50 hover:text-red-600 border-border',
-    block: isSelected
-      ? 'bg-amber-100 text-amber-700 border-amber-300 ring-1 ring-amber-200'
-      : 'text-muted-foreground hover:bg-amber-50 hover:text-amber-600 border-border',
-  };
+  const actionStyle = statusActionButtonStyles[variant];
+  const styles = actionStyle[isSelected ? 'selected' : 'unselected'];
 
   return (
     <Button
       variant="outline"
       size="xs"
       onClick={onClick}
-      className={cn('gap-1 transition-all', styles[variant])}
+      className={cn('gap-1 transition-all', styles)}
     >
       {icon}
       {label}

@@ -2,14 +2,7 @@
 
 import { TestResultStatus } from '@app/shared';
 import { cn } from '@/lib/utils';
-
-const statusDotColor: Record<TestResultStatus, string> = {
-  [TestResultStatus.PASSED]: 'bg-emerald-500',
-  [TestResultStatus.FAILED]: 'bg-red-500',
-  [TestResultStatus.BLOCKED]: 'bg-amber-500',
-  [TestResultStatus.RETEST]: 'bg-blue-500',
-  [TestResultStatus.UNTESTED]: 'bg-gray-400',
-};
+import { statusDotStyles } from '@/lib/constants';
 
 interface CaseResultRowProps {
   title: string;
@@ -33,7 +26,7 @@ export function CaseResultRow({ title, status, isActive, onClick }: CaseResultRo
       <span
         className={cn(
           'size-2 shrink-0 rounded-full',
-          statusDotColor[status],
+          statusDotStyles[status],
         )}
       />
       <span className="truncate">{title}</span>

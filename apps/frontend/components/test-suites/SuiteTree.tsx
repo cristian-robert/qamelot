@@ -60,7 +60,7 @@ function TreeNode({
           className={cn(
             'group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm transition-colors cursor-pointer',
             isSelected
-              ? 'bg-emerald-50 text-emerald-700 font-medium'
+              ? 'bg-primary/10 text-primary font-medium'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground',
           )}
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
@@ -86,7 +86,7 @@ function TreeNode({
           </button>
 
           {isSelected || expanded ? (
-            <FolderOpen className="size-4 shrink-0 text-emerald-500" />
+            <FolderOpen className="size-4 shrink-0 text-primary" />
           ) : (
             <Folder className="size-4 shrink-0" />
           )}

@@ -73,6 +73,7 @@ export function CaseEditor({ projectId, caseId }: CaseEditorProps) {
         templateType: testCase.templateType,
         estimate: testCase.estimate,
         preconditions: testCase.preconditions ?? '',
+        body: testCase.body ?? '',
         references: testCase.references ?? '',
       });
       const serverSteps = (testCase as unknown as { steps?: TestCaseStepDto[] }).steps ?? [];
@@ -186,6 +187,7 @@ export function CaseEditor({ projectId, caseId }: CaseEditorProps) {
         templateType: testCase.templateType,
         estimate: testCase.estimate,
         preconditions: testCase.preconditions ?? '',
+        body: testCase.body ?? '',
         references: testCase.references ?? '',
       });
       const serverSteps = (testCase as unknown as { steps?: TestCaseStepDto[] }).steps ?? [];
@@ -383,11 +385,11 @@ export function CaseEditor({ projectId, caseId }: CaseEditorProps) {
               <Textarea
                 id="case-body"
                 placeholder="Describe the test procedure, expected behavior, and any notes..."
-                {...register('preconditions')}
+                {...register('body')}
                 className="min-h-[200px]"
               />
               <p className="text-xs text-muted-foreground">
-                For text-based test cases, use the preconditions field to describe the full test procedure.
+                Describe the full test procedure, expected behavior, and any notes.
               </p>
             </div>
           )}

@@ -39,13 +39,7 @@ import {
   DialogFooter,
   DialogTrigger,
 } from '@/components/ui/dialog';
-
-const statusBadgeVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-  [TestPlanStatus.DRAFT]: 'secondary',
-  [TestPlanStatus.ACTIVE]: 'default',
-  [TestPlanStatus.COMPLETED]: 'outline',
-  [TestPlanStatus.ARCHIVED]: 'secondary',
-};
+import { planStatusBadgeVariant } from '@/lib/constants';
 
 export default function PlansPage({
   params,
@@ -179,7 +173,7 @@ export default function PlansPage({
                   </Link>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={statusBadgeVariant[plan.status] ?? 'secondary'}>
+                  <Badge variant={planStatusBadgeVariant[plan.status] ?? 'secondary'}>
                     {plan.status}
                   </Badge>
                 </TableCell>

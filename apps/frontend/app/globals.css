@@ -34,6 +34,11 @@
   --color-warning-foreground: oklch(0.35 0.10 70);
   --color-success: oklch(0.60 0.19 145);
   --color-success-foreground: oklch(0.99 0 0);
+  --color-status-passed: oklch(0.60 0.19 145);
+  --color-status-failed: oklch(0.577 0.245 27.325);
+  --color-status-blocked: oklch(0.75 0.18 70);
+  --color-status-retest: oklch(0.55 0.15 250);
+  --color-status-untested: oklch(0.55 0 0);
   --radius: 0.5rem;
   --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
 }

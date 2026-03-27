@@ -36,14 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-
-const STATUS_COLORS: Record<string, string> = {
-  [TestResultStatus.PASSED]: '#10b981',
-  [TestResultStatus.FAILED]: '#ef4444',
-  [TestResultStatus.BLOCKED]: '#f59e0b',
-  [TestResultStatus.RETEST]: '#3b82f6',
-  [TestResultStatus.UNTESTED]: '#9ca3af',
-};
+import { statusChartColors, statusTextStyles } from '@/lib/constants';
 
 export default function ReportsPage({
   params,
@@ -103,7 +96,7 @@ export default function ReportsPage({
                           {coverage.byStatus.map((entry: StatusCount) => (
                             <Cell
                               key={entry.status}
-                              fill={STATUS_COLORS[entry.status] ?? '#9ca3af'}
+                              fill={statusChartColors[entry.status] ?? '#9ca3af'}
                             />
                           ))}
                         </Pie>
@@ -140,7 +133,7 @@ export default function ReportsPage({
                         <span className="flex items-center gap-2">
                           <span
                             className="size-2.5 rounded-full"
-                            style={{ backgroundColor: STATUS_COLORS[s.status] }}
+                            style={{ backgroundColor: statusChartColors[s.status] }}
                           />
                           {s.status.toLowerCase().replace('_', ' ')}
                         </span>
@@ -178,11 +171,11 @@ export default function ReportsPage({
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="passed" stackId="a" fill="#10b981" name="Passed" />
-                    <Bar dataKey="failed" stackId="a" fill="#ef4444" name="Failed" />
-                    <Bar dataKey="blocked" stackId="a" fill="#f59e0b" name="Blocked" />
-                    <Bar dataKey="retest" stackId="a" fill="#3b82f6" name="Retest" />
-                    <Bar dataKey="untested" stackId="a" fill="#9ca3af" name="Untested" />
+                    <Bar dataKey="passed" stackId="a" fill={statusChartColors[TestResultStatus.PASSED]} name="Passed" />
+                    <Bar dataKey="failed" stackId="a" fill={statusChartColors[TestResultStatus.FAILED]} name="Failed" />
+                    <Bar dataKey="blocked" stackId="a" fill={statusChartColors[TestResultStatus.BLOCKED]} name="Blocked" />
+                    <Bar dataKey="retest" stackId="a" fill={statusChartColors[TestResultStatus.RETEST]} name="Retest" />
+                    <Bar dataKey="untested" stackId="a" fill={statusChartColors[TestResultStatus.UNTESTED]} name="Untested" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -251,9 +244,9 @@ export default function ReportsPage({
                       <TableRow key={ref.reference}>
                         <TableCell className="font-medium">{ref.reference}</TableCell>
                         <TableCell>{ref.totalCases}</TableCell>
-                        <TableCell className="text-emerald-600">{ref.passed}</TableCell>
-                        <TableCell className="text-red-600">{ref.failed}</TableCell>
-                        <TableCell className="text-amber-600">{ref.blocked}</TableCell>
+                        <TableCell className={statusTextStyles[TestResultStatus.PASSED]}>{ref.passed}</TableCell>
+                        <TableCell className={statusTextStyles[TestResultStatus.FAILED]}>{ref.failed}</TableCell>
+                        <TableCell className={statusTextStyles[TestResultStatus.BLOCKED]}>{ref.blocked}</TableCell>
                         <TableCell className="font-medium">
                           {Math.round(ref.coveragePercent)}%
                         </TableCell>

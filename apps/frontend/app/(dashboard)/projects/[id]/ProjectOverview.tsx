@@ -13,14 +13,7 @@ import { useCoverageReport } from '@/lib/reports/useReports';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const statusColors: Record<string, string> = {
-  PASSED: 'text-emerald-600',
-  FAILED: 'text-red-600',
-  BLOCKED: 'text-amber-600',
-  RETEST: 'text-blue-600',
-  UNTESTED: 'text-gray-500',
-};
+import { statusTextStyles } from '@/lib/constants';
 
 export function ProjectOverview({ projectId }: { projectId: string }) {
   const { data: project, isLoading: projectLoading } = useProject(projectId);
@@ -63,8 +56,8 @@ export function ProjectOverview({ projectId }: { projectId: string }) {
           icon={CheckCircle2}
           label="Covered"
           value={String(coverage?.covered ?? 0)}
-          color="text-emerald-600"
-          bgColor="bg-emerald-50"
+          color="text-status-passed"
+          bgColor="bg-status-passed/10"
         />
         <StatCard
           icon={ShieldCheck}
@@ -93,7 +86,7 @@ export function ProjectOverview({ projectId }: { projectId: string }) {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
               {coverage.byStatus.map((s) => (
                 <div key={s.status} className="text-center">
-                  <p className={`text-lg font-bold ${statusColors[s.status] ?? 'text-gray-500'}`}>
+                  <p className={`text-lg font-bold ${statusTextStyles[s.status] ?? 'text-gray-500'}`}>
                     {s.count}
                   </p>
                   <p className="text-xs text-muted-foreground capitalize">

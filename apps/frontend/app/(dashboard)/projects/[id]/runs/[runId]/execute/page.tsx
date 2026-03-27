@@ -17,7 +17,7 @@ import type {
   TestRunCaseWithResultDto,
   SubmitTestResultInput,
 } from '@app/shared';
-import { TestResultStatus, TestRunStatus, CasePriority, CaseType } from '@app/shared';
+import { TestResultStatus, TestRunStatus } from '@app/shared';
 import { toast } from 'sonner';
 import {
   useTestExecution,
@@ -37,27 +37,13 @@ import { CaseResultRow } from '@/components/test-results/CaseResultRow';
 import { StepResultsPanel } from '@/components/test-results/StepResultsPanel';
 import { ResultStatusBadge } from '@/components/test-results/ResultStatusBadge';
 import { CreateDefectDialog } from '@/components/test-results/CreateDefectDialog';
+import { priorityBadgeStyles, typeBadgeStyles } from '@/lib/constants';
 
 interface StepResult {
   testCaseStepId: string;
   status: TestResultStatus;
   actualResult: string;
 }
-
-const priorityStyles: Record<CasePriority, string> = {
-  [CasePriority.CRITICAL]: 'bg-red-50 text-red-700 border-red-200',
-  [CasePriority.HIGH]: 'bg-orange-50 text-orange-700 border-orange-200',
-  [CasePriority.MEDIUM]: 'bg-blue-50 text-blue-700 border-blue-200',
-  [CasePriority.LOW]: 'bg-gray-50 text-gray-600 border-gray-200',
-};
-
-const typeStyles: Record<CaseType, string> = {
-  [CaseType.FUNCTIONAL]: 'bg-purple-50 text-purple-700 border-purple-200',
-  [CaseType.REGRESSION]: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  [CaseType.SMOKE]: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-  [CaseType.EXPLORATORY]: 'bg-pink-50 text-pink-700 border-pink-200',
-  [CaseType.OTHER]: 'bg-gray-50 text-gray-600 border-gray-200',
-};
 
 export default function ExecutePage({
   params,
@@ -308,7 +294,7 @@ export default function ExecutePage({
                   variant="outline"
                   className={cn(
                     'text-[10px] font-semibold uppercase',
-                    priorityStyles[activeCase.testCase.priority],
+                    priorityBadgeStyles[activeCase.testCase.priority],
                   )}
                 >
                   {activeCase.testCase.priority}
@@ -317,7 +303,7 @@ export default function ExecutePage({
                   variant="outline"
                   className={cn(
                     'text-[10px] font-semibold uppercase',
-                    typeStyles[activeCase.testCase.type],
+                    typeBadgeStyles[activeCase.testCase.type],
                   )}
                 >
                   {activeCase.testCase.type}
@@ -334,7 +320,7 @@ export default function ExecutePage({
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
-                className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="gap-1.5 bg-status-passed hover:bg-status-passed/90 text-white"
                 onClick={handlePassAllSteps}
                 disabled={isRunClosed}
               >

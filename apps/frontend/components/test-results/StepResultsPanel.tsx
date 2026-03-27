@@ -6,6 +6,7 @@ import { TestResultStatus } from '@app/shared';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { statusBorderStyles, statusCircleStyles } from '@/lib/constants';
 
 interface StepResult {
   testCaseStepId: string;
@@ -20,14 +21,6 @@ interface StepResultsPanelProps {
   onActualResultChange: (stepId: string, value: string) => void;
   activeStepIndex: number;
 }
-
-const borderByStatus: Record<TestResultStatus, string> = {
-  [TestResultStatus.PASSED]: 'border-l-emerald-500',
-  [TestResultStatus.FAILED]: 'border-l-red-500',
-  [TestResultStatus.BLOCKED]: 'border-l-amber-500',
-  [TestResultStatus.RETEST]: 'border-l-blue-500',
-  [TestResultStatus.UNTESTED]: 'border-l-gray-300',
-};
 
 export function StepResultsPanel({
   steps,
@@ -59,8 +52,8 @@ export function StepResultsPanel({
             key={step.id}
             className={cn(
               'rounded-lg border-l-4 bg-card ring-1 ring-foreground/5 transition-all',
-              borderByStatus[status],
-              isActive && 'ring-2 ring-emerald-400/50 shadow-sm',
+              statusBorderStyles[status],
+              isActive && 'ring-2 ring-primary/50 shadow-sm',
             )}
           >
             <div className="p-4">
@@ -70,14 +63,8 @@ export function StepResultsPanel({
                   className={cn(
                     'flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold',
                     isActive
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : status === TestResultStatus.PASSED
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : status === TestResultStatus.FAILED
-                          ? 'bg-red-100 text-red-700'
-                          : status === TestResultStatus.BLOCKED
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-gray-100 text-gray-600',
+                      ? 'bg-primary/15 text-primary'
+                      : statusCircleStyles[status],
                   )}
                 >
                   {step.stepNumber}

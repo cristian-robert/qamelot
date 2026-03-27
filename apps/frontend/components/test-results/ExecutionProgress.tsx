@@ -1,7 +1,9 @@
 'use client';
 
+import { TestResultStatus } from '@app/shared';
 import type { TestRunResultSummary } from '@app/shared';
 import { cn } from '@/lib/utils';
+import { statusDotStyles } from '@/lib/constants';
 
 interface ExecutionProgressProps {
   summary: TestRunResultSummary;
@@ -26,11 +28,11 @@ export function ExecutionProgress({ summary }: ExecutionProgressProps) {
             className={cn(
               'h-full rounded-full transition-all duration-500 ease-out',
               passRate >= 80
-                ? 'bg-emerald-500'
+                ? statusDotStyles[TestResultStatus.PASSED]
                 : passRate >= 50
-                  ? 'bg-amber-500'
+                  ? statusDotStyles[TestResultStatus.BLOCKED]
                   : passRate > 0
-                    ? 'bg-red-500'
+                    ? statusDotStyles[TestResultStatus.FAILED]
                     : 'bg-gray-300',
             )}
             style={{ width: `${executedPercent}%` }}
@@ -40,10 +42,10 @@ export function ExecutionProgress({ summary }: ExecutionProgressProps) {
 
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-        <StatItem label="Passed" count={passed} dotColor="bg-emerald-500" />
-        <StatItem label="Failed" count={failed} dotColor="bg-red-500" />
-        <StatItem label="Blocked" count={blocked} dotColor="bg-amber-500" />
-        <StatItem label="Untested" count={untested} dotColor="bg-gray-400" />
+        <StatItem label="Passed" count={passed} dotColor={statusDotStyles[TestResultStatus.PASSED]} />
+        <StatItem label="Failed" count={failed} dotColor={statusDotStyles[TestResultStatus.FAILED]} />
+        <StatItem label="Blocked" count={blocked} dotColor={statusDotStyles[TestResultStatus.BLOCKED]} />
+        <StatItem label="Untested" count={untested} dotColor={statusDotStyles[TestResultStatus.UNTESTED]} />
       </div>
     </div>
   );

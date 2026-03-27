@@ -21,8 +21,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useDashboardSummary } from '@/lib/reports/useReports';
 import { useProjects } from '@/lib/projects/useProjects';
 import { useAuth } from '@/lib/auth/useAuth';
-import { TestResultStatus } from '@app/shared';
 import { formatRelativeTime } from '@/lib/format';
+import { statusDotStyles, statusBadgeVariant } from '@/lib/constants';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -30,22 +30,6 @@ function getGreeting(): string {
   if (hour < 17) return 'Good afternoon';
   return 'Good evening';
 }
-
-const statusColors: Record<string, string> = {
-  [TestResultStatus.PASSED]: 'bg-emerald-500',
-  [TestResultStatus.FAILED]: 'bg-red-500',
-  [TestResultStatus.BLOCKED]: 'bg-amber-500',
-  [TestResultStatus.RETEST]: 'bg-blue-500',
-  [TestResultStatus.UNTESTED]: 'bg-gray-400',
-};
-
-const statusBadgeVariant: Record<string, 'default' | 'destructive' | 'secondary' | 'outline'> = {
-  [TestResultStatus.PASSED]: 'default',
-  [TestResultStatus.FAILED]: 'destructive',
-  [TestResultStatus.BLOCKED]: 'secondary',
-  [TestResultStatus.RETEST]: 'outline',
-  [TestResultStatus.UNTESTED]: 'secondary',
-};
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -212,7 +196,7 @@ export default function DashboardPage() {
                         className="flex items-start gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-muted/50"
                       >
                         <div
-                          className={`mt-1.5 size-2 shrink-0 rounded-full ${statusColors[result.status] ?? 'bg-gray-400'}`}
+                          className={`mt-1.5 size-2 shrink-0 rounded-full ${statusDotStyles[result.status] ?? 'bg-gray-400'}`}
                         />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm leading-snug">
@@ -312,14 +296,14 @@ function PassRateCard({ rate }: { rate: number | null }) {
   const offset = rate !== null ? circumference - (rate / 100) * circumference : circumference;
   const rateColor =
     rate === null ? 'text-muted'
-    : rate >= 80 ? 'text-emerald-500'
-    : rate >= 50 ? 'text-amber-500'
-    : 'text-red-500';
+    : rate >= 80 ? 'text-status-passed'
+    : rate >= 50 ? 'text-status-blocked'
+    : 'text-status-failed';
   const strokeColor =
     rate === null ? 'stroke-muted'
-    : rate >= 80 ? 'stroke-emerald-500'
-    : rate >= 50 ? 'stroke-amber-500'
-    : 'stroke-red-500';
+    : rate >= 80 ? 'stroke-status-passed'
+    : rate >= 50 ? 'stroke-status-blocked'
+    : 'stroke-status-failed';
 
   return (
     <Card className="animate-in">

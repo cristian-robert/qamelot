@@ -183,7 +183,7 @@ export default function SettingsPage() {
                   {passwordSuccess ? 'Updated' : 'Update Password'}
                 </Button>
                 {passwordSuccess && (
-                  <p className="text-sm text-emerald-600">Password changed successfully.</p>
+                  <p className="text-sm text-status-passed">Password changed successfully.</p>
                 )}
               </div>
             </form>

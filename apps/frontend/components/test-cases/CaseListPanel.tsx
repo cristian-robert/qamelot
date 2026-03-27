@@ -5,27 +5,13 @@ import { Plus, Search, ListFilter, Zap, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTestCases, useCreateTestCase } from '@/lib/test-cases/useTestCases';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
-import type { TestCaseDto, CasePriority, CaseType } from '@app/shared';
+import type { TestCaseDto } from '@app/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CaseListSkeleton } from './CaseListSkeleton';
-
-const priorityColors: Record<CasePriority, string> = {
-  CRITICAL: 'bg-red-100 text-red-700',
-  HIGH: 'bg-orange-100 text-orange-700',
-  MEDIUM: 'bg-yellow-100 text-yellow-700',
-  LOW: 'bg-gray-100 text-gray-600',
-};
-
-const typeColors: Record<CaseType, string> = {
-  FUNCTIONAL: 'bg-blue-100 text-blue-700',
-  REGRESSION: 'bg-purple-100 text-purple-700',
-  SMOKE: 'bg-emerald-100 text-emerald-700',
-  EXPLORATORY: 'bg-amber-100 text-amber-700',
-  OTHER: 'bg-gray-100 text-gray-600',
-};
+import { priorityCompactStyles, typeCompactStyles } from '@/lib/constants';
 
 interface CaseListPanelProps {
   projectId: string;
@@ -152,7 +138,7 @@ export function CaseListPanel({
                   className={cn(
                     'group flex cursor-pointer items-start gap-2.5 rounded-md px-3 py-2 transition-colors',
                     isActive
-                      ? 'border-l-2 border-emerald-500 bg-emerald-50/60'
+                      ? 'border-l-2 border-primary bg-primary/5'
                       : 'border-l-2 border-transparent hover:bg-muted/60',
                   )}
                   onClick={() => onSelectCase(tc.id)}
@@ -169,7 +155,7 @@ export function CaseListPanel({
                       <p
                         className={cn(
                           'truncate text-sm',
-                          isActive ? 'font-medium text-emerald-800' : 'text-foreground',
+                          isActive ? 'font-medium text-primary' : 'text-foreground',
                         )}
                       >
                         {tc.title}
@@ -186,7 +172,7 @@ export function CaseListPanel({
                         variant="secondary"
                         className={cn(
                           'h-4 px-1.5 text-[10px] font-medium',
-                          priorityColors[tc.priority],
+                          priorityCompactStyles[tc.priority],
                         )}
                       >
                         {tc.priority}
@@ -195,7 +181,7 @@ export function CaseListPanel({
                         variant="secondary"
                         className={cn(
                           'h-4 px-1.5 text-[10px] font-medium',
-                          typeColors[tc.type],
+                          typeCompactStyles[tc.type],
                         )}
                       >
                         {tc.type}

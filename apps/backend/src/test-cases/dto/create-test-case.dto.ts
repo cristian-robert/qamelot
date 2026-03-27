@@ -27,7 +27,7 @@ export class CreateTestCaseDto {
   @IsString()
   @IsOptional()
   @MaxLength(10000)
-  body?: string | null;
+  body?: string;
 
   @ApiPropertyOptional({ enum: TemplateType, default: 'TEXT' })
   @IsIn(Object.values(TemplateType))

@@ -77,6 +77,25 @@ export const milestoneStatusBadgeVariant: Record<
   [MilestoneStatus.CLOSED]: 'secondary',
 };
 
+/** Action button styles for step execution (pass/fail/block buttons) */
+export const statusActionButtonStyles: Record<
+  'pass' | 'fail' | 'block',
+  { selected: string; unselected: string }
+> = {
+  pass: {
+    selected: 'bg-emerald-100 text-emerald-700 border-emerald-300 ring-1 ring-emerald-200',
+    unselected: 'text-muted-foreground hover:bg-emerald-50 hover:text-emerald-600 border-border',
+  },
+  fail: {
+    selected: 'bg-red-100 text-red-700 border-red-300 ring-1 ring-red-200',
+    unselected: 'text-muted-foreground hover:bg-red-50 hover:text-red-600 border-border',
+  },
+  block: {
+    selected: 'bg-amber-100 text-amber-700 border-amber-300 ring-1 ring-amber-200',
+    unselected: 'text-muted-foreground hover:bg-amber-50 hover:text-amber-600 border-border',
+  },
+};
+
 /** Role badge styles: bg + text + border */
 export const roleBadgeStyles: Record<Role, string> = {
   [Role.ADMIN]: 'bg-purple-50 text-purple-700 border-purple-200',

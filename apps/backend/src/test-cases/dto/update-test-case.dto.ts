@@ -26,12 +26,11 @@ export class UpdateTestCaseDto {
   @MaxLength(2000)
   preconditions?: string | null;
 
-  @ApiPropertyOptional({ example: 'Full test description for TEXT template', maxLength: 10000, nullable: true })
-  @ValidateIf((o) => o.body !== null)
+  @ApiPropertyOptional({ example: 'Full test description for TEXT template', maxLength: 10000 })
   @IsString()
   @IsOptional()
   @MaxLength(10000)
-  body?: string | null;
+  body?: string;
 
   @ApiPropertyOptional({ enum: TemplateType })
   @IsIn(Object.values(TemplateType))

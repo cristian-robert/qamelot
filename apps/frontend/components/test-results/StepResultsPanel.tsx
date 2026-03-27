@@ -6,7 +6,7 @@ import { TestResultStatus } from '@app/shared';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { statusBorderStyles, statusCircleStyles } from '@/lib/constants';
+import { statusBorderStyles, statusCircleStyles, statusActionButtonStyles } from '@/lib/constants';
 
 interface StepResult {
   testCaseStepId: string;
@@ -148,24 +148,15 @@ function StatusButton({
   variant: 'pass' | 'fail' | 'block';
   onClick: () => void;
 }) {
-  const styles = {
-    pass: isSelected
-      ? 'bg-emerald-100 text-emerald-700 border-emerald-300 ring-1 ring-emerald-200'
-      : 'text-muted-foreground hover:bg-emerald-50 hover:text-emerald-600 border-border',
-    fail: isSelected
-      ? 'bg-red-100 text-red-700 border-red-300 ring-1 ring-red-200'
-      : 'text-muted-foreground hover:bg-red-50 hover:text-red-600 border-border',
-    block: isSelected
-      ? 'bg-amber-100 text-amber-700 border-amber-300 ring-1 ring-amber-200'
-      : 'text-muted-foreground hover:bg-amber-50 hover:text-amber-600 border-border',
-  };
+  const actionStyle = statusActionButtonStyles[variant];
+  const styles = actionStyle[isSelected ? 'selected' : 'unselected'];
 
   return (
     <Button
       variant="outline"
       size="xs"
       onClick={onClick}
-      className={cn('gap-1 transition-all', styles[variant])}
+      className={cn('gap-1 transition-all', styles)}
     >
       {icon}
       {label}

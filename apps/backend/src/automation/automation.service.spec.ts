@@ -7,8 +7,8 @@ import { RunEventsService } from '../run-events/run-events.service';
 describe('AutomationService', () => {
   let service: AutomationService;
   const mockPrisma = {
-    project: { findFirst: jest.fn(), create: jest.fn() },
-    testPlan: { findFirst: jest.fn(), create: jest.fn() },
+    project: { findFirst: jest.fn() },
+    testPlan: { findFirst: jest.fn() },
     testCase: { findMany: jest.fn(), updateMany: jest.fn(), update: jest.fn() },
     testRun: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     testRunCase: { findFirst: jest.fn() },
@@ -226,52 +226,89 @@ describe('AutomationService', () => {
 
       expect(result.projectId).toBe('proj-1');
       expect(result.planId).toBe('plan-1');
-      expect(result.created).toBe(false);
-      expect(mockPrisma.project.create).not.toHaveBeenCalled();
     });
 
-    it('creates project when not found by name', async () => {
+    it('throws NotFoundException when project not found by name', async () => {
       mockPrisma.project.findFirst.mockResolvedValue(null);
-      mockPrisma.project.create.mockResolvedValue({
-        id: 'proj-new', name: 'New Project',
-      });
-      mockPrisma.testPlan.findFirst.mockResolvedValue(null);
-      mockPrisma.testPlan.create.mockResolvedValue({
-        id: 'plan-new', name: 'Automation Plan', projectId: 'proj-new',
-      });
 
-      const result = await service.setupProject({
-        projectName: 'New Project',
-        planName: 'Automation Plan',
-      });
-
-      expect(result.projectId).toBe('proj-new');
-      expect(result.planId).toBe('plan-new');
-      expect(result.created).toBe(true);
-      expect(mockPrisma.project.create).toHaveBeenCalledWith({
-        data: { name: 'New Project' },
-      });
+      await expect(
+        service.setupProject({
+          projectName: 'Non-Existent Project',
+          planName: 'Automation Plan',
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
 
-    it('creates plan when project exists but plan does not', async () => {
+    it('throws NotFoundException when plan not found within project', async () => {
       mockPrisma.project.findFirst.mockResolvedValue({
         id: 'proj-1', name: 'Existing Project',
       });
       mockPrisma.testPlan.findFirst.mockResolvedValue(null);
-      mockPrisma.testPlan.create.mockResolvedValue({
-        id: 'plan-new', name: 'Automation Plan', projectId: 'proj-1',
+
+      await expect(
+        service.setupProject({
+          projectName: 'Existing Project',
+          planName: 'Non-Existent Plan',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('looks up project by ID when projectId is provided', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({
+        id: 'proj-1', name: 'My Project',
+      });
+      mockPrisma.testPlan.findFirst.mockResolvedValue({
+        id: 'plan-1', name: 'Automation Plan', projectId: 'proj-1',
       });
 
       const result = await service.setupProject({
-        projectName: 'Existing Project',
+        projectId: 'proj-1',
         planName: 'Automation Plan',
       });
 
       expect(result.projectId).toBe('proj-1');
-      expect(result.planId).toBe('plan-new');
-      expect(result.created).toBe(false);
-      expect(mockPrisma.project.create).not.toHaveBeenCalled();
-      expect(mockPrisma.testPlan.create).toHaveBeenCalled();
+      expect(mockPrisma.project.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ id: 'proj-1' }) }),
+      );
+    });
+
+    it('looks up plan by ID when planId is provided', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({
+        id: 'proj-1', name: 'My Project',
+      });
+      mockPrisma.testPlan.findFirst.mockResolvedValue({
+        id: 'plan-1', name: 'Automation Plan', projectId: 'proj-1',
+      });
+
+      const result = await service.setupProject({
+        projectId: 'proj-1',
+        planId: 'plan-1',
+      });
+
+      expect(result.planId).toBe('plan-1');
+      expect(mockPrisma.testPlan.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ id: 'plan-1' }) }),
+      );
+    });
+
+    it('throws BadRequestException when neither projectId nor projectName provided', async () => {
+      await expect(
+        service.setupProject({
+          planName: 'Automation Plan',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when neither planId nor planName provided', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({
+        id: 'proj-1', name: 'My Project',
+      });
+
+      await expect(
+        service.setupProject({
+          projectId: 'proj-1',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

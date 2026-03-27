@@ -236,51 +236,58 @@ export class AutomationService {
   }
 
   async setupProject(data: {
-    projectName: string;
-    planName: string;
-    projectDescription?: string;
-  }): Promise<{ projectId: string; planId: string; created: boolean }> {
-    // Find or create project by name
-    let project = await this.prisma.project.findFirst({
-      where: { name: data.projectName, deletedAt: null },
-    });
-
-    const created = !project;
-
-    if (!project) {
-      project = await this.prisma.project.create({
-        data: {
-          name: data.projectName,
-          ...(data.projectDescription && { description: data.projectDescription }),
-        },
-      });
-      this.logger.log(`Created project "${data.projectName}" (${project.id})`);
-    } else {
-      this.logger.log(`Reusing project "${data.projectName}" (${project.id})`);
+    projectName?: string;
+    projectId?: string;
+    planName?: string;
+    planId?: string;
+  }): Promise<{ projectId: string; planId: string }> {
+    if (!data.projectId && !data.projectName) {
+      throw new BadRequestException(
+        'Either projectId or projectName must be provided.',
+      );
+    }
+    if (!data.planId && !data.planName) {
+      throw new BadRequestException(
+        'Either planId or planName must be provided.',
+      );
     }
 
-    // Find or create plan within that project
-    let plan = await this.prisma.testPlan.findFirst({
+    // Look up project by ID or name — never create
+    const project = await this.prisma.project.findFirst({
       where: {
-        name: data.planName,
+        ...(data.projectId ? { id: data.projectId } : { name: data.projectName }),
+        deletedAt: null,
+      },
+    });
+
+    if (!project) {
+      const identifier = data.projectId ?? data.projectName;
+      throw new NotFoundException(
+        `Project "${identifier}" not found. Automation cannot create projects — please create it in the Qamelot UI first.`,
+      );
+    }
+
+    // Look up plan by ID or name within the project — never create
+    const plan = await this.prisma.testPlan.findFirst({
+      where: {
+        ...(data.planId ? { id: data.planId } : { name: data.planName }),
         projectId: project.id,
         deletedAt: null,
       },
     });
 
     if (!plan) {
-      plan = await this.prisma.testPlan.create({
-        data: {
-          name: data.planName,
-          projectId: project.id,
-        },
-      });
-      this.logger.log(`Created plan "${data.planName}" (${plan.id})`);
-    } else {
-      this.logger.log(`Reusing plan "${data.planName}" (${plan.id})`);
+      const identifier = data.planId ?? data.planName;
+      throw new NotFoundException(
+        `Test plan "${identifier}" not found in project "${project.name}". Automation cannot create test plans — please create it in the Qamelot UI first.`,
+      );
     }
 
-    return { projectId: project.id, planId: plan.id, created };
+    this.logger.log(
+      `Setup: resolved project "${project.name}" (${project.id}), plan "${plan.name}" (${plan.id})`,
+    );
+
+    return { projectId: project.id, planId: plan.id };
   }
 
   async syncTests(

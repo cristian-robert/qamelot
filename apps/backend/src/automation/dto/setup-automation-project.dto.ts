@@ -1,22 +1,28 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, MinLength, MaxLength, IsOptional, ValidateIf } from 'class-validator';
 
 export class SetupAutomationProjectDto {
-  @ApiProperty({ example: 'Playwright Integration Test', maxLength: 100 })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
-  projectName!: string;
-
-  @ApiProperty({ example: 'Automation Plan', maxLength: 100 })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
-  planName!: string;
-
-  @ApiPropertyOptional({ example: 'Auto-created for CI testing', maxLength: 500 })
+  @ApiPropertyOptional({ example: 'clxyz123', description: 'Existing project ID (alternative to projectName)' })
   @IsString()
   @IsOptional()
-  @MaxLength(500)
-  projectDescription?: string;
+  projectId?: string;
+
+  @ApiPropertyOptional({ example: 'Playwright Integration Test', maxLength: 100, description: 'Existing project name (alternative to projectId)' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  @ValidateIf((o) => !o.projectId)
+  projectName?: string;
+
+  @ApiPropertyOptional({ example: 'clxyz456', description: 'Existing plan ID (alternative to planName)' })
+  @IsString()
+  @IsOptional()
+  planId?: string;
+
+  @ApiPropertyOptional({ example: 'Automation Plan', maxLength: 100, description: 'Existing plan name (alternative to planId)' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  @ValidateIf((o) => !o.planId)
+  planName?: string;
 }

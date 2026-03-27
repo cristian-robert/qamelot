@@ -108,7 +108,6 @@ describe('AutomationController', () => {
     mockService.setupProject.mockResolvedValue({
       projectId: 'proj-1',
       planId: 'plan-1',
-      created: false,
     });
     const dto = {
       projectName: 'Playwright Integration Test',
@@ -117,6 +116,6 @@ describe('AutomationController', () => {
     const result = await controller.setup(dto);
     expect(mockService.setupProject).toHaveBeenCalledWith(dto);
     expect(result.projectId).toBe('proj-1');
-    expect(result.created).toBe(false);
+    expect(result.planId).toBe('plan-1');
   });
 });

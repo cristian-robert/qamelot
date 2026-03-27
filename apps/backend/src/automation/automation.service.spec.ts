@@ -7,7 +7,8 @@ import { RunEventsService } from '../run-events/run-events.service';
 describe('AutomationService', () => {
   let service: AutomationService;
   const mockPrisma = {
-    testPlan: { findFirst: jest.fn() },
+    project: { findFirst: jest.fn(), create: jest.fn() },
+    testPlan: { findFirst: jest.fn(), create: jest.fn() },
     testCase: { findMany: jest.fn(), updateMany: jest.fn() },
     testRun: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     testRunCase: { findFirst: jest.fn() },
@@ -156,6 +157,71 @@ describe('AutomationService', () => {
       expect(result.matched).toBe(1);
       expect(result.stale).toBe(1);
       expect(result.unmatched).toEqual(['test-new']);
+    });
+  });
+
+  describe('setupProject', () => {
+    it('returns existing project and plan when found by name', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({
+        id: 'proj-1', name: 'Playwright Integration Test',
+      });
+      mockPrisma.testPlan.findFirst.mockResolvedValue({
+        id: 'plan-1', name: 'Automation Plan', projectId: 'proj-1',
+      });
+
+      const result = await service.setupProject({
+        projectName: 'Playwright Integration Test',
+        planName: 'Automation Plan',
+      });
+
+      expect(result.projectId).toBe('proj-1');
+      expect(result.planId).toBe('plan-1');
+      expect(result.created).toBe(false);
+      expect(mockPrisma.project.create).not.toHaveBeenCalled();
+    });
+
+    it('creates project when not found by name', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(null);
+      mockPrisma.project.create.mockResolvedValue({
+        id: 'proj-new', name: 'New Project',
+      });
+      mockPrisma.testPlan.findFirst.mockResolvedValue(null);
+      mockPrisma.testPlan.create.mockResolvedValue({
+        id: 'plan-new', name: 'Automation Plan', projectId: 'proj-new',
+      });
+
+      const result = await service.setupProject({
+        projectName: 'New Project',
+        planName: 'Automation Plan',
+      });
+
+      expect(result.projectId).toBe('proj-new');
+      expect(result.planId).toBe('plan-new');
+      expect(result.created).toBe(true);
+      expect(mockPrisma.project.create).toHaveBeenCalledWith({
+        data: { name: 'New Project' },
+      });
+    });
+
+    it('creates plan when project exists but plan does not', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({
+        id: 'proj-1', name: 'Existing Project',
+      });
+      mockPrisma.testPlan.findFirst.mockResolvedValue(null);
+      mockPrisma.testPlan.create.mockResolvedValue({
+        id: 'plan-new', name: 'Automation Plan', projectId: 'proj-1',
+      });
+
+      const result = await service.setupProject({
+        projectName: 'Existing Project',
+        planName: 'Automation Plan',
+      });
+
+      expect(result.projectId).toBe('proj-1');
+      expect(result.planId).toBe('plan-new');
+      expect(result.created).toBe(false);
+      expect(mockPrisma.project.create).not.toHaveBeenCalled();
+      expect(mockPrisma.testPlan.create).toHaveBeenCalled();
     });
   });
 });

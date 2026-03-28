@@ -10,6 +10,7 @@ import {
   useDeleteSharedStep,
 } from '@/lib/shared-steps/useSharedSteps';
 import { Button } from '@/components/ui/button';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   AlertDialog,
@@ -25,10 +26,11 @@ import { SharedStepFormDialog } from './SharedStepFormDialog';
 
 interface SharedStepLibraryProps {
   projectId: string;
+  onCreateClick?: () => void;
 }
 
-export function SharedStepLibrary({ projectId }: SharedStepLibraryProps) {
-  const { data: steps, isLoading } = useSharedSteps(projectId);
+export function SharedStepLibrary({ projectId, onCreateClick }: SharedStepLibraryProps) {
+  const { data: steps, isLoading, isError, refetch } = useSharedSteps(projectId);
   const createStep = useCreateSharedStep(projectId);
   const updateStep = useUpdateSharedStep(projectId);
   const deleteStep = useDeleteSharedStep(projectId);
@@ -71,6 +73,10 @@ export function SharedStepLibrary({ projectId }: SharedStepLibraryProps) {
     deleteStep.mutate(deleteTarget.id, {
       onSuccess: () => setDeleteTarget(null),
     });
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={refetch} />;
   }
 
   if (isLoading) {
@@ -157,12 +163,18 @@ export function SharedStepLibrary({ projectId }: SharedStepLibraryProps) {
           })}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <ListOrdered className="size-10 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            No shared steps yet. Create reusable step groups for your test cases.
-          </p>
-        </div>
+        <EmptyState
+          icon={ListOrdered}
+          title="No shared steps yet"
+          description="Create reusable step groups for your test cases."
+          action={
+            onCreateClick ? (
+              <Button variant="outline" onClick={onCreateClick}>
+                New Shared Step
+              </Button>
+            ) : undefined
+          }
+        />
       )}
 
       <SharedStepFormDialog

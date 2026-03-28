@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { useCreateSharedStep } from '@/lib/shared-steps/useSharedSteps';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { SharedStepLibrary } from '@/components/shared-steps/SharedStepLibrary';
 import { SharedStepFormDialog } from '@/components/shared-steps/SharedStepFormDialog';
 import type { CreateSharedStepInput } from '@app/shared';
@@ -23,20 +24,18 @@ export default function SharedStepsPage() {
 
   return (
     <div className="flex-1 space-y-6 overflow-y-auto p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Shared Steps</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage reusable test step groups for this project
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="size-4" />
-          New Shared Step
-        </Button>
-      </div>
+      <PageHeader
+        title="Shared Steps"
+        subtitle="Manage reusable test step groups for this project"
+        action={
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            New Shared Step
+          </Button>
+        }
+      />
 
-      <SharedStepLibrary projectId={projectId} />
+      <SharedStepLibrary projectId={projectId} onCreateClick={() => setCreateOpen(true)} />
 
       <SharedStepFormDialog
         open={createOpen}

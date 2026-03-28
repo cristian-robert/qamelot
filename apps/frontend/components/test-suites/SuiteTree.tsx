@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SuiteFormDialog } from './SuiteFormDialog';
-import { ConfirmDialog } from '@/components/test-cases/ConfirmDialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { TestSuiteDto } from '@app/shared';
 
 interface SuiteTreeProps {

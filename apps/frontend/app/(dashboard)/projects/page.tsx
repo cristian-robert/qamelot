@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +25,7 @@ import {
 } from '@/components/ui/dialog';
 
 export default function ProjectsPage() {
-  const { data: projects, isLoading } = useProjects();
+  const { data: projects, isLoading, isError, refetch } = useProjects();
   const createProject = useCreateProject();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -45,58 +47,58 @@ export default function ProjectsPage() {
 
   return (
     <div className="flex-1 space-y-6 overflow-y-auto p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your test management projects
-          </p>
-        </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button />}>
-            <Plus className="size-4" />
-            New Project
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Project</DialogTitle>
-              <DialogDescription>
-                Add a new project to organize your test suites and runs.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="project-name">Name</Label>
-                <Input
-                  id="project-name"
-                  placeholder="Project name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="project-desc">Description</Label>
-                <Textarea
-                  id="project-desc"
-                  placeholder="Optional description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <PageHeader
+          title="Projects"
+          subtitle="Manage your test management projects"
+          action={
+            <DialogTrigger render={<Button />}>
+              <Plus className="size-4" />
+              New Project
+            </DialogTrigger>
+          }
+        />
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Project</DialogTitle>
+            <DialogDescription>
+              Add a new project to organize your test suites and runs.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="project-name">Name</Label>
+              <Input
+                id="project-name"
+                placeholder="Project name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </div>
-            <DialogFooter>
-              <Button
-                onClick={handleCreate}
-                disabled={!name.trim() || createProject.isPending}
-              >
-                {createProject.isPending ? 'Creating...' : 'Create'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="project-desc">Description</Label>
+              <Textarea
+                id="project-desc"
+                placeholder="Optional description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleCreate}
+              disabled={!name.trim() || createProject.isPending}
+            >
+              {createProject.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i}>
@@ -133,16 +135,17 @@ export default function ProjectsPage() {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <FolderKanban className="size-10 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            No projects yet. Create your first project to get started.
-          </p>
-          <Button variant="outline" onClick={() => setOpen(true)}>
-            <Plus className="size-4" />
-            New Project
-          </Button>
-        </div>
+        <EmptyState
+          icon={FolderKanban}
+          title="No projects yet"
+          description="Create your first project to get started."
+          action={
+            <Button variant="outline" onClick={() => setOpen(true)}>
+              <Plus className="size-4" />
+              New Project
+            </Button>
+          }
+        />
       )}
     </div>
   );

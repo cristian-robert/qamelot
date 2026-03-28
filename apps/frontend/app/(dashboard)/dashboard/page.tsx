@@ -4,7 +4,6 @@ import Link from 'next/link';
 import {
   FolderKanban,
   Play,
-  CheckCircle2,
   Activity,
   Clock,
   ArrowRight,
@@ -23,6 +22,8 @@ import { useProjects } from '@/lib/projects/useProjects';
 import { useAuth } from '@/lib/auth/useAuth';
 import { formatRelativeTime } from '@/lib/format';
 import { statusDotStyles, statusBadgeVariant } from '@/lib/constants';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
+import { StatCard, PassRateCard, QuickLink } from './DashboardCards';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -33,8 +34,8 @@ function getGreeting(): string {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { data: summary, isLoading } = useDashboardSummary();
-  const { data: projects, isLoading: projectsLoading } = useProjects();
+  const { data: summary, isLoading, isError, refetch } = useDashboardSummary();
+  const { data: projects, isLoading: projectsLoading, isError: projectsError, refetch: refetchProjects } = useProjects();
 
   const passRate = Math.round(summary?.overallPassRate ?? 0);
   const firstName = user?.name?.split(' ')[0] ?? 'there';
@@ -112,7 +113,9 @@ export default function DashboardPage() {
                 </Link>
               </CardHeader>
               <CardContent>
-                {projectsLoading ? (
+                {projectsError ? (
+                  <ErrorState onRetry={refetchProjects} />
+                ) : projectsLoading ? (
                   <div className="space-y-3">
                     {Array.from({ length: 3 }).map((_, i) => (
                       <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
@@ -176,7 +179,9 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {isLoading ? (
+                {isError ? (
+                  <ErrorState onRetry={refetch} />
+                ) : isLoading ? (
                   <div className="space-y-3">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <div key={i} className="flex items-center gap-2.5">
@@ -253,144 +258,6 @@ export default function DashboardPage() {
           />
         </div>
       </div>
-    </div>
-  );
-}
-
-/* ─── Sub-components ────────────────────────────────── */
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-  bgColor,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: number | null;
-  color: string;
-  bgColor: string;
-}) {
-  return (
-    <Card className="animate-in">
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${bgColor}`}>
-          <Icon className={`size-5 ${color}`} />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          {value === null ? (
-            <Skeleton className="mt-1 h-7 w-12" />
-          ) : (
-            <p className="text-2xl font-bold tracking-tight">{value}</p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function PassRateCard({ rate }: { rate: number | null }) {
-  const circumference = 2 * Math.PI * 18;
-  const offset = rate !== null ? circumference - (rate / 100) * circumference : circumference;
-  const rateColor =
-    rate === null ? 'text-muted'
-    : rate >= 80 ? 'text-status-passed'
-    : rate >= 50 ? 'text-status-blocked'
-    : 'text-status-failed';
-  const strokeColor =
-    rate === null ? 'stroke-muted'
-    : rate >= 80 ? 'stroke-status-passed'
-    : rate >= 50 ? 'stroke-status-blocked'
-    : 'stroke-status-failed';
-
-  return (
-    <Card className="animate-in">
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="relative flex size-10 shrink-0 items-center justify-center">
-          <svg className="size-10 -rotate-90" viewBox="0 0 40 40">
-            <circle
-              cx="20" cy="20" r="18"
-              fill="none"
-              strokeWidth="3"
-              className="stroke-muted"
-            />
-            <circle
-              cx="20" cy="20" r="18"
-              fill="none"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={offset}
-              className={`${strokeColor} transition-all duration-700`}
-            />
-          </svg>
-          <CheckCircle2 className={`absolute size-4 ${rateColor}`} />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Pass Rate</p>
-          {rate === null ? (
-            <Skeleton className="mt-1 h-7 w-12" />
-          ) : (
-            <p className={`text-2xl font-bold tracking-tight ${rateColor}`}>
-              {rate}%
-            </p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function QuickLink({
-  href,
-  icon: Icon,
-  title,
-  description,
-}: {
-  href: string;
-  icon: React.ElementType;
-  title: string;
-  description: string;
-}) {
-  return (
-    <Link href={href}>
-      <Card className="group transition-all hover:border-primary/30 hover:shadow-sm">
-        <CardContent className="flex items-center gap-3 p-4">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted transition-colors group-hover:bg-primary/10">
-            <Icon className="size-4.5 text-muted-foreground transition-colors group-hover:text-primary" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium group-hover:text-primary">{title}</p>
-            <p className="text-xs text-muted-foreground">{description}</p>
-          </div>
-          <ArrowRight className="size-3.5 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
-function EmptyState({
-  icon: Icon,
-  title,
-  description,
-  action,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col items-center gap-2 py-8 text-center">
-      <div className="flex size-10 items-center justify-center rounded-full bg-muted">
-        <Icon className="size-5 text-muted-foreground/60" />
-      </div>
-      <p className="text-sm font-medium text-muted-foreground">{title}</p>
-      <p className="max-w-48 text-xs text-muted-foreground/70">{description}</p>
-      {action}
     </div>
   );
 }

@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import {
   Table,
   TableBody,
@@ -40,7 +42,7 @@ export default function DefectsPage({
   const { data: project } = useProject(projectId);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search);
-  const { data: defects, isLoading } = useDefects(
+  const { data: defects, isLoading, isError, refetch } = useDefects(
     projectId,
     debouncedSearch ? { search: debouncedSearch } : undefined,
   );
@@ -77,51 +79,53 @@ export default function DefectsPage({
         ]}
       />
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Defects</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button />}>
-            <Plus className="size-4" />
-            New Defect
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Defect</DialogTitle>
-              <DialogDescription>
-                Log a defect reference to track bugs linked to test results.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="defect-ref">Reference</Label>
-                <Input
-                  id="defect-ref"
-                  placeholder="e.g. JIRA-1234 or bug tracker URL"
-                  value={reference}
-                  onChange={(e) => setReference(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="defect-desc">Description</Label>
-                <Textarea
-                  id="defect-desc"
-                  placeholder="Optional description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <PageHeader
+          title="Defects"
+          action={
+            <DialogTrigger render={<Button />}>
+              <Plus className="size-4" />
+              New Defect
+            </DialogTrigger>
+          }
+        />
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Defect</DialogTitle>
+            <DialogDescription>
+              Log a defect reference to track bugs linked to test results.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="defect-ref">Reference</Label>
+              <Input
+                id="defect-ref"
+                placeholder="e.g. JIRA-1234 or bug tracker URL"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+              />
             </div>
-            <DialogFooter>
-              <Button
-                onClick={handleCreate}
-                disabled={!reference.trim() || createDefect.isPending}
-              >
-                {createDefect.isPending ? 'Creating...' : 'Create'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="defect-desc">Description</Label>
+              <Textarea
+                id="defect-desc"
+                placeholder="Optional description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleCreate}
+              disabled={!reference.trim() || createDefect.isPending}
+            >
+              {createDefect.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -133,7 +137,9 @@ export default function DefectsPage({
         />
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-12 w-full" />
@@ -173,20 +179,23 @@ export default function DefectsPage({
           </TableBody>
         </Table>
       ) : (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <Bug className="size-10 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            {debouncedSearch
-              ? 'No defects match your search.'
-              : 'No defects logged yet. Create one to start tracking bugs.'}
-          </p>
-          {!debouncedSearch && (
-            <Button variant="outline" onClick={() => setOpen(true)}>
-              <Plus className="size-4" />
-              New Defect
-            </Button>
-          )}
-        </div>
+        <EmptyState
+          icon={Bug}
+          title={debouncedSearch ? 'No matching defects' : 'No defects yet'}
+          description={
+            debouncedSearch
+              ? 'No defects match your search criteria.'
+              : 'Create one to start tracking bugs.'
+          }
+          action={
+            !debouncedSearch ? (
+              <Button variant="outline" onClick={() => setOpen(true)}>
+                <Plus className="size-4" />
+                New Defect
+              </Button>
+            ) : undefined
+          }
+        />
       )}
     </div>
   );

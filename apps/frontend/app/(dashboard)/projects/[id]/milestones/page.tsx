@@ -23,6 +23,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import {
   Dialog,
   DialogContent,
@@ -40,7 +42,7 @@ export default function MilestonesPage({
 }) {
   const { id: projectId } = use(params);
   const { data: project } = useProject(projectId);
-  const { data: tree, isLoading } = useMilestoneTree(projectId);
+  const { data: tree, isLoading, isError, refetch } = useMilestoneTree(projectId);
   const createMilestone = useCreateMilestone(projectId);
 
   const [open, setOpen] = useState(false);
@@ -80,13 +82,16 @@ export default function MilestonesPage({
         ]}
       />
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Milestones</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button />}>
-            <Plus className="size-4" />
-            New Milestone
-          </DialogTrigger>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <PageHeader
+          title="Milestones"
+          action={
+            <DialogTrigger render={<Button />}>
+              <Plus className="size-4" />
+              New Milestone
+            </DialogTrigger>
+          }
+        />
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create Milestone</DialogTitle>
@@ -142,11 +147,12 @@ export default function MilestonesPage({
                 {createMilestone.isPending ? 'Creating...' : 'Create'}
               </Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+        </DialogContent>
+      </Dialog>
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-16 w-full" />
@@ -159,16 +165,17 @@ export default function MilestonesPage({
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <Target className="size-10 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            No milestones yet. Create one to track project progress.
-          </p>
-          <Button variant="outline" onClick={() => setOpen(true)}>
-            <Plus className="size-4" />
-            New Milestone
-          </Button>
-        </div>
+        <EmptyState
+          icon={Target}
+          title="No milestones yet"
+          description="Create one to track project progress."
+          action={
+            <Button variant="outline" onClick={() => setOpen(true)}>
+              <Plus className="size-4" />
+              New Milestone
+            </Button>
+          }
+        />
       )}
     </div>
   );

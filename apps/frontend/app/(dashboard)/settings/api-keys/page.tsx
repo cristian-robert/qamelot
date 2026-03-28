@@ -46,6 +46,8 @@ import {
 } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Key, Copy, Trash2, Plus, Loader2 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '--';
@@ -57,9 +59,9 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function ApiKeysPage() {
-  const { data: projects, isLoading: loadingProjects } = useProjects();
+  const { data: projects, isLoading: loadingProjects, isError: projectsError, refetch: refetchProjects } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState('');
-  const { data: keys, isLoading: loadingKeys } = useApiKeys(selectedProjectId);
+  const { data: keys, isLoading: loadingKeys, isError: keysError, refetch: refetchKeys } = useApiKeys(selectedProjectId);
   const createMutation = useCreateApiKey();
   const revokeMutation = useRevokeApiKey();
 
@@ -107,12 +109,10 @@ export default function ApiKeysPage() {
 
   return (
     <div className="flex-1 space-y-6 overflow-y-auto p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">API Keys</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage API keys for automation integrations
-        </p>
-      </div>
+      <PageHeader
+        title="API Keys"
+        subtitle="Manage API keys for automation integrations"
+      />
 
       <div className="grid gap-6 lg:max-w-3xl">
         {/* Project Selector */}
@@ -122,6 +122,9 @@ export default function ApiKeysPage() {
             <CardDescription>Select a project to manage its API keys</CardDescription>
           </CardHeader>
           <CardContent>
+            {projectsError ? (
+              <ErrorState onRetry={refetchProjects} />
+            ) : (
             <Select
               value={selectedProjectId}
               onValueChange={(val) => setSelectedProjectId(val ?? '')}
@@ -140,6 +143,7 @@ export default function ApiKeysPage() {
                 ))}
               </SelectContent>
             </Select>
+            )}
           </CardContent>
         </Card>
 
@@ -228,20 +232,18 @@ export default function ApiKeysPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {loadingKeys ? (
+              {keysError ? (
+                <ErrorState onRetry={refetchKeys} />
+              ) : loadingKeys ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">
                   Loading keys...
                 </p>
               ) : !keys || keys.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-8 text-center">
-                  <Key className="size-8 text-muted-foreground/30" />
-                  <p className="text-sm text-muted-foreground">
-                    No API keys for this project.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Create one to start using the automation API.
-                  </p>
-                </div>
+                <EmptyState
+                  icon={Key}
+                  title="No API keys for this project"
+                  description="Create one to start using the automation API."
+                />
               ) : (
                 <Table>
                   <TableHeader>

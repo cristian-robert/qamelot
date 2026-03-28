@@ -8,6 +8,7 @@ import { UpdateProfileSchema } from '@app/shared';
 import { useAuth } from '@/lib/auth/useAuth';
 import { useUpdateProfile } from '@/lib/users/useProfile';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -75,12 +76,10 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 space-y-6 overflow-y-auto p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage your profile and account preferences
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        subtitle="Manage your profile and account preferences"
+      />
 
       <div className="grid gap-6 lg:max-w-2xl">
         {/* Profile Info */}

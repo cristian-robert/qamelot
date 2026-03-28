@@ -15,6 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import {
   Select,
   SelectContent,
@@ -49,7 +51,7 @@ export default function PlansPage({
   const { id: projectId } = use(params);
   const { data: project } = useProject(projectId);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  const { data: plans, isLoading } = useTestPlans(projectId, statusFilter ? { status: statusFilter } : undefined);
+  const { data: plans, isLoading, isError, refetch } = useTestPlans(projectId, statusFilter ? { status: statusFilter } : undefined);
   const createPlan = useCreateTestPlan(projectId);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -79,51 +81,53 @@ export default function PlansPage({
         ]}
       />
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Test Plans</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button />}>
-            <Plus className="size-4" />
-            New Plan
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Test Plan</DialogTitle>
-              <DialogDescription>
-                Group related test runs under a plan.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="plan-name">Name</Label>
-                <Input
-                  id="plan-name"
-                  placeholder="Plan name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="plan-desc">Description</Label>
-                <Textarea
-                  id="plan-desc"
-                  placeholder="Optional description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <PageHeader
+          title="Test Plans"
+          action={
+            <DialogTrigger render={<Button />}>
+              <Plus className="size-4" />
+              New Plan
+            </DialogTrigger>
+          }
+        />
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Test Plan</DialogTitle>
+            <DialogDescription>
+              Group related test runs under a plan.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="plan-name">Name</Label>
+              <Input
+                id="plan-name"
+                placeholder="Plan name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </div>
-            <DialogFooter>
-              <Button
-                onClick={handleCreate}
-                disabled={!name.trim() || createPlan.isPending}
-              >
-                {createPlan.isPending ? 'Creating...' : 'Create'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-desc">Description</Label>
+              <Textarea
+                id="plan-desc"
+                placeholder="Optional description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleCreate}
+              disabled={!name.trim() || createPlan.isPending}
+            >
+              {createPlan.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center gap-3">
         <Select
@@ -144,7 +148,9 @@ export default function PlansPage({
         </Select>
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-12 w-full" />
@@ -189,16 +195,17 @@ export default function PlansPage({
           </TableBody>
         </Table>
       ) : (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <ClipboardList className="size-10 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            No test plans yet. Create a plan to organize your test runs.
-          </p>
-          <Button variant="outline" onClick={() => setOpen(true)}>
-            <Plus className="size-4" />
-            New Plan
-          </Button>
-        </div>
+        <EmptyState
+          icon={ClipboardList}
+          title="No test plans yet"
+          description="Create a plan to organize your test runs."
+          action={
+            <Button variant="outline" onClick={() => setOpen(true)}>
+              <Plus className="size-4" />
+              New Plan
+            </Button>
+          }
+        />
       )}
     </div>
   );

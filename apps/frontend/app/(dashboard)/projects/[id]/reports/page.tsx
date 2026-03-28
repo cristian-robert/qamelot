@@ -85,7 +85,7 @@ export default function ReportsPage({
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height={280}>
+                    <ResponsiveContainer width="100%" height={240}>
                       <PieChart>
                         <Pie
                           data={coverage.byStatus}
@@ -93,9 +93,8 @@ export default function ReportsPage({
                           nameKey="status"
                           cx="50%"
                           cy="50%"
-                          outerRadius={100}
-                          innerRadius={50}
-                          label={({ status, count }) => `${status}: ${count}`}
+                          outerRadius={90}
+                          innerRadius={45}
                         >
                           {coverage.byStatus.map((entry: StatusCount) => (
                             <Cell
@@ -107,6 +106,19 @@ export default function ReportsPage({
                         <Tooltip />
                       </PieChart>
                     </ResponsiveContainer>
+                  </div>
+                  <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1">
+                    {coverage.byStatus.map((entry: StatusCount) => (
+                      <div key={entry.status} className="flex items-center gap-1.5 text-xs">
+                        <span
+                          className="inline-block size-2.5 rounded-full"
+                          style={{ backgroundColor: statusChartColors[entry.status] ?? '#9ca3af' }}
+                        />
+                        <span className="text-muted-foreground">
+                          {entry.status}: {entry.count}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

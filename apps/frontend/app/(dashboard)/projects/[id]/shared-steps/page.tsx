@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Plus } from 'lucide-react';
+import { Breadcrumb } from '@/components/Breadcrumb';
+import { useProject } from '@/lib/projects/useProjects';
 import { useCreateSharedStep } from '@/lib/shared-steps/useSharedSteps';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
@@ -13,6 +15,7 @@ import type { CreateSharedStepInput } from '@app/shared';
 export default function SharedStepsPage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id;
+  const { data: project } = useProject(projectId);
   const createStep = useCreateSharedStep(projectId);
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -24,6 +27,14 @@ export default function SharedStepsPage() {
 
   return (
     <div className="flex-1 space-y-6 overflow-y-auto p-6">
+      <Breadcrumb
+        items={[
+          { label: 'Projects', href: '/projects' },
+          { label: project?.name ?? '...', href: `/projects/${projectId}` },
+          { label: 'Shared Steps' },
+        ]}
+      />
+
       <PageHeader
         title="Shared Steps"
         subtitle="Manage reusable test step groups for this project"

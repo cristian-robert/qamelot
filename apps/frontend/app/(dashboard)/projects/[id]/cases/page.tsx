@@ -3,6 +3,8 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Upload } from 'lucide-react';
+import { Breadcrumb } from '@/components/Breadcrumb';
+import { useProject } from '@/lib/projects/useProjects';
 import { useTestSuites } from '@/lib/test-suites/useTestSuites';
 import { useBulkMoveCases, useBulkUpdateCases, useBulkDeleteCases } from '@/lib/test-cases/useTestCases';
 import { useSelection } from '@/lib/test-cases/useSelection';
@@ -37,6 +39,8 @@ type BulkDialogType = 'move' | 'priority' | 'type' | null;
 export default function TestCasesPage() {
   const params = useParams();
   const projectId = params.id as string;
+
+  const { data: project } = useProject(projectId);
 
   const [selectedSuiteId, setSelectedSuiteId] = useState<string | null>(null);
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
@@ -118,24 +122,33 @@ export default function TestCasesPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Page header */}
-      <div className="flex shrink-0 items-center justify-between px-6 pt-6 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Test Cases</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Manage test suites and cases for this project
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <CsvExportButton projectId={projectId} />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setImportOpen(true)}
-          >
-            <Upload className="mr-1.5 size-3.5" />
-            Import CSV
-          </Button>
+      {/* Breadcrumb + Page header */}
+      <div className="shrink-0 space-y-4 px-6 pt-6 pb-4">
+        <Breadcrumb
+          items={[
+            { label: 'Projects', href: '/projects' },
+            { label: project?.name ?? '...', href: `/projects/${projectId}` },
+            { label: 'Test Cases' },
+          ]}
+        />
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Test Cases</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Manage test suites and cases for this project
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <CsvExportButton projectId={projectId} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+            >
+              <Upload className="mr-1.5 size-3.5" />
+              Import CSV
+            </Button>
+          </div>
         </div>
       </div>
 

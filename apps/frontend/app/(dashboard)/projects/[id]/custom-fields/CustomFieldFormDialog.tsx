@@ -25,7 +25,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 
-const fieldTypeLabels: Record<string, string> = {
+export const fieldTypeLabels: Record<string, string> = {
   [CustomFieldType.STRING]: 'Text',
   [CustomFieldType.NUMBER]: 'Number',
   [CustomFieldType.DROPDOWN]: 'Dropdown',

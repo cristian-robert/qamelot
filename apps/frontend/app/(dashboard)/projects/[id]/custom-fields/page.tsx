@@ -2,7 +2,6 @@
 
 import { use, useState } from 'react';
 import { Plus, SlidersHorizontal } from 'lucide-react';
-import { CustomFieldType } from '@app/shared';
 import type { CustomFieldDefinitionDto } from '@app/shared';
 import { useProject } from '@/lib/projects/useProjects';
 import {
@@ -24,15 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { CustomFieldFormDialog } from './CustomFieldFormDialog';
-
-const fieldTypeLabels: Record<string, string> = {
-  [CustomFieldType.STRING]: 'Text',
-  [CustomFieldType.NUMBER]: 'Number',
-  [CustomFieldType.DROPDOWN]: 'Dropdown',
-  [CustomFieldType.CHECKBOX]: 'Checkbox',
-  [CustomFieldType.DATE]: 'Date',
-};
+import { CustomFieldFormDialog, fieldTypeLabels } from './CustomFieldFormDialog';
 
 export default function CustomFieldsPage({
   params,

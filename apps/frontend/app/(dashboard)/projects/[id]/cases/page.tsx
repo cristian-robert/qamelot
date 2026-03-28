@@ -10,25 +10,12 @@ import { useBulkMoveCases, useBulkUpdateCases, useBulkDeleteCases } from '@/lib/
 import { useSelection } from '@/lib/test-cases/useSelection';
 import type { CasePriority, CaseType, TestSuiteDto } from '@app/shared';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { SuiteTree } from '@/components/test-suites/SuiteTree';
 import { CaseListPanel } from '@/components/test-cases/CaseListPanel';
 import { CaseEditorPanel } from '@/components/test-cases/CaseEditorPanel';
 import { BulkToolbar } from '@/components/test-cases/BulkToolbar';
+import { BulkUpdateDialog } from '@/components/test-cases/BulkUpdateDialog';
+import type { BulkUpdateDialogOption } from '@/components/test-cases/BulkUpdateDialog';
 import { CsvExportButton } from '@/components/test-cases/CsvExportButton';
 import { CsvImportWizard } from '@/components/test-cases/CsvImportWizard';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -58,6 +45,29 @@ export default function TestCasesPage() {
   const selectedSuite = useMemo(
     () => suites?.find((s: TestSuiteDto) => s.id === selectedSuiteId) ?? null,
     [suites, selectedSuiteId],
+  );
+
+  const toOption = (v: string): BulkUpdateDialogOption => ({
+    value: v,
+    label: v.charAt(0) + v.slice(1).toLowerCase(),
+  });
+
+  const moveOptions: BulkUpdateDialogOption[] = useMemo(
+    () =>
+      (suites ?? [])
+        .filter((s: TestSuiteDto) => s.id !== selectedSuiteId)
+        .map((s: TestSuiteDto) => ({ value: s.id, label: s.name })),
+    [suites, selectedSuiteId],
+  );
+
+  const priorityOptions = useMemo(
+    () => ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(toOption),
+    [],
+  );
+
+  const typeOptions = useMemo(
+    () => ['FUNCTIONAL', 'REGRESSION', 'SMOKE', 'EXPLORATORY', 'OTHER'].map(toOption),
+    [],
   );
 
   const handleSelectSuite = useCallback(
@@ -190,124 +200,47 @@ export default function TestCasesPage() {
       />
 
       {/* Bulk move dialog */}
-      <Dialog
+      <BulkUpdateDialog
         open={bulkDialog === 'move'}
         onOpenChange={(open) => !open && setBulkDialog(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Move {selection.count} case(s)</DialogTitle>
-            <DialogDescription>
-              Select the target suite to move the selected cases.
-            </DialogDescription>
-          </DialogHeader>
-          <Select value={bulkValue} onValueChange={(val) => setBulkValue(val ?? '')}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select target suite" />
-            </SelectTrigger>
-            <SelectContent>
-              {(suites ?? [])
-                .filter((s: TestSuiteDto) => s.id !== selectedSuiteId)
-                .map((s: TestSuiteDto) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkDialog(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleBulkMove}
-              disabled={!bulkValue || bulkMoveMutation.isPending}
-            >
-              {bulkMoveMutation.isPending ? 'Moving...' : 'Move'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title={`Move ${selection.count} case(s)`}
+        description="Select the target suite to move the selected cases."
+        placeholder="Select target suite"
+        options={moveOptions}
+        value={bulkValue}
+        onValueChange={setBulkValue}
+        onConfirm={handleBulkMove}
+        isPending={bulkMoveMutation.isPending}
+        confirmLabel="Move"
+      />
 
       {/* Bulk priority dialog */}
-      <Dialog
+      <BulkUpdateDialog
         open={bulkDialog === 'priority'}
         onOpenChange={(open) => !open && setBulkDialog(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Set priority for {selection.count} case(s)
-            </DialogTitle>
-            <DialogDescription>
-              Choose a priority to apply to all selected cases.
-            </DialogDescription>
-          </DialogHeader>
-          <Select value={bulkValue} onValueChange={(val) => setBulkValue(val ?? '')}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select priority" />
-            </SelectTrigger>
-            <SelectContent>
-              {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map((p) => (
-                <SelectItem key={p} value={p}>
-                  {p.charAt(0) + p.slice(1).toLowerCase()}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkDialog(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleBulkPriority}
-              disabled={!bulkValue || bulkUpdateMutation.isPending}
-            >
-              {bulkUpdateMutation.isPending ? 'Updating...' : 'Apply'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title={`Set priority for ${selection.count} case(s)`}
+        description="Choose a priority to apply to all selected cases."
+        placeholder="Select priority"
+        options={priorityOptions}
+        value={bulkValue}
+        onValueChange={setBulkValue}
+        onConfirm={handleBulkPriority}
+        isPending={bulkUpdateMutation.isPending}
+      />
 
       {/* Bulk type dialog */}
-      <Dialog
+      <BulkUpdateDialog
         open={bulkDialog === 'type'}
         onOpenChange={(open) => !open && setBulkDialog(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Set type for {selection.count} case(s)</DialogTitle>
-            <DialogDescription>
-              Choose a type to apply to all selected cases.
-            </DialogDescription>
-          </DialogHeader>
-          <Select value={bulkValue} onValueChange={(val) => setBulkValue(val ?? '')}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              {['FUNCTIONAL', 'REGRESSION', 'SMOKE', 'EXPLORATORY', 'OTHER'].map(
-                (t) => (
-                  <SelectItem key={t} value={t}>
-                    {t.charAt(0) + t.slice(1).toLowerCase()}
-                  </SelectItem>
-                ),
-              )}
-            </SelectContent>
-          </Select>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkDialog(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleBulkType}
-              disabled={!bulkValue || bulkUpdateMutation.isPending}
-            >
-              {bulkUpdateMutation.isPending ? 'Updating...' : 'Apply'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title={`Set type for ${selection.count} case(s)`}
+        description="Choose a type to apply to all selected cases."
+        placeholder="Select type"
+        options={typeOptions}
+        value={bulkValue}
+        onValueChange={setBulkValue}
+        onConfirm={handleBulkType}
+        isPending={bulkUpdateMutation.isPending}
+      />
 
       {/* Bulk delete confirm */}
       <ConfirmDialog

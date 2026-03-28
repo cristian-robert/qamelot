@@ -47,7 +47,7 @@ import {
 import { toast } from 'sonner';
 import { Key, Copy, Trash2, Plus, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { ErrorState } from '@/components/ui/empty-state';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '--';
@@ -239,15 +239,11 @@ export default function ApiKeysPage() {
                   Loading keys...
                 </p>
               ) : !keys || keys.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-8 text-center">
-                  <Key className="size-8 text-muted-foreground/30" />
-                  <p className="text-sm text-muted-foreground">
-                    No API keys for this project.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Create one to start using the automation API.
-                  </p>
-                </div>
+                <EmptyState
+                  icon={Key}
+                  title="No API keys for this project"
+                  description="Create one to start using the automation API."
+                />
               ) : (
                 <Table>
                   <TableHeader>

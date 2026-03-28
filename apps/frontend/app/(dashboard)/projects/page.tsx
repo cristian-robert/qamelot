@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Plus, FolderKanban } from 'lucide-react';
 import type { ProjectDto } from '@app/shared';
 import { useProjects, useCreateProject } from '@/lib/projects/useProjects';
@@ -25,11 +26,20 @@ import {
 } from '@/components/ui/dialog';
 
 export default function ProjectsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { data: projects, isLoading, isError, refetch } = useProjects();
   const createProject = useCreateProject();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+
+  // Open dialog automatically when navigated with ?create=true
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setOpen(true);
+    }
+  }, [searchParams]);
 
   function handleCreate() {
     if (!name.trim()) return;
@@ -47,7 +57,12 @@ export default function ProjectsPage() {
 
   return (
     <div className="flex-1 space-y-6 overflow-y-auto p-6">
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(value) => {
+        setOpen(value);
+        if (!value && searchParams.get('create') === 'true') {
+          router.replace('/projects');
+        }
+      }}>
         <PageHeader
           title="Projects"
           subtitle="Manage your test management projects"

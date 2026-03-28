@@ -60,7 +60,7 @@ export default function DashboardPage() {
                 Projects
               </Button>
             </Link>
-            <Link href="/projects">
+            <Link href="/projects?create=true">
               <Button size="sm">
                 <Plus className="mr-1.5 size-3.5" />
                 New Project
@@ -156,7 +156,7 @@ export default function DashboardPage() {
                     title="No projects yet"
                     description="Create your first project to start managing test cases."
                     action={
-                      <Link href="/projects">
+                      <Link href="/projects?create=true">
                         <Button size="sm">
                           <Plus className="mr-1.5 size-3.5" />
                           New Project
@@ -236,27 +236,29 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick links row */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <QuickLink
-            href="/projects"
-            icon={TestTube2}
-            title="Test Cases"
-            description="Write and organize test cases"
-          />
-          <QuickLink
-            href="/projects"
-            icon={Play}
-            title="Test Runs"
-            description="Select a project to view and execute test runs"
-          />
-          <QuickLink
-            href="/projects"
-            icon={BarChart3}
-            title="Reports"
-            description="Select a project to view test reports and analytics"
-          />
-        </div>
+        {/* Quick links row — only shown when projects exist */}
+        {projects && projects.length > 0 && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <QuickLink
+              href={`/projects/${projects[0].id}/cases`}
+              icon={TestTube2}
+              title="Test Cases"
+              description="Write and organize test cases"
+            />
+            <QuickLink
+              href={`/projects/${projects[0].id}/plans`}
+              icon={Play}
+              title="Test Plans"
+              description="Create and execute test plans"
+            />
+            <QuickLink
+              href={`/projects/${projects[0].id}/reports`}
+              icon={BarChart3}
+              title="Reports"
+              description="View test reports and analytics"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

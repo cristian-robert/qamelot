@@ -23,6 +23,7 @@ import { useProjects } from '@/lib/projects/useProjects';
 import { useAuth } from '@/lib/auth/useAuth';
 import { formatRelativeTime } from '@/lib/format';
 import { statusDotStyles, statusBadgeVariant } from '@/lib/constants';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -33,8 +34,8 @@ function getGreeting(): string {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { data: summary, isLoading } = useDashboardSummary();
-  const { data: projects, isLoading: projectsLoading } = useProjects();
+  const { data: summary, isLoading, isError, refetch } = useDashboardSummary();
+  const { data: projects, isLoading: projectsLoading, isError: projectsError, refetch: refetchProjects } = useProjects();
 
   const passRate = Math.round(summary?.overallPassRate ?? 0);
   const firstName = user?.name?.split(' ')[0] ?? 'there';
@@ -112,7 +113,9 @@ export default function DashboardPage() {
                 </Link>
               </CardHeader>
               <CardContent>
-                {projectsLoading ? (
+                {projectsError ? (
+                  <ErrorState onRetry={refetchProjects} />
+                ) : projectsLoading ? (
                   <div className="space-y-3">
                     {Array.from({ length: 3 }).map((_, i) => (
                       <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
@@ -176,7 +179,9 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {isLoading ? (
+                {isError ? (
+                  <ErrorState onRetry={refetch} />
+                ) : isLoading ? (
                   <div className="space-y-3">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <div key={i} className="flex items-center gap-2.5">
@@ -372,25 +377,3 @@ function QuickLink({
   );
 }
 
-function EmptyState({
-  icon: Icon,
-  title,
-  description,
-  action,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col items-center gap-2 py-8 text-center">
-      <div className="flex size-10 items-center justify-center rounded-full bg-muted">
-        <Icon className="size-5 text-muted-foreground/60" />
-      </div>
-      <p className="text-sm font-medium text-muted-foreground">{title}</p>
-      <p className="max-w-48 text-xs text-muted-foreground/70">{description}</p>
-      {action}
-    </div>
-  );
-}

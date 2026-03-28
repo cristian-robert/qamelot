@@ -17,6 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +36,7 @@ export default function ConfigsPage({
 }) {
   const { id: projectId } = use(params);
   const { data: project } = useProject(projectId);
-  const { data: groups, isLoading } = useConfigGroups(projectId);
+  const { data: groups, isLoading, isError, refetch } = useConfigGroups(projectId);
   const createGroup = useCreateConfigGroup(projectId);
   const createItem = useCreateConfigItem();
   const deleteItem = useDeleteConfigItem();
@@ -88,42 +90,44 @@ export default function ConfigsPage({
         ]}
       />
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Configurations</h1>
-        <Dialog open={groupOpen} onOpenChange={setGroupOpen}>
-          <DialogTrigger render={<Button />}>
-            <Plus className="size-4" />
-            Add Group
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Config Group</DialogTitle>
-              <DialogDescription>
-                A config group organizes configuration items for matrix testing.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="group-name">Group Name</Label>
-                <Input
-                  id="group-name"
-                  placeholder="e.g. Browsers, OS, Environments"
-                  value={groupName}
-                  onChange={(e) => setGroupName(e.target.value)}
-                />
-              </div>
+      <Dialog open={groupOpen} onOpenChange={setGroupOpen}>
+        <PageHeader
+          title="Configurations"
+          action={
+            <DialogTrigger render={<Button />}>
+              <Plus className="size-4" />
+              Add Group
+            </DialogTrigger>
+          }
+        />
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Config Group</DialogTitle>
+            <DialogDescription>
+              A config group organizes configuration items for matrix testing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="group-name">Group Name</Label>
+              <Input
+                id="group-name"
+                placeholder="e.g. Browsers, OS, Environments"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+              />
             </div>
-            <DialogFooter>
-              <Button
-                onClick={handleCreateGroup}
-                disabled={!groupName.trim() || createGroup.isPending}
-              >
-                {createGroup.isPending ? 'Creating...' : 'Create'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleCreateGroup}
+              disabled={!groupName.trim() || createGroup.isPending}
+            >
+              {createGroup.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={itemOpen} onOpenChange={setItemOpen}>
         <DialogContent>
@@ -155,7 +159,9 @@ export default function ConfigsPage({
         </DialogContent>
       </Dialog>
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Card key={i}>
@@ -209,16 +215,17 @@ export default function ConfigsPage({
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <Settings2 className="size-10 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            No configuration groups yet. Create groups for matrix testing.
-          </p>
-          <Button variant="outline" onClick={() => setGroupOpen(true)}>
-            <Plus className="size-4" />
-            Add Group
-          </Button>
-        </div>
+        <EmptyState
+          icon={Settings2}
+          title="No configuration groups yet"
+          description="Create groups for matrix testing."
+          action={
+            <Button variant="outline" onClick={() => setGroupOpen(true)}>
+              <Plus className="size-4" />
+              Add Group
+            </Button>
+          }
+        />
       )}
     </div>
   );

@@ -25,6 +25,8 @@ import {
 } from '@/lib/reports/useReports';
 import { formatDate } from '@/lib/format';
 import { Breadcrumb } from '@/components/Breadcrumb';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -45,10 +47,10 @@ export default function ReportsPage({
 }) {
   const { id: projectId } = use(params);
   const { data: project } = useProject(projectId);
-  const { data: coverage, isLoading: coverageLoading } = useCoverageReport(projectId);
-  const { data: progress, isLoading: progressLoading } = useProgressReport(projectId);
-  const { data: activity, isLoading: activityLoading } = useActivityReport(projectId);
-  const { data: refCoverage, isLoading: refLoading } = useReferenceCoverage(projectId);
+  const { data: coverage, isLoading: coverageLoading, isError: coverageError, refetch: refetchCoverage } = useCoverageReport(projectId);
+  const { data: progress, isLoading: progressLoading, isError: progressError, refetch: refetchProgress } = useProgressReport(projectId);
+  const { data: activity, isLoading: activityLoading, isError: activityError, refetch: refetchActivity } = useActivityReport(projectId);
+  const { data: refCoverage, isLoading: refLoading, isError: refError, refetch: refetchRef } = useReferenceCoverage(projectId);
 
   return (
     <div className="flex-1 space-y-6 overflow-y-auto p-6">
@@ -60,7 +62,7 @@ export default function ReportsPage({
         ]}
       />
 
-      <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
+      <PageHeader title="Reports" />
 
       <Tabs defaultValue="coverage">
         <TabsList variant="line">
@@ -71,7 +73,9 @@ export default function ReportsPage({
         </TabsList>
 
         <TabsContent value="coverage" className="mt-6">
-          {coverageLoading ? (
+          {coverageError ? (
+            <ErrorState onRetry={refetchCoverage} />
+          ) : coverageLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : coverage ? (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -145,12 +149,18 @@ export default function ReportsPage({
               </Card>
             </div>
           ) : (
-            <EmptyReport />
+            <EmptyState
+              icon={BarChart3}
+              title="No data available yet"
+              description="Run some tests to generate reports."
+            />
           )}
         </TabsContent>
 
         <TabsContent value="progress" className="mt-6">
-          {progressLoading ? (
+          {progressError ? (
+            <ErrorState onRetry={refetchProgress} />
+          ) : progressLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : progress?.runs?.length ? (
             <Card>
@@ -181,12 +191,18 @@ export default function ReportsPage({
               </CardContent>
             </Card>
           ) : (
-            <EmptyReport />
+            <EmptyState
+              icon={BarChart3}
+              title="No data available yet"
+              description="Run some tests to generate reports."
+            />
           )}
         </TabsContent>
 
         <TabsContent value="activity" className="mt-6">
-          {activityLoading ? (
+          {activityError ? (
+            <ErrorState onRetry={refetchActivity} />
+          ) : activityLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : activity?.entries?.length ? (
             <Card>
@@ -215,12 +231,18 @@ export default function ReportsPage({
               </CardContent>
             </Card>
           ) : (
-            <EmptyReport />
+            <EmptyState
+              icon={BarChart3}
+              title="No data available yet"
+              description="Run some tests to generate reports."
+            />
           )}
         </TabsContent>
 
         <TabsContent value="references" className="mt-6">
-          {refLoading ? (
+          {refError ? (
+            <ErrorState onRetry={refetchRef} />
+          ) : refLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : refCoverage?.references?.length ? (
             <Card>
@@ -257,7 +279,11 @@ export default function ReportsPage({
               </CardContent>
             </Card>
           ) : (
-            <EmptyReport />
+            <EmptyState
+              icon={BarChart3}
+              title="No data available yet"
+              description="Run some tests to generate reports."
+            />
           )}
         </TabsContent>
       </Tabs>
@@ -265,13 +291,3 @@ export default function ReportsPage({
   );
 }
 
-function EmptyReport() {
-  return (
-    <div className="flex flex-col items-center gap-3 py-16 text-center">
-      <BarChart3 className="size-10 text-muted-foreground/40" />
-      <p className="text-sm text-muted-foreground">
-        No data available yet. Run some tests to generate reports.
-      </p>
-    </div>
-  );
-}

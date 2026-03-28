@@ -8,6 +8,8 @@ import { useUsers } from '@/lib/users/useUsers';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import {
   Table,
   TableBody,
@@ -20,25 +22,25 @@ import { UserRow } from '@/components/users/user-row';
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
-  const { data: users, isLoading } = useUsers();
+  const { data: users, isLoading, isError, refetch } = useUsers();
   const [inviteOpen, setInviteOpen] = useState(false);
 
   return (
     <div className="flex-1 space-y-6 overflow-y-auto p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Users</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage team members and their roles
-          </p>
-        </div>
-        <Button onClick={() => setInviteOpen(true)}>
-          <UserPlus className="size-4" />
-          Invite User
-        </Button>
-      </div>
+      <PageHeader
+        title="Users"
+        subtitle="Manage team members and their roles"
+        action={
+          <Button onClick={() => setInviteOpen(true)}>
+            <UserPlus className="size-4" />
+            Invite User
+          </Button>
+        }
+      />
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : isLoading ? (
         <Card>
           <CardContent className="space-y-3 pt-2">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -77,16 +79,17 @@ export default function UsersPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <UsersIcon className="size-10 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            No users yet. Invite your first team member to get started.
-          </p>
-          <Button variant="outline" onClick={() => setInviteOpen(true)}>
-            <UserPlus className="size-4" />
-            Invite User
-          </Button>
-        </div>
+        <EmptyState
+          icon={UsersIcon}
+          title="No users yet"
+          description="Invite your first team member to get started."
+          action={
+            <Button variant="outline" onClick={() => setInviteOpen(true)}>
+              <UserPlus className="size-4" />
+              Invite User
+            </Button>
+          }
+        />
       )}
 
       <InviteUserDialog open={inviteOpen} onOpenChange={setInviteOpen} />

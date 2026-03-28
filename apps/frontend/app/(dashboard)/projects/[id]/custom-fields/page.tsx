@@ -19,6 +19,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -61,7 +63,7 @@ export default function CustomFieldsPage({
 }) {
   const { id: projectId } = use(params);
   const { data: project } = useProject(projectId);
-  const { data: definitions, isLoading } = useCustomFieldDefinitions(projectId);
+  const { data: definitions, isLoading, isError, refetch } = useCustomFieldDefinitions(projectId);
   const createDefinition = useCreateCustomFieldDefinition(projectId);
   const deleteDefinition = useDeleteCustomFieldDefinition(projectId);
 
@@ -123,13 +125,16 @@ export default function CustomFieldsPage({
         ]}
       />
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Custom Fields</h1>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
-          <DialogTrigger render={<Button />}>
-            <Plus className="size-4" />
-            New Field
-          </DialogTrigger>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+        <PageHeader
+          title="Custom Fields"
+          action={
+            <DialogTrigger render={<Button />}>
+              <Plus className="size-4" />
+              New Field
+            </DialogTrigger>
+          }
+        />
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Create Custom Field</DialogTitle>
@@ -236,11 +241,12 @@ export default function CustomFieldsPage({
                 {createDefinition.isPending ? 'Creating...' : 'Create'}
               </Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+        </DialogContent>
+      </Dialog>
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-12 w-full" />
@@ -297,16 +303,17 @@ export default function CustomFieldsPage({
           </TableBody>
         </Table>
       ) : (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <SlidersHorizontal className="size-10 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            No custom fields defined. Add fields to extend your test data.
-          </p>
-          <Button variant="outline" onClick={() => setOpen(true)}>
-            <Plus className="size-4" />
-            New Field
-          </Button>
-        </div>
+        <EmptyState
+          icon={SlidersHorizontal}
+          title="No custom fields defined"
+          description="Add fields to extend your test data."
+          action={
+            <Button variant="outline" onClick={() => setOpen(true)}>
+              <Plus className="size-4" />
+              New Field
+            </Button>
+          }
+        />
       )}
 
       <ConfirmDialog

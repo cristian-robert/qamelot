@@ -8,6 +8,8 @@ import { useProject, useDeleteProject } from '@/lib/projects/useProjects';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/ui/page-header';
+import { ErrorState } from '@/components/ui/empty-state';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ProjectOverview } from './ProjectOverview';
 
@@ -31,7 +33,7 @@ export default function ProjectDetailPage({
   const { id } = use(params);
   const pathname = usePathname();
   const router = useRouter();
-  const { data: project, isLoading } = useProject(id);
+  const { data: project, isLoading, isError, refetch } = useProject(id);
   const deleteProject = useDeleteProject();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -52,31 +54,33 @@ export default function ProjectDetailPage({
         ]}
       />
 
-      <div className="flex items-center justify-between">
-        {isLoading ? (
-          <Skeleton className="h-8 w-48" />
-        ) : (
-          <h1 className="text-2xl font-bold tracking-tight">
-            {project?.name}
-          </h1>
-        )}
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled>
-            <Pencil className="size-3.5" />
-            Edit
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setDeleteOpen(true)}
-            disabled={deleteProject.isPending}
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2 className="size-3.5" />
-            Delete
-          </Button>
-        </div>
-      </div>
+      {isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : isLoading ? (
+        <Skeleton className="h-8 w-48" />
+      ) : (
+        <PageHeader
+          title={project?.name ?? 'Project'}
+          action={
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled>
+                <Pencil className="size-3.5" />
+                Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteOpen(true)}
+                disabled={deleteProject.isPending}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="size-3.5" />
+                Delete
+              </Button>
+            </div>
+          }
+        />
+      )}
 
       <nav className="flex gap-1 border-b">
         {tabs.map((tab) => {

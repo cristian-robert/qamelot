@@ -1,11 +1,8 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import {
-  Upload,
   FileSpreadsheet,
-  CheckCircle2,
-  AlertCircle,
   ArrowRight,
   ArrowLeft,
 } from 'lucide-react';
@@ -18,27 +15,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { testCasesApi, type CsvImportResult } from '@/lib/api/test-cases';
-
-const FIELD_OPTIONS = [
-  { value: '__skip__', label: 'Skip' },
-  { value: 'title', label: 'Title' },
-  { value: 'priority', label: 'Priority' },
-  { value: 'type', label: 'Type' },
-  { value: 'preconditions', label: 'Preconditions' },
-  { value: 'estimate', label: 'Estimate' },
-  { value: 'references', label: 'References' },
-] as const;
+import { CsvUploadStep } from './CsvUploadStep';
+import { CsvMappingStep, FIELD_OPTIONS } from './CsvMappingStep';
+import { CsvPreviewStep } from './CsvPreviewStep';
+import { CsvResultStep } from './CsvResultStep';
 
 interface CsvImportWizardProps {
   projectId: string;
@@ -82,7 +64,6 @@ export function CsvImportWizard({
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<CsvImportResult | null>(null);
   const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const headers = csvData[0] ?? [];
   const rows = csvData.slice(1);
@@ -115,6 +96,15 @@ export function CsvImportWizard({
       }
     },
     [handleFile],
+  );
+
+  const handleMappingChange = useCallback(
+    (index: number, value: string) => {
+      const updated = [...columnMappings];
+      updated[index] = value;
+      setColumnMappings(updated);
+    },
+    [columnMappings],
   );
 
   const handleImport = useCallback(async () => {
@@ -180,169 +170,36 @@ export function CsvImportWizard({
           ))}
         </div>
 
-        {/* Step 1: Upload */}
         {step === 1 && (
-          <div
-            className={`flex flex-col items-center gap-3 rounded-lg border-2 border-dashed p-8 transition-colors ${
-              dragActive
-                ? 'border-primary bg-primary/5'
-                : 'border-muted-foreground/20'
-            }`}
+          <CsvUploadStep
+            dragActive={dragActive}
             onDragOver={(e) => {
               e.preventDefault();
               setDragActive(true);
             }}
             onDragLeave={() => setDragActive(false)}
             onDrop={handleDrop}
-          >
-            <Upload className="size-10 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">
-              Drag & drop a CSV file here
-            </p>
-            <p className="text-xs text-muted-foreground/60">or</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              Browse Files
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={(e) => {
-                const selected = e.target.files?.[0];
-                if (selected) handleFile(selected);
-              }}
-            />
-          </div>
+            onFileSelect={handleFile}
+          />
         )}
 
-        {/* Step 2: Column mapping */}
         {step === 2 && (
-          <ScrollArea className="max-h-64">
-            <div className="space-y-2">
-              {headers.map((header, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 rounded-md bg-muted/30 px-3 py-2"
-                >
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                    {header}
-                  </span>
-                  <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
-                  <Select
-                    value={columnMappings[i] ?? '__skip__'}
-                    onValueChange={(val) => {
-                      const updated = [...columnMappings];
-                      updated[i] = val ?? '__skip__';
-                      setColumnMappings(updated);
-                    }}
-                  >
-                    <SelectTrigger className="w-36">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FIELD_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
+          <CsvMappingStep
+            headers={headers}
+            columnMappings={columnMappings}
+            onMappingChange={handleMappingChange}
+          />
         )}
 
-        {/* Step 3: Preview */}
         {step === 3 && (
-          <ScrollArea className="max-h-64">
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                Preview of first {Math.min(rows.length, 5)} rows:
-              </p>
-              <div className="overflow-x-auto rounded-md border">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      {headers.map((h, i) =>
-                        columnMappings[i] !== '__skip__' ? (
-                          <th key={i} className="px-2 py-1.5 text-left font-medium">
-                            {columnMappings[i]}
-                          </th>
-                        ) : null,
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.slice(0, 5).map((row, ri) => (
-                      <tr key={ri} className="border-b last:border-0">
-                        {row.map((cell, ci) =>
-                          columnMappings[ci] !== '__skip__' ? (
-                            <td
-                              key={ci}
-                              className="max-w-32 truncate px-2 py-1.5"
-                            >
-                              {cell}
-                            </td>
-                          ) : null,
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Total: {rows.length} row{rows.length !== 1 ? 's' : ''} to import
-              </p>
-            </div>
-          </ScrollArea>
+          <CsvPreviewStep
+            headers={headers}
+            rows={rows}
+            columnMappings={columnMappings}
+          />
         )}
 
-        {/* Step 4: Result */}
-        {step === 4 && result && (
-          <div className="space-y-3">
-            {result.imported > 0 && (
-              <div className="flex items-center gap-2 rounded-md bg-status-passed/10 p-3 text-status-passed">
-                <CheckCircle2 className="size-5 shrink-0" />
-                <p className="text-sm font-medium">
-                  Successfully imported {result.imported} test case
-                  {result.imported !== 1 ? 's' : ''}
-                </p>
-              </div>
-            )}
-            {result.errors.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-destructive">
-                  <AlertCircle className="size-4 shrink-0" />
-                  <p className="text-sm font-medium">
-                    {result.errors.length} error{result.errors.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <ScrollArea className="max-h-40">
-                  <div className="space-y-1">
-                    {result.errors.map((err, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-2 rounded bg-destructive/5 px-2 py-1 text-xs"
-                      >
-                        <Badge variant="destructive" className="h-4 text-[10px]">
-                          Row {err.row}
-                        </Badge>
-                        <span className="text-muted-foreground">{err.field}:</span>
-                        <span>{err.message}</span>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-            )}
-          </div>
-        )}
+        {step === 4 && result && <CsvResultStep result={result} />}
 
         {importing && (
           <div className="space-y-2">

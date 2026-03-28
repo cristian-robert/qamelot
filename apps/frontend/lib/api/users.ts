@@ -1,8 +1,14 @@
-import type { UserDto, InviteUserInput, UpdateRoleInput, UpdateProfileInput } from '@app/shared';
+import type { UserDto, InviteUserInput, UpdateRoleInput, UpdateProfileInput, PaginatedResponse } from '@app/shared';
 import { apiFetch } from './client';
 
 export const usersApi = {
-  list: () => apiFetch<UserDto[]>('/users'),
+  list: (params?: { page?: number; pageSize?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
+    const query = qs.toString();
+    return apiFetch<PaginatedResponse<UserDto>>(`/users${query ? `?${query}` : ''}`);
+  },
   getById: (id: string) => apiFetch<UserDto>(`/users/${id}`),
   updateRole: (id: string, data: UpdateRoleInput) =>
     apiFetch<UserDto>(`/users/${id}/role`, { method: 'PATCH', body: JSON.stringify(data) }),

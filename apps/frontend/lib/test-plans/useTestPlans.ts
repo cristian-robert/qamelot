@@ -9,6 +9,7 @@ export function useTestPlans(projectId: string, filters?: TestPlanFilters) {
     queryKey: ['test-plans', projectId, filters],
     queryFn: () => testPlansApi.listByProject(projectId, filters),
     enabled: !!projectId,
+    placeholderData: (prev) => prev,
   });
 }
 

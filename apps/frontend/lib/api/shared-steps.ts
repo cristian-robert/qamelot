@@ -1,9 +1,14 @@
-import type { SharedStepWithItemsDto, CreateSharedStepInput, UpdateSharedStepInput } from '@app/shared';
+import type { SharedStepWithItemsDto, CreateSharedStepInput, UpdateSharedStepInput, PaginatedResponse } from '@app/shared';
 import { apiFetch } from './client';
 
 export const sharedStepsApi = {
-  listByProject: (projectId: string) =>
-    apiFetch<SharedStepWithItemsDto[]>(`/projects/${projectId}/shared-steps`),
+  listByProject: (projectId: string, params?: { page?: number; pageSize?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
+    const query = qs.toString();
+    return apiFetch<PaginatedResponse<SharedStepWithItemsDto>>(`/projects/${projectId}/shared-steps${query ? `?${query}` : ''}`);
+  },
   getById: (projectId: string, id: string) =>
     apiFetch<SharedStepWithItemsDto>(`/projects/${projectId}/shared-steps/${id}`),
   create: (projectId: string, data: CreateSharedStepInput) =>

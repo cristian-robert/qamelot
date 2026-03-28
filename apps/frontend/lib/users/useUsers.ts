@@ -4,10 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { InviteUserInput, UpdateRoleInput } from '@app/shared';
 import { usersApi } from '@/lib/api/users';
 
-export function useUsers() {
+export function useUsers(params?: { page?: number; pageSize?: number }) {
   return useQuery({
-    queryKey: ['users'],
-    queryFn: usersApi.list,
+    queryKey: ['users', params],
+    queryFn: () => usersApi.list(params),
   });
 }
 

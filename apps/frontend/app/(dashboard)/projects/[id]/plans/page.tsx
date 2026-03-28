@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dialog';
 import { planStatusBadgeStyles } from '@/lib/constants';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { Pagination } from '@/components/shared/Pagination';
 
 export default function PlansPage({
   params,
@@ -51,7 +52,11 @@ export default function PlansPage({
   const { id: projectId } = use(params);
   const { data: project } = useProject(projectId);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  const { data: plans, isLoading, isError, refetch } = useTestPlans(projectId, statusFilter ? { status: statusFilter } : undefined);
+  const [page, setPage] = useState(1);
+  const filters = { ...(statusFilter ? { status: statusFilter } : {}), page, pageSize: 20 };
+  const { data: response, isLoading, isError, refetch } = useTestPlans(projectId, filters);
+  const plans = response?.data;
+  const totalPages = response?.totalPages ?? 1;
   const createPlan = useCreateTestPlan(projectId);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -132,7 +137,7 @@ export default function PlansPage({
       <div className="flex items-center gap-3">
         <Select
           value={statusFilter ?? ''}
-          onValueChange={(val) => setStatusFilter(val || undefined)}
+          onValueChange={(val) => { setStatusFilter(val || undefined); setPage(1); }}
         >
           <SelectTrigger>
             <SelectValue placeholder="All Statuses" />
@@ -157,44 +162,47 @@ export default function PlansPage({
           ))}
         </div>
       ) : plans?.length ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Runs</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Updated</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {plans.map((plan: TestPlanWithRunCountDto) => (
-              <TableRow key={plan.id}>
-                <TableCell>
-                  <Link
-                    href={`/projects/${projectId}/plans/${plan.id}`}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {plan.name}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <StatusBadge
-                    label={plan.status}
-                    className={planStatusBadgeStyles[plan.status]}
-                  />
-                </TableCell>
-                <TableCell>{plan._count.testRuns}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDate(plan.createdAt)}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDate(plan.updatedAt)}
-                </TableCell>
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Runs</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Updated</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {plans.map((plan: TestPlanWithRunCountDto) => (
+                <TableRow key={plan.id}>
+                  <TableCell>
+                    <Link
+                      href={`/projects/${projectId}/plans/${plan.id}`}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {plan.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge
+                      label={plan.status}
+                      className={planStatusBadgeStyles[plan.status]}
+                    />
+                  </TableCell>
+                  <TableCell>{plan._count.testRuns}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(plan.createdAt)}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(plan.updatedAt)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       ) : (
         <EmptyState
           icon={ClipboardList}

@@ -59,7 +59,8 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function ApiKeysPage() {
-  const { data: projects, isLoading: loadingProjects, isError: projectsError, refetch: refetchProjects } = useProjects();
+  const { data: projectsResponse, isLoading: loadingProjects, isError: projectsError, refetch: refetchProjects } = useProjects();
+  const projects = projectsResponse?.data;
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const { data: keys, isLoading: loadingKeys, isError: keysError, refetch: refetchKeys } = useApiKeys(selectedProjectId);
   const createMutation = useCreateApiKey();

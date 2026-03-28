@@ -9,6 +9,7 @@ export function useDefects(projectId: string, filters?: DefectFilters) {
     queryKey: ['defects', projectId, filters],
     queryFn: () => defectsApi.listByProject(projectId, filters),
     enabled: !!projectId,
+    placeholderData: (prev) => prev,
   });
 }
 

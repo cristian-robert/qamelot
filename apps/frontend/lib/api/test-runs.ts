@@ -1,4 +1,4 @@
-import type { TestRunDto, TestRunDetailDto, CreateTestRunInput, UpdateTestRunInput, CreateMatrixRunsInput } from '@app/shared';
+import type { TestRunDto, TestRunDetailDto, CreateTestRunInput, UpdateTestRunInput, CreateMatrixRunsInput, PaginatedResponse } from '@app/shared';
 import { apiFetch } from './client';
 
 export interface TestRunListItem extends TestRunDto {
@@ -6,20 +6,22 @@ export interface TestRunListItem extends TestRunDto {
   _count: { testRunCases: number };
 }
 
-export interface TestRunFilters { status?: string; assigneeId?: string; }
+export interface TestRunFilters { status?: string; assigneeId?: string; page?: number; pageSize?: number; }
 
 function buildQueryString(filters?: TestRunFilters): string {
   if (!filters) return '';
   const params = new URLSearchParams();
   if (filters.status) params.set('status', filters.status);
   if (filters.assigneeId) params.set('assigneeId', filters.assigneeId);
+  if (filters.page) params.set('page', String(filters.page));
+  if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
   const qs = params.toString();
   return qs ? `?${qs}` : '';
 }
 
 export const testRunsApi = {
   listByPlan: (planId: string, filters?: TestRunFilters) =>
-    apiFetch<TestRunListItem[]>(`/plans/${planId}/runs${buildQueryString(filters)}`),
+    apiFetch<PaginatedResponse<TestRunListItem>>(`/plans/${planId}/runs${buildQueryString(filters)}`),
   getById: (id: string) => apiFetch<TestRunDetailDto>(`/runs/${id}`),
   create: (planId: string, data: CreateTestRunInput) =>
     apiFetch<TestRunDetailDto>(`/plans/${planId}/runs`, { method: 'POST', body: JSON.stringify(data) }),

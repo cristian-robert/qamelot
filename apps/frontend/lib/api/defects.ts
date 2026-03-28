@@ -1,19 +1,21 @@
-import type { DefectDto, DefectWithResultDto, CreateDefectInput, UpdateDefectInput } from '@app/shared';
+import type { DefectDto, DefectWithResultDto, CreateDefectInput, UpdateDefectInput, PaginatedResponse } from '@app/shared';
 import { apiFetch } from './client';
 
-export interface DefectFilters { search?: string; }
+export interface DefectFilters { search?: string; page?: number; pageSize?: number; }
 
 function buildQueryString(filters?: DefectFilters): string {
   if (!filters) return '';
   const params = new URLSearchParams();
   if (filters.search) params.set('search', filters.search);
+  if (filters.page) params.set('page', String(filters.page));
+  if (filters.pageSize) params.set('pageSize', String(filters.pageSize));
   const qs = params.toString();
   return qs ? `?${qs}` : '';
 }
 
 export const defectsApi = {
   listByProject: (projectId: string, filters?: DefectFilters) =>
-    apiFetch<DefectDto[]>(`/projects/${projectId}/defects${buildQueryString(filters)}`),
+    apiFetch<PaginatedResponse<DefectDto>>(`/projects/${projectId}/defects${buildQueryString(filters)}`),
   listByTestResult: (resultId: string) =>
     apiFetch<DefectDto[]>(`/results/${resultId}/defects`),
   getById: (id: string) => apiFetch<DefectWithResultDto>(`/defects/${id}`),

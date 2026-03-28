@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import { Plus, Bug, Search } from 'lucide-react';
 import type { DefectDto } from '@app/shared';
 import { useProject } from '@/lib/projects/useProjects';
@@ -32,6 +32,7 @@ import {
   DialogFooter,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Pagination } from '@/components/shared/Pagination';
 
 export default function DefectsPage({
   params,
@@ -42,10 +43,15 @@ export default function DefectsPage({
   const { data: project } = useProject(projectId);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search);
-  const { data: defects, isLoading, isError, refetch } = useDefects(
-    projectId,
-    debouncedSearch ? { search: debouncedSearch } : undefined,
-  );
+  const [page, setPage] = useState(1);
+  const filters = { ...(debouncedSearch ? { search: debouncedSearch } : {}), page, pageSize: 20 };
+  const { data: response, isLoading, isError, refetch } = useDefects(projectId, filters);
+  const defects = response?.data;
+  const totalPages = response?.totalPages ?? 1;
+
+  // Reset to page 1 when search changes
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
+
   const createDefect = useCreateDefect(projectId);
 
   const [open, setOpen] = useState(false);
@@ -146,38 +152,41 @@ export default function DefectsPage({
           ))}
         </div>
       ) : defects?.length ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Reference</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Linked Result</TableHead>
-              <TableHead>Created</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {defects.map((defect: DefectDto) => (
-              <TableRow key={defect.id}>
-                <TableCell className="font-medium">{defect.reference}</TableCell>
-                <TableCell className="max-w-xs truncate text-muted-foreground">
-                  {defect.description ?? '\u2014'}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {defect.testResultId ? (
-                    <span className="text-xs font-mono">
-                      {defect.testResultId.slice(0, 8)}...
-                    </span>
-                  ) : (
-                    '\u2014'
-                  )}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDate(defect.createdAt)}
-                </TableCell>
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reference</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Linked Result</TableHead>
+                <TableHead>Created</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {defects.map((defect: DefectDto) => (
+                <TableRow key={defect.id}>
+                  <TableCell className="font-medium">{defect.reference}</TableCell>
+                  <TableCell className="max-w-xs truncate text-muted-foreground">
+                    {defect.description ?? '\u2014'}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {defect.testResultId ? (
+                      <span className="text-xs font-mono">
+                        {defect.testResultId.slice(0, 8)}...
+                      </span>
+                    ) : (
+                      '\u2014'
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(defect.createdAt)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       ) : (
         <EmptyState
           icon={Bug}

@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
 import { ProjectCard } from '@/components/projects/ProjectCard';
+import { Pagination } from '@/components/shared/Pagination';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +29,10 @@ import {
 export default function ProjectsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { data: projects, isLoading, isError, refetch } = useProjects();
+  const [page, setPage] = useState(1);
+  const { data: response, isLoading, isError, refetch } = useProjects({ page, pageSize: 20 });
+  const projects = response?.data;
+  const totalPages = response?.totalPages ?? 1;
   const { data: projectsStats } = useProjectsStats();
   const createProject = useCreateProject();
   const [open, setOpen] = useState(false);
@@ -129,12 +133,15 @@ export default function ProjectsPage() {
           ))}
         </div>
       ) : projects?.length ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project: ProjectDto) => {
-            const stats = projectsStats?.find((s) => s.projectId === project.id);
-            return <ProjectCard key={project.id} project={project} stats={stats} />;
-          })}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {projects.map((project: ProjectDto) => {
+              const stats = projectsStats?.find((s) => s.projectId === project.id);
+              return <ProjectCard key={project.id} project={project} stats={stats} />;
+            })}
+          </div>
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       ) : (
         <EmptyState
           icon={FolderKanban}

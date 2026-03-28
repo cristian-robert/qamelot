@@ -30,6 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
+import { Pagination } from '@/components/shared/Pagination';
 
 const planStatusVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
   [TestPlanStatus.DRAFT]: 'secondary',
@@ -53,10 +54,14 @@ export default function PlanDetailPage({
   const { data: project } = useProject(projectId);
   const { data: plan, isLoading: planLoading, isError: planError, refetch: refetchPlan } = useTestPlan(projectId, planId);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  const { data: runs, isLoading: runsLoading, isError: runsError, refetch: refetchRuns } = useTestRuns(
+  const [runPage, setRunPage] = useState(1);
+  const runFilters = { ...(statusFilter ? { status: statusFilter } : {}), page: runPage, pageSize: 20 };
+  const { data: runsResponse, isLoading: runsLoading, isError: runsError, refetch: refetchRuns } = useTestRuns(
     planId,
-    statusFilter ? { status: statusFilter } : undefined,
+    runFilters,
   );
+  const runs = runsResponse?.data;
+  const runTotalPages = runsResponse?.totalPages ?? 1;
 
   const [open, setOpen] = useState(false);
 
@@ -97,7 +102,7 @@ export default function PlanDetailPage({
           <h2 className="text-lg font-semibold">Test Runs</h2>
           <Select
             value={statusFilter ?? ''}
-            onValueChange={(val) => setStatusFilter(val || undefined)}
+            onValueChange={(val) => { setStatusFilter(val || undefined); setRunPage(1); }}
           >
             <SelectTrigger>
               <SelectValue placeholder="All Statuses" />
@@ -134,46 +139,49 @@ export default function PlanDetailPage({
           ))}
         </div>
       ) : runs?.length ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Assignee</TableHead>
-              <TableHead>Cases</TableHead>
-              <TableHead>Created</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {runs.map((run: TestRunListItem) => (
-              <TableRow
-                key={run.id}
-                className="cursor-pointer"
-              >
-                <TableCell>
-                  <Link
-                    href={`/projects/${projectId}/runs/${run.id}/execute`}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {run.name}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={runStatusVariant[run.status] ?? 'secondary'}>
-                    {run.status.replace('_', ' ')}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {run.assignedTo?.name ?? '\u2014'}
-                </TableCell>
-                <TableCell>{run._count.testRunCases}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDate(run.createdAt)}
-                </TableCell>
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Assignee</TableHead>
+                <TableHead>Cases</TableHead>
+                <TableHead>Created</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {runs.map((run: TestRunListItem) => (
+                <TableRow
+                  key={run.id}
+                  className="cursor-pointer"
+                >
+                  <TableCell>
+                    <Link
+                      href={`/projects/${projectId}/runs/${run.id}/execute`}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {run.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={runStatusVariant[run.status] ?? 'secondary'}>
+                      {run.status.replace('_', ' ')}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {run.assignedTo?.name ?? '\u2014'}
+                  </TableCell>
+                  <TableCell>{run._count.testRunCases}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(run.createdAt)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Pagination page={runPage} totalPages={runTotalPages} onPageChange={setRunPage} />
+        </>
       ) : (
         <EmptyState
           icon={ListChecks}

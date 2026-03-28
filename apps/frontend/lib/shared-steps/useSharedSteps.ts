@@ -4,10 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateSharedStepInput, UpdateSharedStepInput } from '@app/shared';
 import { sharedStepsApi } from '@/lib/api/shared-steps';
 
-export function useSharedSteps(projectId: string) {
+export function useSharedSteps(projectId: string, params?: { page?: number; pageSize?: number }) {
   return useQuery({
-    queryKey: ['shared-steps', projectId],
-    queryFn: () => sharedStepsApi.listByProject(projectId),
+    queryKey: ['shared-steps', projectId, params],
+    queryFn: () => sharedStepsApi.listByProject(projectId, params),
     enabled: !!projectId,
   });
 }

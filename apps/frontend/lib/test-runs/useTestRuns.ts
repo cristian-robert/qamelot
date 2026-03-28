@@ -9,6 +9,7 @@ export function useTestRuns(planId: string, filters?: TestRunFilters) {
     queryKey: ['test-runs', planId, filters],
     queryFn: () => testRunsApi.listByPlan(planId, filters),
     enabled: !!planId,
+    placeholderData: (prev) => prev,
   });
 }
 

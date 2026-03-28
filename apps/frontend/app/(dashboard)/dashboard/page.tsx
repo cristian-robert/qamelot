@@ -35,7 +35,8 @@ function getGreeting(): string {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { data: summary, isLoading, isError, refetch } = useDashboardSummary();
-  const { data: projects, isLoading: projectsLoading, isError: projectsError, refetch: refetchProjects } = useProjects();
+  const { data: projectsResponse, isLoading: projectsLoading, isError: projectsError, refetch: refetchProjects } = useProjects();
+  const projects = projectsResponse?.data;
 
   const passRate = Math.round(summary?.overallPassRate ?? 0);
   const firstName = user?.name?.split(' ')[0] ?? 'there';
@@ -74,7 +75,7 @@ export default function DashboardPage() {
           <StatCard
             icon={FolderKanban}
             label="Projects"
-            value={projectsLoading ? null : (projects?.length ?? 0)}
+            value={projectsLoading ? null : (projectsResponse?.total ?? 0)}
             color="text-primary"
             bgColor="bg-primary/10"
           />

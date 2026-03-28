@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Pagination } from '@/components/shared/Pagination';
 import { Pencil, Trash2, ListOrdered, ChevronDown, ChevronRight } from 'lucide-react';
 import type { SharedStepWithItemsDto, CreateSharedStepInput } from '@app/shared';
 import {
@@ -30,7 +31,10 @@ interface SharedStepLibraryProps {
 }
 
 export function SharedStepLibrary({ projectId, onCreateClick }: SharedStepLibraryProps) {
-  const { data: steps, isLoading, isError, refetch } = useSharedSteps(projectId);
+  const [page, setPage] = useState(1);
+  const { data: response, isLoading, isError, refetch } = useSharedSteps(projectId, { page, pageSize: 20 });
+  const steps = response?.data;
+  const totalPages = response?.totalPages ?? 1;
   const createStep = useCreateSharedStep(projectId);
   const updateStep = useUpdateSharedStep(projectId);
   const deleteStep = useDeleteSharedStep(projectId);
@@ -97,7 +101,7 @@ export function SharedStepLibrary({ projectId, onCreateClick }: SharedStepLibrar
     <>
       {steps?.length ? (
         <div className="space-y-3">
-          {steps.map((step) => {
+          {steps.map((step: SharedStepWithItemsDto) => {
             const isExpanded = expandedIds.has(step.id);
             return (
               <Card key={step.id}>
@@ -161,6 +165,7 @@ export function SharedStepLibrary({ projectId, onCreateClick }: SharedStepLibrar
               </Card>
             );
           })}
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       ) : (
         <EmptyState

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Pagination } from '@/components/shared/Pagination';
 import { UserPlus, Users as UsersIcon } from 'lucide-react';
 import type { UserDto } from '@app/shared';
 import { useAuth } from '@/lib/auth/useAuth';
@@ -22,7 +23,10 @@ import { UserRow } from '@/components/users/user-row';
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
-  const { data: users, isLoading, isError, refetch } = useUsers();
+  const [page, setPage] = useState(1);
+  const { data: response, isLoading, isError, refetch } = useUsers({ page, pageSize: 20 });
+  const users = response?.data;
+  const totalPages = response?.totalPages ?? 1;
   const [inviteOpen, setInviteOpen] = useState(false);
 
   return (
@@ -54,30 +58,33 @@ export default function UsersPage() {
           </CardContent>
         </Card>
       ) : users?.length ? (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user: UserDto) => (
-                  <UserRow
-                    key={user.id}
-                    user={user}
-                    currentUserId={currentUser?.id}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <>
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user: UserDto) => (
+                    <UserRow
+                      key={user.id}
+                      user={user}
+                      currentUserId={currentUser?.id}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       ) : (
         <EmptyState
           icon={UsersIcon}

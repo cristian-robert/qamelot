@@ -4,10 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { CreateProjectInput, UpdateProjectInput } from '@app/shared';
 import { projectsApi } from '@/lib/api/projects';
 
-export function useProjects() {
+export function useProjects(params?: { page?: number; pageSize?: number }) {
   return useQuery({
-    queryKey: ['projects'],
-    queryFn: projectsApi.list,
+    queryKey: ['projects', params],
+    queryFn: () => projectsApi.list(params),
   });
 }
 

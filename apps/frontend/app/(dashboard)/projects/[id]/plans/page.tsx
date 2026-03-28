@@ -10,7 +10,6 @@ import { formatDate } from '@/lib/format';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { useProject } from '@/lib/projects/useProjects';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,7 +40,8 @@ import {
   DialogFooter,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { planStatusBadgeVariant } from '@/lib/constants';
+import { planStatusBadgeStyles } from '@/lib/constants';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 
 export default function PlansPage({
   params,
@@ -179,9 +179,10 @@ export default function PlansPage({
                   </Link>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={planStatusBadgeVariant[plan.status] ?? 'secondary'}>
-                    {plan.status}
-                  </Badge>
+                  <StatusBadge
+                    label={plan.status}
+                    className={planStatusBadgeStyles[plan.status]}
+                  />
                 </TableCell>
                 <TableCell>{plan._count.testRuns}</TableCell>
                 <TableCell className="text-muted-foreground">

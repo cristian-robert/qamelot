@@ -15,9 +15,10 @@ import { useProject } from '@/lib/projects/useProjects';
 import { useMilestoneTree, useCreateMilestone } from '@/lib/milestones/useMilestones';
 import { formatDate } from '@/lib/format';
 import { daysUntil, isOverdue } from '@/lib/date-utils';
+import { milestoneStatusBadgeStyles } from '@/lib/constants';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -214,11 +215,10 @@ function MilestoneNode({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium">{node.name}</span>
-            <Badge
-              variant={node.status === MilestoneStatus.OPEN ? 'default' : 'secondary'}
-            >
-              {node.status}
-            </Badge>
+            <StatusBadge
+              label={node.status}
+              className={milestoneStatusBadgeStyles[node.status]}
+            />
           </div>
           <div className="mt-1 flex items-center gap-4 text-xs text-muted-foreground">
             {node.dueDate && (

@@ -68,6 +68,14 @@ export const planStatusBadgeVariant: Record<
   [TestPlanStatus.ARCHIVED]: 'secondary',
 };
 
+/** Plan status badge: bg + text + border for semantic coloring */
+export const planStatusBadgeStyles: Record<TestPlanStatus, string> = {
+  [TestPlanStatus.DRAFT]: 'bg-slate-50 text-slate-600 border-slate-200',
+  [TestPlanStatus.ACTIVE]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  [TestPlanStatus.COMPLETED]: 'bg-teal-50 text-teal-700 border-teal-200',
+  [TestPlanStatus.ARCHIVED]: 'bg-gray-50 text-gray-500 border-gray-200',
+};
+
 /** Milestone status -> shadcn Badge variant */
 export const milestoneStatusBadgeVariant: Record<
   MilestoneStatus,
@@ -75,6 +83,12 @@ export const milestoneStatusBadgeVariant: Record<
 > = {
   [MilestoneStatus.OPEN]: 'default',
   [MilestoneStatus.CLOSED]: 'secondary',
+};
+
+/** Milestone status badge: bg + text + border for semantic coloring */
+export const milestoneStatusBadgeStyles: Record<MilestoneStatus, string> = {
+  [MilestoneStatus.OPEN]: 'bg-blue-50 text-blue-700 border-blue-200',
+  [MilestoneStatus.CLOSED]: 'bg-emerald-50 text-emerald-700 border-emerald-200',
 };
 
 /** Action button styles for step execution (pass/fail/block buttons) */

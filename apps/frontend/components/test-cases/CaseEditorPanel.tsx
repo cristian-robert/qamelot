@@ -11,7 +11,7 @@ interface CaseEditorPanelProps {
 export function CaseEditorPanel({ projectId, caseId }: CaseEditorPanelProps) {
   if (!caseId) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-center">
+      <div className="flex min-h-0 h-full flex-col items-center justify-center gap-3 text-center">
         <div className="flex size-14 items-center justify-center rounded-xl bg-muted">
           <FileText className="size-7 text-muted-foreground/50" />
         </div>

@@ -64,7 +64,7 @@ export function CaseListPanel({
 
   if (!suiteId) {
     return (
-      <div className="flex w-[360px] shrink-0 flex-col items-center justify-center border-r text-center">
+      <div className="flex h-full flex-col items-center justify-center text-center">
         <ListFilter className="mb-2 size-10 text-muted-foreground/30" />
         <p className="text-sm text-muted-foreground">
           Select a suite to view its test cases
@@ -74,7 +74,7 @@ export function CaseListPanel({
   }
 
   return (
-    <div className="flex w-[360px] min-h-0 shrink-0 flex-col border-r overflow-hidden">
+    <div className="flex min-h-0 flex-col overflow-hidden h-full">
       <div className="border-b px-3 py-2.5">
         <div className="flex items-center justify-between">
           <div>

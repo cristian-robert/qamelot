@@ -10,6 +10,7 @@ import { useBulkMoveCases, useBulkUpdateCases, useBulkDeleteCases } from '@/lib/
 import { useSelection } from '@/lib/test-cases/useSelection';
 import type { CasePriority, CaseType, TestSuiteDto } from '@app/shared';
 import { Button } from '@/components/ui/button';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { SuiteTree } from '@/components/test-suites/SuiteTree';
 import { CaseListPanel } from '@/components/test-cases/CaseListPanel';
 import { CaseEditorPanel } from '@/components/test-cases/CaseEditorPanel';
@@ -164,20 +165,33 @@ export default function TestCasesPage() {
 
       {/* Three-pane layout */}
       <div className="mx-6 mb-6 flex min-h-0 flex-1 overflow-hidden rounded-lg border bg-card">
-        <SuiteTree
-          projectId={projectId}
-          selectedSuiteId={selectedSuiteId}
-          onSelectSuite={handleSelectSuite}
-        />
-        <CaseListPanel
-          projectId={projectId}
-          suiteId={selectedSuiteId}
-          suiteName={selectedSuite?.name}
-          selectedCaseId={selectedCaseId}
-          onSelectCase={handleSelectCase}
-          selection={selection}
-        />
-        <CaseEditorPanel projectId={projectId} caseId={selectedCaseId} />
+        <ResizablePanelGroup
+          direction="horizontal"
+          autoSaveId="qamelot-cases-layout"
+        >
+          <ResizablePanel defaultSize={15} minSize={10} maxSize={30}>
+            <SuiteTree
+              projectId={projectId}
+              selectedSuiteId={selectedSuiteId}
+              onSelectSuite={handleSelectSuite}
+            />
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
+            <CaseListPanel
+              projectId={projectId}
+              suiteId={selectedSuiteId}
+              suiteName={selectedSuite?.name}
+              selectedCaseId={selectedCaseId}
+              onSelectCase={handleSelectCase}
+              selection={selection}
+            />
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={55} minSize={30}>
+            <CaseEditorPanel projectId={projectId} caseId={selectedCaseId} />
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
 
       {/* Bulk action toolbar */}

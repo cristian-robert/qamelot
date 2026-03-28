@@ -173,7 +173,7 @@ export function SuiteTree({
   }, []);
 
   return (
-    <div className="flex w-60 min-h-0 shrink-0 flex-col border-r overflow-hidden">
+    <div className="flex min-h-0 flex-col overflow-hidden h-full">
       <div className="flex items-center justify-between border-b px-3 py-2.5">
         <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
           Suites

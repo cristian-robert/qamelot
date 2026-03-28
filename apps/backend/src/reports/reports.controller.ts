@@ -109,4 +109,13 @@ export class ReportsController {
   getSummary() {
     return this.reportsService.getSummary();
   }
+
+  @Get('reports/projects-stats')
+  @Roles(Role.ADMIN, Role.LEAD)
+  @ApiOperation({ summary: 'Get stats for all projects (case count, active runs, pass rate)' })
+  @ApiResponse({ status: 200, description: 'Per-project statistics' })
+  @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
+  getProjectsStats() {
+    return this.reportsService.getProjectsStats();
+  }
 }

@@ -1,4 +1,4 @@
-import type { CoverageReportDto, ProgressReportDto, ActivityReportDto, DashboardSummaryDto, ReferenceCoverageDto, ComparisonReportDto, DefectSummaryReportDto, UserWorkloadReportDto, DateRangeFilter } from '@app/shared';
+import type { CoverageReportDto, ProgressReportDto, ActivityReportDto, DashboardSummaryDto, ProjectStatsDto, ReferenceCoverageDto, ComparisonReportDto, DefectSummaryReportDto, UserWorkloadReportDto, DateRangeFilter } from '@app/shared';
 import { apiFetch } from './client';
 
 function buildDateParams(dateRange?: DateRangeFilter): string {
@@ -25,4 +25,5 @@ export const reportsApi = {
   getUserWorkload: (projectId: string, dateRange?: DateRangeFilter) =>
     apiFetch<UserWorkloadReportDto>(`/projects/${projectId}/reports/user-workload${buildDateParams(dateRange)}`),
   getSummary: () => apiFetch<DashboardSummaryDto>('/reports/summary'),
+  getProjectsStats: () => apiFetch<ProjectStatsDto[]>('/reports/projects-stats'),
 };

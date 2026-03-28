@@ -222,6 +222,15 @@ export interface ActivityEntry {
   count: number;
 }
 
+/** Per-project stats: case count, active runs, pass rate, last activity */
+export interface ProjectStatsDto {
+  projectId: string;
+  caseCount: number;
+  activeRunCount: number;
+  passRate: number;
+  lastActivityAt: string | null;
+}
+
 /** Cross-project summary for the dashboard home page */
 export interface DashboardSummaryDto {
   totalProjects: number;

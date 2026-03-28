@@ -1,20 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Plus, FolderKanban } from 'lucide-react';
 import type { ProjectDto } from '@app/shared';
 import { useProjects, useCreateProject } from '@/lib/projects/useProjects';
-import { formatDate } from '@/lib/format';
+import { useProjectsStats } from '@/lib/reports/useReports';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState, ErrorState } from '@/components/ui/empty-state';
+import { ProjectCard } from '@/components/projects/ProjectCard';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,7 @@ export default function ProjectsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: projects, isLoading, isError, refetch } = useProjects();
+  const { data: projectsStats } = useProjectsStats();
   const createProject = useCreateProject();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -129,25 +130,10 @@ export default function ProjectsPage() {
         </div>
       ) : projects?.length ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project: ProjectDto) => (
-            <Link key={project.id} href={`/projects/${project.id}`}>
-              <Card className="cursor-pointer transition-shadow hover:shadow-md">
-                <CardHeader>
-                  <CardTitle>{project.name}</CardTitle>
-                  {project.description && (
-                    <CardDescription className="line-clamp-2">
-                      {project.description}
-                    </CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground">
-                    Created {formatDate(project.createdAt)}
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          {projects.map((project: ProjectDto) => {
+            const stats = projectsStats?.find((s) => s.projectId === project.id);
+            return <ProjectCard key={project.id} project={project} stats={stats} />;
+          })}
         </div>
       ) : (
         <EmptyState

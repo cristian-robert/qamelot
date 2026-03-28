@@ -11,6 +11,13 @@ export function useDashboardSummary() {
   });
 }
 
+export function useProjectsStats() {
+  return useQuery({
+    queryKey: ['reports', 'projects-stats'],
+    queryFn: () => reportsApi.getProjectsStats(),
+  });
+}
+
 export function useCoverageReport(projectId: string) {
   return useQuery({
     queryKey: ['reports', 'coverage', projectId],

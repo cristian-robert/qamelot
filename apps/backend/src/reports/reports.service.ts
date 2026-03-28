@@ -6,6 +6,7 @@ import type {
   ProgressReportDto,
   ActivityReportDto,
   DashboardSummaryDto,
+  ProjectStatsDto,
   StatusCount,
   RunProgressEntry,
   ReferenceCoverageDto,
@@ -202,6 +203,59 @@ export class ReportsService {
         createdAt: r.createdAt.toISOString(),
       })),
     };
+  }
+
+  async getProjectsStats(): Promise<ProjectStatsDto[]> {
+    const projects = await this.prisma.project.findMany({
+      where: { deletedAt: null },
+      select: { id: true },
+    });
+
+    return Promise.all(
+      projects.map(async (project) => {
+        const [caseCount, activeRunCount, lastResult] = await Promise.all([
+          this.prisma.testCase.count({
+            where: { projectId: project.id, deletedAt: null },
+          }),
+          this.prisma.testRun.count({
+            where: {
+              status: 'IN_PROGRESS',
+              deletedAt: null,
+              projectId: project.id,
+            },
+          }),
+          this.prisma.testResult.findFirst({
+            where: {
+              testRun: { projectId: project.id, deletedAt: null },
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true },
+          }),
+        ]);
+
+        const totalResults = await this.prisma.testResult.count({
+          where: {
+            testRun: { projectId: project.id, deletedAt: null },
+          },
+        });
+        const passedResults = totalResults > 0
+          ? await this.prisma.testResult.count({
+              where: {
+                status: 'PASSED',
+                testRun: { projectId: project.id, deletedAt: null },
+              },
+            })
+          : 0;
+
+        return {
+          projectId: project.id,
+          caseCount,
+          activeRunCount,
+          passRate: totalResults > 0 ? Math.round((passedResults / totalResults) * 100) : 0,
+          lastActivityAt: lastResult?.createdAt?.toISOString() ?? null,
+        };
+      }),
+    );
   }
 
   async getReferenceCoverage(projectId: string): Promise<ReferenceCoverageDto> {

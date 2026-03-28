@@ -1,38 +1,23 @@
 'use client';
 
 import { useEffect, useCallback, useState, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   UpdateTestCaseSchema,
   type UpdateTestCaseInput,
   type TestCaseStepDto,
-  AutomationStatus,
-  CasePriority,
-  CaseType,
   TemplateType,
 } from '@app/shared';
 import { useTestCase, useUpdateTestCase } from '@/lib/test-cases/useTestCases';
-import { testCasesApi } from '@/lib/api/test-cases';
+import { syncSteps } from './StepSyncLogic';
+import { CaseEditorForm } from './CaseEditorForm';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Save, Undo2, Clock } from 'lucide-react';
 import { CaseEditorSkeleton } from './CaseEditorSkeleton';
-import { StepEditor, type StepData } from './StepEditor';
-import { ReferenceLinks } from './ReferenceLinks';
+import type { StepData } from './StepEditor';
 import { CaseHistoryPanel } from './CaseHistoryPanel';
 import { toast } from 'sonner';
 
@@ -115,55 +100,7 @@ export function CaseEditor({ projectId, caseId }: CaseEditorProps) {
         // 2. Sync steps if template is STEPS
         const currentTemplate = data.templateType ?? testCase?.templateType;
         if (currentTemplate === TemplateType.STEPS) {
-          const origSteps = originalStepsRef.current;
-          const origIds = new Set(origSteps.map((s) => s.id));
-
-          // Delete removed steps
-          for (const orig of origSteps) {
-            const stillExists = steps.some((s) => s.id === orig.id);
-            if (!stillExists) {
-              await testCasesApi.deleteStep(projectId, caseId, orig.id);
-            }
-          }
-
-          // Create new steps and update existing
-          for (const step of steps) {
-            if (step.id && origIds.has(step.id)) {
-              // Update existing step
-              const orig = origSteps.find((o) => o.id === step.id);
-              if (orig && (orig.description !== step.description || orig.expectedResult !== step.expectedResult)) {
-                await testCasesApi.updateStep(projectId, caseId, step.id, {
-                  description: step.description,
-                  expectedResult: step.expectedResult,
-                });
-              }
-            } else {
-              // Create new step
-              await testCasesApi.createStep(projectId, caseId, {
-                description: step.description || 'New step',
-                expectedResult: step.expectedResult || 'Expected result',
-              });
-            }
-          }
-
-          // Reorder if needed (get fresh step ids after creates)
-          const freshSteps = await testCasesApi.listSteps(projectId, caseId);
-          if (freshSteps.length > 1) {
-            // Build desired order based on current step descriptions
-            const orderedIds = steps
-              .map((s) => {
-                if (s.id && freshSteps.some((fs) => fs.id === s.id)) return s.id;
-                // For newly created steps, match by description
-                return freshSteps.find(
-                  (fs) => fs.description === (s.description || 'New step') && !steps.some((existing) => existing.id === fs.id),
-                )?.id;
-              })
-              .filter(Boolean) as string[];
-
-            if (orderedIds.length === freshSteps.length) {
-              await testCasesApi.reorderSteps(projectId, caseId, orderedIds);
-            }
-          }
+          await syncSteps(projectId, caseId, steps, originalStepsRef.current);
         }
 
         // 3. Invalidate queries to refresh data
@@ -250,203 +187,19 @@ export function CaseEditor({ projectId, caseId }: CaseEditorProps) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <form
+        <CaseEditorForm
+          register={register}
+          control={control}
+          errors={errors}
+          effectiveTemplate={effectiveTemplate}
+          steps={steps}
+          setSteps={setSteps}
+          automationStatus={testCase.automationStatus}
+          automationId={testCase.automationId}
+          automationFilePath={testCase.automationFilePath}
+          savedReferences={testCase.references}
           onSubmit={handleSubmit(onSubmit)}
-          className="space-y-5 p-4"
-        >
-          {/* Title */}
-          <div className="space-y-1.5">
-            <Label htmlFor="case-title">Title</Label>
-            <Input
-              id="case-title"
-              {...register('title')}
-              aria-invalid={!!errors.title}
-            />
-            {errors.title && (
-              <p className="text-xs text-destructive">{errors.title.message}</p>
-            )}
-          </div>
-
-          {/* Template Toggle */}
-          <div className="space-y-1.5">
-            <Label>Template</Label>
-            <Controller
-              name="templateType"
-              control={control}
-              render={({ field }) => (
-                <Tabs
-                  value={field.value ?? TemplateType.STEPS}
-                  onValueChange={(val) => field.onChange(val)}
-                >
-                  <TabsList>
-                    <TabsTrigger value={TemplateType.TEXT}>Text</TabsTrigger>
-                    <TabsTrigger value={TemplateType.STEPS}>Steps</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              )}
-            />
-          </div>
-
-          {/* Priority / Type / Estimate row */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1.5">
-              <Label>Priority</Label>
-              <Controller
-                name="priority"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value ?? CasePriority.MEDIUM}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.values(CasePriority).map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {p.charAt(0) + p.slice(1).toLowerCase()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Type</Label>
-              <Controller
-                name="type"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value ?? CaseType.FUNCTIONAL}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.values(CaseType).map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t.charAt(0) + t.slice(1).toLowerCase()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="case-estimate">Estimate (min)</Label>
-              <Input
-                id="case-estimate"
-                type="number"
-                min={0}
-                {...register('estimate', { valueAsNumber: true })}
-              />
-            </div>
-          </div>
-
-          {/* Preconditions */}
-          <div className="space-y-1.5">
-            <Label htmlFor="case-preconditions">Preconditions</Label>
-            <Textarea
-              id="case-preconditions"
-              placeholder="Any setup steps or conditions required before running this case..."
-              {...register('preconditions')}
-              className="min-h-16"
-            />
-          </div>
-
-          {/* References */}
-          <div className="space-y-1.5">
-            <Label htmlFor="case-references">References</Label>
-            <Input
-              id="case-references"
-              placeholder="e.g. JIRA-123, REQ-456"
-              {...register('references')}
-            />
-            {testCase.references && (
-              <div className="mt-1">
-                <ReferenceLinks references={testCase.references} />
-              </div>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* TEXT template body */}
-          {effectiveTemplate === TemplateType.TEXT && (
-            <div className="space-y-1.5">
-              <Label htmlFor="case-body">Test Description</Label>
-              <Textarea
-                id="case-body"
-                placeholder="Describe the test procedure, expected behavior, and any notes..."
-                {...register('body')}
-                className="min-h-[200px]"
-              />
-              <p className="text-xs text-muted-foreground">
-                Describe the full test procedure, expected behavior, and any notes.
-              </p>
-            </div>
-          )}
-
-          {/* Steps (when template is STEPS) */}
-          {effectiveTemplate === TemplateType.STEPS && (
-            <div className="space-y-2">
-              <Label>Test Steps ({steps.length})</Label>
-              {steps.length === 0 && testCase.automationStatus === AutomationStatus.AUTOMATED ? (
-                <div className="rounded-lg border border-dashed py-6 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    This is an automated test — manual steps are not required.
-                  </p>
-                </div>
-              ) : (
-                <StepEditor steps={steps} onChange={setSteps} />
-              )}
-            </div>
-          )}
-
-          <Separator />
-
-          {/* Automation Section (read-only) */}
-          <div className="space-y-3 rounded-lg border p-4">
-            <h4 className="text-sm font-medium text-muted-foreground">Automation</h4>
-            {testCase.automationStatus === AutomationStatus.NOT_AUTOMATED ? (
-              <p className="text-sm text-muted-foreground">
-                Not linked to any automated test.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                <Badge variant={testCase.automationStatus === AutomationStatus.AUTOMATED ? 'default' : 'destructive'}>
-                  {testCase.automationStatus === AutomationStatus.AUTOMATED ? 'Automated' : 'Needs Update'}
-                </Badge>
-                {testCase.automationId && (
-                  <div>
-                    <span className="text-xs font-medium text-muted-foreground">Automation ID</span>
-                    <p className="rounded bg-muted px-2 py-1 font-mono text-xs break-all">
-                      {testCase.automationId}
-                    </p>
-                  </div>
-                )}
-                {testCase.automationFilePath && (
-                  <div>
-                    <span className="text-xs font-medium text-muted-foreground">Spec File</span>
-                    <p className="rounded bg-muted px-2 py-1 font-mono text-xs break-all">
-                      {testCase.automationFilePath}
-                    </p>
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  This test case is linked to an automated Playwright test.
-                </p>
-              </div>
-            )}
-          </div>
-        </form>
+        />
       </div>
 
       {/* History slide-in */}

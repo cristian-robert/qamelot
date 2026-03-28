@@ -30,6 +30,7 @@ describe('TestPlansService', () => {
       findMany: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
+      count: jest.fn(),
     },
     project: {
       findFirst: jest.fn(),
@@ -86,9 +87,10 @@ describe('TestPlansService', () => {
   });
 
   describe('findAllByProject', () => {
-    it('returns all non-deleted plans with run counts', async () => {
+    it('returns paginated non-deleted plans with run counts', async () => {
       mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
       mockPrisma.testPlan.findMany.mockResolvedValue([mockPlanWithCount]);
+      mockPrisma.testPlan.count.mockResolvedValue(1);
 
       const result = await service.findAllByProject(PROJECT_ID);
 
@@ -96,13 +98,25 @@ describe('TestPlansService', () => {
         where: { projectId: PROJECT_ID, deletedAt: null },
         orderBy: { createdAt: 'desc' },
         include: { _count: { select: { testRuns: true } } },
+        skip: 0,
+        take: 50,
       });
-      expect(result).toEqual([mockPlanWithCount]);
+      expect(mockPrisma.testPlan.count).toHaveBeenCalledWith({
+        where: { projectId: PROJECT_ID, deletedAt: null },
+      });
+      expect(result).toEqual({
+        data: [mockPlanWithCount],
+        total: 1,
+        page: 1,
+        pageSize: 50,
+        totalPages: 1,
+      });
     });
 
     it('filters by status when provided', async () => {
       mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
       mockPrisma.testPlan.findMany.mockResolvedValue([]);
+      mockPrisma.testPlan.count.mockResolvedValue(0);
 
       await service.findAllByProject(PROJECT_ID, { status: 'ACTIVE' });
 
@@ -111,11 +125,15 @@ describe('TestPlansService', () => {
           where: { projectId: PROJECT_ID, deletedAt: null, status: 'ACTIVE' },
         }),
       );
+      expect(mockPrisma.testPlan.count).toHaveBeenCalledWith({
+        where: { projectId: PROJECT_ID, deletedAt: null, status: 'ACTIVE' },
+      });
     });
 
     it('does not add status filter when value is empty string', async () => {
       mockPrisma.project.findFirst.mockResolvedValue({ id: PROJECT_ID, deletedAt: null });
       mockPrisma.testPlan.findMany.mockResolvedValue([]);
+      mockPrisma.testPlan.count.mockResolvedValue(0);
 
       await service.findAllByProject(PROJECT_ID, { status: '' });
 

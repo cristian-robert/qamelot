@@ -25,23 +25,36 @@ export class DefectsService {
 
   async findAllByProject(
     projectId: string,
-    filters?: { search?: string },
+    filters?: { search?: string; page?: number; pageSize?: number },
   ) {
     await this.verifyProject(projectId);
 
-    return this.prisma.defect.findMany({
-      where: {
-        projectId,
-        deletedAt: null,
-        ...(filters?.search && {
-          OR: [
-            { reference: { contains: filters.search, mode: 'insensitive' as const } },
-            { description: { contains: filters.search, mode: 'insensitive' as const } },
-          ],
-        }),
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const page = filters?.page ?? 1;
+    const pageSize = filters?.pageSize ?? 50;
+    const skip = (page - 1) * pageSize;
+
+    const where = {
+      projectId,
+      deletedAt: null,
+      ...(filters?.search && {
+        OR: [
+          { reference: { contains: filters.search, mode: 'insensitive' as const } },
+          { description: { contains: filters.search, mode: 'insensitive' as const } },
+        ],
+      }),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.defect.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.defect.count({ where }),
+    ]);
+
+    return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
   async findOne(id: string) {

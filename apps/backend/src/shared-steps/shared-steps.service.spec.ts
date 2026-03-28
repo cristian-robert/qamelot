@@ -59,6 +59,7 @@ describe('SharedStepsService', () => {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      count: jest.fn(),
     },
     sharedStepItem: {
       deleteMany: jest.fn(),
@@ -125,8 +126,9 @@ describe('SharedStepsService', () => {
   });
 
   describe('findAllByProject', () => {
-    it('returns all non-deleted shared steps for a project', async () => {
+    it('returns paginated non-deleted shared steps for a project', async () => {
       mockPrisma.sharedStep.findMany.mockResolvedValue([mockSharedStep]);
+      mockPrisma.sharedStep.count.mockResolvedValue(1);
 
       const result = await service.findAllByProject(PROJECT_ID);
 
@@ -134,8 +136,19 @@ describe('SharedStepsService', () => {
         where: { projectId: PROJECT_ID, deletedAt: null },
         include: { items: { orderBy: { stepNumber: 'asc' } } },
         orderBy: { createdAt: 'desc' },
+        skip: 0,
+        take: 50,
       });
-      expect(result).toEqual([mockSharedStep]);
+      expect(mockPrisma.sharedStep.count).toHaveBeenCalledWith({
+        where: { projectId: PROJECT_ID, deletedAt: null },
+      });
+      expect(result).toEqual({
+        data: [mockSharedStep],
+        total: 1,
+        page: 1,
+        pageSize: 50,
+        totalPages: 1,
+      });
     });
 
     it('throws NotFoundException when project not found', async () => {

@@ -13,6 +13,7 @@ describe('ProjectsService', () => {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
       updateMany: jest.fn(),
+      count: jest.fn(),
     },
   };
 
@@ -52,16 +53,49 @@ describe('ProjectsService', () => {
   });
 
   describe('findAll', () => {
-    it('returns only active projects (deletedAt is null)', async () => {
+    it('returns paginated active projects with defaults', async () => {
       mockPrisma.project.findMany.mockResolvedValue([testProject]);
+      mockPrisma.project.count.mockResolvedValue(1);
 
       const result = await service.findAll();
 
       expect(mockPrisma.project.findMany).toHaveBeenCalledWith({
         where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
+        skip: 0,
+        take: 50,
       });
-      expect(result).toEqual([testProject]);
+      expect(mockPrisma.project.count).toHaveBeenCalledWith({
+        where: { deletedAt: null },
+      });
+      expect(result).toEqual({
+        data: [testProject],
+        total: 1,
+        page: 1,
+        pageSize: 50,
+        totalPages: 1,
+      });
+    });
+
+    it('respects custom page and pageSize', async () => {
+      mockPrisma.project.findMany.mockResolvedValue([]);
+      mockPrisma.project.count.mockResolvedValue(60);
+
+      const result = await service.findAll({ page: 2, pageSize: 10 });
+
+      expect(mockPrisma.project.findMany).toHaveBeenCalledWith({
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        skip: 10,
+        take: 10,
+      });
+      expect(result).toEqual({
+        data: [],
+        total: 60,
+        page: 2,
+        pageSize: 10,
+        totalPages: 6,
+      });
     });
   });
 

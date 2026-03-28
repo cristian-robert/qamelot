@@ -70,25 +70,31 @@ describe('TestRunsController', () => {
   });
 
   it('findAllByPlan delegates to service without filters', async () => {
-    mockService.findAllByPlan.mockResolvedValue([mockRun]);
+    const paginated = { data: [mockRun], total: 1, page: 1, pageSize: 50, totalPages: 1 };
+    mockService.findAllByPlan.mockResolvedValue(paginated);
 
     const result = await controller.findAllByPlan(PLAN_ID);
 
     expect(mockService.findAllByPlan).toHaveBeenCalledWith(PLAN_ID, {
       status: undefined,
       assigneeId: undefined,
+      page: undefined,
+      pageSize: undefined,
     });
-    expect(result).toEqual([mockRun]);
+    expect(result).toEqual(paginated);
   });
 
-  it('findAllByPlan passes status and assigneeId filters', async () => {
-    mockService.findAllByPlan.mockResolvedValue([]);
+  it('findAllByPlan passes status, assigneeId, and pagination filters', async () => {
+    const paginated = { data: [], total: 0, page: 2, pageSize: 10, totalPages: 0 };
+    mockService.findAllByPlan.mockResolvedValue(paginated);
 
-    await controller.findAllByPlan(PLAN_ID, 'PENDING', 'user-1');
+    await controller.findAllByPlan(PLAN_ID, 'PENDING', 'user-1', '2', '10');
 
     expect(mockService.findAllByPlan).toHaveBeenCalledWith(PLAN_ID, {
       status: 'PENDING',
       assigneeId: 'user-1',
+      page: 2,
+      pageSize: 10,
     });
   });
 

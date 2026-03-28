@@ -45,13 +45,30 @@ describe('ProjectsController', () => {
   });
 
   describe('findAll', () => {
-    it('calls service.findAll and returns the result', async () => {
-      mockService.findAll.mockResolvedValue([testProject]);
+    it('calls service.findAll with pagination params and returns the result', async () => {
+      const paginated = { data: [testProject], total: 1, page: 1, pageSize: 50, totalPages: 1 };
+      mockService.findAll.mockResolvedValue(paginated);
 
       const result = await controller.findAll();
 
-      expect(mockService.findAll).toHaveBeenCalled();
-      expect(result).toEqual([testProject]);
+      expect(mockService.findAll).toHaveBeenCalledWith({
+        page: undefined,
+        pageSize: undefined,
+      });
+      expect(result).toEqual(paginated);
+    });
+
+    it('parses page and pageSize query strings', async () => {
+      const paginated = { data: [], total: 0, page: 2, pageSize: 10, totalPages: 0 };
+      mockService.findAll.mockResolvedValue(paginated);
+
+      const result = await controller.findAll('2', '10');
+
+      expect(mockService.findAll).toHaveBeenCalledWith({
+        page: 2,
+        pageSize: 10,
+      });
+      expect(result).toEqual(paginated);
     });
   });
 

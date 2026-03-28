@@ -34,14 +34,22 @@ export class TestPlansController {
 
   @Get()
   @ApiOperation({ summary: 'List all test plans for a project' })
-  @ApiResponse({ status: 200, description: 'Array of test plans' })
+  @ApiResponse({ status: 200, description: 'Paginated list of test plans' })
   @ApiResponse({ status: 404, description: 'Project not found' })
   @ApiQuery({ name: 'status', required: false, enum: ['DRAFT', 'ACTIVE', 'COMPLETED', 'ARCHIVED'] })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
   findAll(
     @Param('projectId') projectId: string,
     @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.testPlansService.findAllByProject(projectId, { status });
+    return this.testPlansService.findAllByProject(projectId, {
+      status,
+      page: page ? parseInt(page, 10) : undefined,
+      pageSize: pageSize ? parseInt(pageSize, 10) : undefined,
+    });
   }
 
   @Get(':id')

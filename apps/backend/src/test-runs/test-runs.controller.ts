@@ -48,16 +48,25 @@ export class TestRunsController {
 
   @Get('plans/:planId/runs')
   @ApiOperation({ summary: 'List all test runs for a plan' })
-  @ApiResponse({ status: 200, description: 'Array of test runs' })
+  @ApiResponse({ status: 200, description: 'Paginated list of test runs' })
   @ApiResponse({ status: 404, description: 'Plan not found' })
   @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED'] })
   @ApiQuery({ name: 'assigneeId', required: false })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
   findAllByPlan(
     @Param('planId') planId: string,
     @Query('status') status?: string,
     @Query('assigneeId') assigneeId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.testRunsService.findAllByPlan(planId, { status, assigneeId });
+    return this.testRunsService.findAllByPlan(planId, {
+      status,
+      assigneeId,
+      page: page ? parseInt(page, 10) : undefined,
+      pageSize: pageSize ? parseInt(pageSize, 10) : undefined,
+    });
   }
 
   @Get('runs/:id')

@@ -61,23 +61,29 @@ describe('DefectsController', () => {
 
   describe('findAll', () => {
     it('calls service.findAllByProject without filters', async () => {
-      mockService.findAllByProject.mockResolvedValue([testDefect]);
+      const paginated = { data: [testDefect], total: 1, page: 1, pageSize: 50, totalPages: 1 };
+      mockService.findAllByProject.mockResolvedValue(paginated);
 
       const result = await controller.findAll('proj-1');
 
       expect(mockService.findAllByProject).toHaveBeenCalledWith('proj-1', {
         search: undefined,
+        page: undefined,
+        pageSize: undefined,
       });
-      expect(result).toEqual([testDefect]);
+      expect(result).toEqual(paginated);
     });
 
-    it('passes search filter to service', async () => {
-      mockService.findAllByProject.mockResolvedValue([]);
+    it('passes search filter and pagination to service', async () => {
+      const paginated = { data: [], total: 0, page: 1, pageSize: 50, totalPages: 0 };
+      mockService.findAllByProject.mockResolvedValue(paginated);
 
-      await controller.findAll('proj-1', 'login');
+      await controller.findAll('proj-1', 'login', '1', '50');
 
       expect(mockService.findAllByProject).toHaveBeenCalledWith('proj-1', {
         search: 'login',
+        page: 1,
+        pageSize: 50,
       });
     });
   });

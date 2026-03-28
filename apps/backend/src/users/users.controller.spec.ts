@@ -35,13 +35,30 @@ describe('UsersController', () => {
   });
 
   describe('findAll', () => {
-    it('returns array of users', async () => {
-      mockUsersService.findAll.mockResolvedValue([testUser]);
+    it('returns paginated users', async () => {
+      const paginated = { data: [testUser], total: 1, page: 1, pageSize: 50, totalPages: 1 };
+      mockUsersService.findAll.mockResolvedValue(paginated);
 
       const result = await controller.findAll();
 
-      expect(result).toEqual([testUser]);
-      expect(mockUsersService.findAll).toHaveBeenCalled();
+      expect(result).toEqual(paginated);
+      expect(mockUsersService.findAll).toHaveBeenCalledWith({
+        page: undefined,
+        pageSize: undefined,
+      });
+    });
+
+    it('parses page and pageSize query strings', async () => {
+      const paginated = { data: [], total: 0, page: 2, pageSize: 10, totalPages: 0 };
+      mockUsersService.findAll.mockResolvedValue(paginated);
+
+      const result = await controller.findAll('2', '10');
+
+      expect(result).toEqual(paginated);
+      expect(mockUsersService.findAll).toHaveBeenCalledWith({
+        page: 2,
+        pageSize: 10,
+      });
     });
   });
 

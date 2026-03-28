@@ -59,6 +59,7 @@ describe('TestRunsService', () => {
       findMany: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
+      count: jest.fn(),
     },
     testPlan: {
       findFirst: jest.fn(),
@@ -166,10 +167,11 @@ describe('TestRunsService', () => {
   });
 
   describe('findAllByPlan', () => {
-    it('returns runs with assigned user and case count', async () => {
+    it('returns paginated runs with assigned user and case count', async () => {
       const runWithCount = { ...mockRun, assignedTo: null, _count: { testRunCases: 3 } };
       mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
       mockPrisma.testRun.findMany.mockResolvedValue([runWithCount]);
+      mockPrisma.testRun.count.mockResolvedValue(1);
 
       const result = await service.findAllByPlan(PLAN_ID);
 
@@ -180,13 +182,25 @@ describe('TestRunsService', () => {
           assignedTo: { select: { id: true, name: true, email: true } },
           _count: { select: { testRunCases: true } },
         },
+        skip: 0,
+        take: 50,
       });
-      expect(result).toEqual([runWithCount]);
+      expect(mockPrisma.testRun.count).toHaveBeenCalledWith({
+        where: { testPlanId: PLAN_ID, deletedAt: null },
+      });
+      expect(result).toEqual({
+        data: [runWithCount],
+        total: 1,
+        page: 1,
+        pageSize: 50,
+        totalPages: 1,
+      });
     });
 
     it('filters by status when provided', async () => {
       mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
       mockPrisma.testRun.findMany.mockResolvedValue([]);
+      mockPrisma.testRun.count.mockResolvedValue(0);
 
       await service.findAllByPlan(PLAN_ID, { status: 'PENDING' });
 
@@ -195,11 +209,15 @@ describe('TestRunsService', () => {
           where: { testPlanId: PLAN_ID, deletedAt: null, status: 'PENDING' },
         }),
       );
+      expect(mockPrisma.testRun.count).toHaveBeenCalledWith({
+        where: { testPlanId: PLAN_ID, deletedAt: null, status: 'PENDING' },
+      });
     });
 
     it('filters by assigneeId when provided', async () => {
       mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
       mockPrisma.testRun.findMany.mockResolvedValue([]);
+      mockPrisma.testRun.count.mockResolvedValue(0);
 
       await service.findAllByPlan(PLAN_ID, { assigneeId: 'user-1' });
 
@@ -213,6 +231,7 @@ describe('TestRunsService', () => {
     it('filters by both status and assigneeId', async () => {
       mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
       mockPrisma.testRun.findMany.mockResolvedValue([]);
+      mockPrisma.testRun.count.mockResolvedValue(0);
 
       await service.findAllByPlan(PLAN_ID, { status: 'IN_PROGRESS', assigneeId: 'user-1' });
 
@@ -231,6 +250,7 @@ describe('TestRunsService', () => {
     it('does not add filter when value is empty string', async () => {
       mockPrisma.testPlan.findFirst.mockResolvedValue(mockPlan);
       mockPrisma.testRun.findMany.mockResolvedValue([]);
+      mockPrisma.testRun.count.mockResolvedValue(0);
 
       await service.findAllByPlan(PLAN_ID, { status: '', assigneeId: '' });
 

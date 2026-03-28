@@ -6,8 +6,9 @@ import {
   Delete,
   Body,
   Param,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Role } from '@app/shared';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { SharedStepsService } from './shared-steps.service';
@@ -33,10 +34,19 @@ export class SharedStepsController {
 
   @Get()
   @ApiOperation({ summary: 'List all shared steps in a project' })
-  @ApiResponse({ status: 200, description: 'Array of shared steps with items' })
+  @ApiResponse({ status: 200, description: 'Paginated list of shared steps with items' })
   @ApiResponse({ status: 404, description: 'Project not found' })
-  findAll(@Param('projectId') projectId: string) {
-    return this.sharedStepsService.findAllByProject(projectId);
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
+  findAll(
+    @Param('projectId') projectId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.sharedStepsService.findAllByProject(projectId, {
+      page: page ? parseInt(page, 10) : undefined,
+      pageSize: pageSize ? parseInt(pageSize, 10) : undefined,
+    });
   }
 
   @Get(':id')

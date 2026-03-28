@@ -6,8 +6,9 @@ import {
   Delete,
   Body,
   Param,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Role } from '@app/shared';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ProjectsService } from './projects.service';
@@ -30,9 +31,17 @@ export class ProjectsController {
 
   @Get()
   @ApiOperation({ summary: 'List all active projects' })
-  @ApiResponse({ status: 200, description: 'Array of active projects' })
-  findAll() {
-    return this.projectsService.findAll();
+  @ApiResponse({ status: 200, description: 'Paginated list of active projects' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
+  findAll(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.projectsService.findAll({
+      page: page ? parseInt(page, 10) : undefined,
+      pageSize: pageSize ? parseInt(pageSize, 10) : undefined,
+    });
   }
 
   @Get(':id')

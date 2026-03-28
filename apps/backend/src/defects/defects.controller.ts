@@ -35,14 +35,22 @@ export class DefectsController {
 
   @Get('projects/:projectId/defects')
   @ApiOperation({ summary: 'List all defect references for a project' })
-  @ApiResponse({ status: 200, description: 'Array of defects' })
+  @ApiResponse({ status: 200, description: 'Paginated list of defects' })
   @ApiResponse({ status: 404, description: 'Project not found' })
   @ApiQuery({ name: 'search', required: false, description: 'Search by reference or description' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
   findAll(
     @Param('projectId') projectId: string,
     @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.defectsService.findAllByProject(projectId, { search });
+    return this.defectsService.findAllByProject(projectId, {
+      search,
+      page: page ? parseInt(page, 10) : undefined,
+      pageSize: pageSize ? parseInt(pageSize, 10) : undefined,
+    });
   }
 
   @Get('results/:resultId/defects')

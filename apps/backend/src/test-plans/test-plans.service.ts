@@ -20,19 +20,32 @@ export class TestPlansService {
 
   async findAllByProject(
     projectId: string,
-    filters?: { status?: string },
+    filters?: { status?: string; page?: number; pageSize?: number },
   ) {
     await this.verifyProject(projectId);
 
-    return this.prisma.testPlan.findMany({
-      where: {
-        projectId,
-        deletedAt: null,
-        ...(filters?.status && { status: filters.status as 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED' }),
-      },
-      orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { testRuns: true } } },
-    });
+    const page = filters?.page ?? 1;
+    const pageSize = filters?.pageSize ?? 50;
+    const skip = (page - 1) * pageSize;
+
+    const where = {
+      projectId,
+      deletedAt: null,
+      ...(filters?.status && { status: filters.status as 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED' }),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.testPlan.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: { _count: { select: { testRuns: true } } },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.testPlan.count({ where }),
+    ]);
+
+    return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
   async findOne(projectId: string, id: string) {

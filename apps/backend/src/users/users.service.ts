@@ -29,12 +29,26 @@ export class UsersService {
     });
   }
 
-  async findAll(): Promise<UserDto[]> {
-    const users = await this.prisma.user.findMany({
-      where: { deletedAt: null },
-      orderBy: { createdAt: 'desc' },
-    });
-    return users.map((u: { id: string; email: string; name: string; role: string; deletedAt: Date | null; createdAt: Date; updatedAt: Date }) => this.toDto(u));
+  async findAll(options?: { page?: number; pageSize?: number }) {
+    const page = options?.page ?? 1;
+    const pageSize = options?.pageSize ?? 50;
+    const skip = (page - 1) * pageSize;
+
+    const where = { deletedAt: null };
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    const data = users.map((u: { id: string; email: string; name: string; role: string; deletedAt: Date | null; createdAt: Date; updatedAt: Date }) => this.toDto(u));
+
+    return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
   async findOneById(id: string): Promise<UserDto> {

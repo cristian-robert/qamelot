@@ -10,11 +10,24 @@ export class ProjectsService {
     return this.prisma.project.create({ data });
   }
 
-  async findAll() {
-    return this.prisma.project.findMany({
-      where: { deletedAt: null },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(options?: { page?: number; pageSize?: number }) {
+    const page = options?.page ?? 1;
+    const pageSize = options?.pageSize ?? 50;
+    const skip = (page - 1) * pageSize;
+
+    const where = { deletedAt: null };
+
+    const [data, total] = await Promise.all([
+      this.prisma.project.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.project.count({ where }),
+    ]);
+
+    return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
   async findOne(id: string) {

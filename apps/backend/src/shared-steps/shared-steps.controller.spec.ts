@@ -58,13 +58,17 @@ describe('SharedStepsController', () => {
     expect(result).toEqual(mockSharedStep);
   });
 
-  it('findAll delegates to service', async () => {
-    mockService.findAllByProject.mockResolvedValue([mockSharedStep]);
+  it('findAll delegates to service with pagination', async () => {
+    const paginated = { data: [mockSharedStep], total: 1, page: 1, pageSize: 50, totalPages: 1 };
+    mockService.findAllByProject.mockResolvedValue(paginated);
 
     const result = await controller.findAll(PROJECT_ID);
 
-    expect(mockService.findAllByProject).toHaveBeenCalledWith(PROJECT_ID);
-    expect(result).toEqual([mockSharedStep]);
+    expect(mockService.findAllByProject).toHaveBeenCalledWith(PROJECT_ID, {
+      page: undefined,
+      pageSize: undefined,
+    });
+    expect(result).toEqual(paginated);
   });
 
   it('findOne delegates to service', async () => {

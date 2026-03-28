@@ -16,6 +16,7 @@ describe('DefectsService', () => {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
       updateMany: jest.fn(),
+      count: jest.fn(),
     },
     testResult: {
       findUnique: jest.fn(),
@@ -109,20 +110,33 @@ describe('DefectsService', () => {
   });
 
   describe('findAllByProject', () => {
-    it('returns only active defects for the project', async () => {
+    it('returns paginated active defects for the project', async () => {
       mockPrisma.defect.findMany.mockResolvedValue([testDefect]);
+      mockPrisma.defect.count.mockResolvedValue(1);
 
       const result = await service.findAllByProject('proj-1');
 
       expect(mockPrisma.defect.findMany).toHaveBeenCalledWith({
         where: { projectId: 'proj-1', deletedAt: null },
         orderBy: { createdAt: 'desc' },
+        skip: 0,
+        take: 50,
       });
-      expect(result).toEqual([testDefect]);
+      expect(mockPrisma.defect.count).toHaveBeenCalledWith({
+        where: { projectId: 'proj-1', deletedAt: null },
+      });
+      expect(result).toEqual({
+        data: [testDefect],
+        total: 1,
+        page: 1,
+        pageSize: 50,
+        totalPages: 1,
+      });
     });
 
     it('filters by search text across reference and description', async () => {
       mockPrisma.defect.findMany.mockResolvedValue([testDefect]);
+      mockPrisma.defect.count.mockResolvedValue(1);
 
       await service.findAllByProject('proj-1', { search: 'login' });
 
@@ -142,6 +156,7 @@ describe('DefectsService', () => {
 
     it('does not add search filter when value is empty string', async () => {
       mockPrisma.defect.findMany.mockResolvedValue([]);
+      mockPrisma.defect.count.mockResolvedValue(0);
 
       await service.findAllByProject('proj-1', { search: '' });
 
@@ -190,7 +205,7 @@ describe('DefectsService', () => {
               testRunId: true,
               testRunCase: {
                 select: {
-                  suite: { select: { id: true, name: true } },
+                  testCase: { select: { id: true, title: true } },
                 },
               },
               testRun: {

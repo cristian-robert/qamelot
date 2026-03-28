@@ -41,14 +41,27 @@ export class SharedStepsService {
     });
   }
 
-  async findAllByProject(projectId: string) {
+  async findAllByProject(projectId: string, options?: { page?: number; pageSize?: number }) {
     await this.verifyProject(projectId);
 
-    return this.prisma.sharedStep.findMany({
-      where: { projectId, deletedAt: null },
-      include: { items: { orderBy: { stepNumber: 'asc' } } },
-      orderBy: { createdAt: 'desc' },
-    });
+    const page = options?.page ?? 1;
+    const pageSize = options?.pageSize ?? 50;
+    const skip = (page - 1) * pageSize;
+
+    const where = { projectId, deletedAt: null };
+
+    const [data, total] = await Promise.all([
+      this.prisma.sharedStep.findMany({
+        where,
+        include: { items: { orderBy: { stepNumber: 'asc' } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.sharedStep.count({ where }),
+    ]);
+
+    return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
   async findOne(projectId: string, id: string) {

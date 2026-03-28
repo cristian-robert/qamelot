@@ -45,23 +45,29 @@ describe('TestPlansController', () => {
   });
 
   it('findAll delegates to service without filters', async () => {
-    mockService.findAllByProject.mockResolvedValue([mockPlan]);
+    const paginated = { data: [mockPlan], total: 1, page: 1, pageSize: 50, totalPages: 1 };
+    mockService.findAllByProject.mockResolvedValue(paginated);
 
     const result = await controller.findAll(PROJECT_ID);
 
     expect(mockService.findAllByProject).toHaveBeenCalledWith(PROJECT_ID, {
       status: undefined,
+      page: undefined,
+      pageSize: undefined,
     });
-    expect(result).toEqual([mockPlan]);
+    expect(result).toEqual(paginated);
   });
 
-  it('findAll passes status filter to service', async () => {
-    mockService.findAllByProject.mockResolvedValue([]);
+  it('findAll passes status filter and pagination to service', async () => {
+    const paginated = { data: [], total: 0, page: 2, pageSize: 10, totalPages: 0 };
+    mockService.findAllByProject.mockResolvedValue(paginated);
 
-    await controller.findAll(PROJECT_ID, 'ACTIVE');
+    await controller.findAll(PROJECT_ID, 'ACTIVE', '2', '10');
 
     expect(mockService.findAllByProject).toHaveBeenCalledWith(PROJECT_ID, {
       status: 'ACTIVE',
+      page: 2,
+      pageSize: 10,
     });
   });
 

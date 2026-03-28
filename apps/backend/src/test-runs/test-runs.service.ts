@@ -52,23 +52,36 @@ export class TestRunsService {
 
   async findAllByPlan(
     planId: string,
-    filters?: { status?: string; assigneeId?: string },
+    filters?: { status?: string; assigneeId?: string; page?: number; pageSize?: number },
   ) {
     await this.verifyPlan(planId);
 
-    return this.prisma.testRun.findMany({
-      where: {
-        testPlanId: planId,
-        deletedAt: null,
-        ...(filters?.status && { status: filters.status as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' }),
-        ...(filters?.assigneeId && { assignedToId: filters.assigneeId }),
-      },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        assignedTo: { select: { id: true, name: true, email: true } },
-        _count: { select: { testRunCases: true } },
-      },
-    });
+    const page = filters?.page ?? 1;
+    const pageSize = filters?.pageSize ?? 50;
+    const skip = (page - 1) * pageSize;
+
+    const where = {
+      testPlanId: planId,
+      deletedAt: null,
+      ...(filters?.status && { status: filters.status as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' }),
+      ...(filters?.assigneeId && { assignedToId: filters.assigneeId }),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.testRun.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          assignedTo: { select: { id: true, name: true, email: true } },
+          _count: { select: { testRunCases: true } },
+        },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.testRun.count({ where }),
+    ]);
+
+    return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
   async findOne(id: string) {

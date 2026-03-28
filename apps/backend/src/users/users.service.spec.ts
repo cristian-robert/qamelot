@@ -19,6 +19,7 @@ const mockPrisma = {
     findMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    count: jest.fn(),
   },
 };
 
@@ -83,17 +84,30 @@ describe('UsersService', () => {
   });
 
   describe('findAll', () => {
-    it('returns array of user DTOs without passwords', async () => {
+    it('returns paginated user DTOs without passwords', async () => {
       mockPrisma.user.findMany.mockResolvedValue([testUser]);
+      mockPrisma.user.count.mockResolvedValue(1);
 
       const result = await service.findAll();
 
-      expect(result).toHaveLength(1);
-      expect(result[0]).not.toHaveProperty('password');
-      expect(result[0]).toMatchObject({ id: 'user-1', email: 'alice@test.com' });
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]).not.toHaveProperty('password');
+      expect(result.data[0]).toMatchObject({ id: 'user-1', email: 'alice@test.com' });
+      expect(result).toEqual({
+        data: expect.any(Array),
+        total: 1,
+        page: 1,
+        pageSize: 50,
+        totalPages: 1,
+      });
       expect(mockPrisma.user.findMany).toHaveBeenCalledWith({
         where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
+        skip: 0,
+        take: 50,
+      });
+      expect(mockPrisma.user.count).toHaveBeenCalledWith({
+        where: { deletedAt: null },
       });
     });
   });

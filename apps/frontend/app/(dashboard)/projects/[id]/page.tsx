@@ -41,7 +41,10 @@ export default function ProjectDetailPage({
 
   function handleDelete() {
     deleteProject.mutate(id, {
-      onSuccess: () => router.push('/projects'),
+      onSuccess: () => {
+        setDeleteOpen(false);
+        router.push('/projects');
+      },
     });
   }
 

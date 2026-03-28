@@ -61,7 +61,7 @@ export function CasePickerList({
         className="flex w-full items-center gap-2 border-b bg-muted/30 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/50"
         onClick={() => onToggleAll(allIds)}
       >
-        <Checkbox checked={allSelected} onCheckedChange={() => onToggleAll(allIds)} />
+        <Checkbox checked={allSelected} />
         Select all ({cases.length})
       </button>
       {cases.map((c: TestCaseDto) => (
@@ -73,7 +73,6 @@ export function CasePickerList({
         >
           <Checkbox
             checked={selectedCaseIds.has(c.id)}
-            onCheckedChange={() => onToggleCase(c.id)}
           />
           <span className="truncate">{c.title}</span>
         </button>

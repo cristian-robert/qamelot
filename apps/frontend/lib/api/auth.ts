@@ -1,4 +1,4 @@
-import type { UserDto, RegisterInput, LoginInput } from '@app/shared';
+import type { UserDto, RegisterInput, LoginInput, Permission } from '@app/shared';
 import { apiFetch } from './client';
 
 export const authApi = {
@@ -12,4 +12,6 @@ export const authApi = {
     apiFetch<UserDto>('/auth/me'),
   refresh: () =>
     apiFetch<{ ok: boolean }>('/auth/refresh', { method: 'POST' }),
+  permissions: () =>
+    apiFetch<Permission[]>('/auth/permissions'),
 };

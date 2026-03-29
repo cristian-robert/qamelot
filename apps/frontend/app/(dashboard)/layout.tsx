@@ -3,7 +3,6 @@
 import { usePathname } from 'next/navigation';
 import { Shield, LogOut } from 'lucide-react';
 import { useAuth } from '@/lib/auth/useAuth';
-import { Role } from '@app/shared';
 import { Button } from '@/components/ui/button';
 import { bottomNav, extractProjectId } from '@/components/sidebar/nav-items';
 import { NavLink } from '@/components/sidebar/NavLink';
@@ -18,7 +17,6 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
-  const isAdmin = user?.role === Role.ADMIN;
   const projectId = extractProjectId(pathname);
 
   return (
@@ -35,7 +33,7 @@ export default function DashboardLayout({
           {projectId ? (
             <ProjectSidebar projectId={projectId} pathname={pathname} />
           ) : (
-            <GlobalSidebar pathname={pathname} isAdmin={isAdmin} />
+            <GlobalSidebar pathname={pathname} />
           )}
         </nav>
 

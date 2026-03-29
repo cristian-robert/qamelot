@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Pagination } from '@/components/shared/Pagination';
 import { UserPlus, Users as UsersIcon } from 'lucide-react';
 import type { UserDto } from '@app/shared';
+import { Permission } from '@app/shared';
+import { usePermissions } from '@/lib/auth/usePermissions';
 import { useAuth } from '@/lib/auth/useAuth';
 import { useUsers } from '@/lib/users/useUsers';
 import { Button } from '@/components/ui/button';
@@ -23,11 +25,20 @@ import { UserRow } from '@/components/users/user-row';
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
+  const { hasPermission, isLoading: permLoading } = usePermissions();
   const [page, setPage] = useState(1);
   const { data: response, isLoading, isError, refetch } = useUsers({ page, pageSize: 20 });
   const users = response?.data;
   const totalPages = response?.totalPages ?? 1;
   const [inviteOpen, setInviteOpen] = useState(false);
+
+  if (!permLoading && !hasPermission(Permission.MANAGE_USERS)) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6">
+        <p className="text-muted-foreground">You do not have permission to access this page.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 space-y-6 overflow-y-auto p-6">

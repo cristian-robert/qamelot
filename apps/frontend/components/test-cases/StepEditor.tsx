@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useRef, KeyboardEvent } from 'react';
+import { useCallback, useRef, useState, KeyboardEvent } from 'react';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 export interface StepData {
@@ -117,32 +118,42 @@ export function StepEditor({ steps, onChange }: StepEditorProps) {
     [steps.length, addStep, moveStep],
   );
 
-  // Drag state
+  // Drag state — use useState for visual feedback, refs for non-visual tracking
   const dragIndexRef = useRef<number | null>(null);
-  const dragOverIndexRef = useRef<number | null>(null);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  const handleDragStart = useCallback((index: number) => {
+  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
     dragIndexRef.current = index;
+    setDragIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault();
-    dragOverIndexRef.current = index;
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
   }, []);
 
-  const handleDrop = useCallback(() => {
+  const handleDragEnd = useCallback(() => {
+    setDragIndex(null);
+    setDragOverIndex(null);
+    dragIndexRef.current = null;
+  }, []);
+
+  const handleDrop = useCallback((index: number) => {
     const from = dragIndexRef.current;
-    const to = dragOverIndexRef.current;
-    if (from === null || to === null || from === to) return;
+    if (from === null || from === index) {
+      handleDragEnd();
+      return;
+    }
 
     const updated = [...steps];
     const [moved] = updated.splice(from, 1);
-    updated.splice(to, 0, moved);
+    updated.splice(index, 0, moved);
     onChange(updated);
-
-    dragIndexRef.current = null;
-    dragOverIndexRef.current = null;
-  }, [steps, onChange]);
+    handleDragEnd();
+  }, [steps, onChange, handleDragEnd]);
 
   if (steps.length === 0) {
     return (
@@ -172,10 +183,19 @@ export function StepEditor({ steps, onChange }: StepEditorProps) {
           key={step.id ?? index}
           data-step-row
           draggable
-          onDragStart={() => handleDragStart(index)}
+          onDragStart={(e) => handleDragStart(e, index)}
           onDragOver={(e) => handleDragOver(e, index)}
-          onDrop={handleDrop}
-          className="group flex items-stretch border-x border-b bg-card transition-colors first:border-t-0 last:rounded-b-md hover:bg-muted/20"
+          onDragEnd={handleDragEnd}
+          onDrop={() => handleDrop(index)}
+          className={cn(
+            'group flex items-stretch border-x border-b bg-card transition-all first:border-t-0 last:rounded-b-md',
+            dragIndex === index
+              ? 'opacity-40 scale-[0.98]'
+              : 'hover:bg-muted/20',
+            dragOverIndex === index && dragIndex !== null && dragIndex !== index
+              ? 'border-t-2 border-t-primary'
+              : '',
+          )}
         >
           {/* Step number + drag handle */}
           <div className="flex w-11 shrink-0 cursor-grab items-center justify-center gap-0.5 text-xs active:cursor-grabbing">

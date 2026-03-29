@@ -1,16 +1,7 @@
 'use client';
 
 import { use } from 'react';
-import {
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  SkipForward,
-  Send,
-  ChevronRight,
-  Clock,
-  Zap,
-} from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, SkipForward, Send, ChevronRight, Clock, Zap } from 'lucide-react';
 import { type TestRunCaseWithResultDto, TestResultStatus } from '@app/shared';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { Button } from '@/components/ui/button';
@@ -102,7 +93,7 @@ export default function ExecutePage({
             {cases.map((trc, index) => (
               <CaseResultRow
                 key={trc.id}
-                title={trc.testCase.title}
+                title={trc.testCase.title.replace(/^"|"$/g, '')}
                 status={caseStatus(trc)}
                 isActive={index === activeCaseIndex}
                 onClick={() => selectCase(index)}
@@ -134,7 +125,7 @@ export default function ExecutePage({
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <h1 className="text-xl font-bold tracking-tight">
-                  {activeCase.testCase.title}
+                  {activeCase.testCase.title.replace(/^"|"$/g, '')}
                 </h1>
                 {activeCase.latestResult && (
                   <ResultStatusBadge status={activeCase.latestResult.status} />

@@ -131,6 +131,7 @@ export function SharedStepLibrary({ projectId, onCreateClick }: SharedStepLibrar
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => setDeleteTarget(step)}
+                      className="hover:bg-destructive/10 hover:text-destructive"
                     >
                       <Trash2 className="size-3.5 text-destructive" />
                     </Button>

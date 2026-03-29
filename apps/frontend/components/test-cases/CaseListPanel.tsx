@@ -158,7 +158,7 @@ export function CaseListPanel({
                           isActive ? 'font-medium text-primary' : 'text-foreground',
                         )}
                       >
-                        {tc.title}
+                        {tc.title.replace(/^"|"$/g, '')}
                       </p>
                       {tc.automationStatus === 'AUTOMATED' && (
                         <Zap className="h-3 w-3 shrink-0 text-green-500" />

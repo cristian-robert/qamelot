@@ -19,6 +19,7 @@ import { Save, Undo2, Clock } from 'lucide-react';
 import { CaseEditorSkeleton } from './CaseEditorSkeleton';
 import type { StepData } from './StepEditor';
 import { CaseHistoryPanel } from './CaseHistoryPanel';
+import { stripTitleQuotes } from '@/lib/format';
 import { toast } from 'sonner';
 
 interface CaseEditorProps {
@@ -155,7 +156,7 @@ export function CaseEditor({ projectId, caseId }: CaseEditorProps) {
   return (
     <div className="flex min-h-0 h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b px-4 py-2.5">
-        <h2 className="truncate text-sm font-semibold">{testCase.title}</h2>
+        <h2 className="truncate text-sm font-semibold">{stripTitleQuotes(testCase.title)}</h2>
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"

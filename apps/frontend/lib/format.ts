@@ -8,6 +8,10 @@ export function formatDateTime(date: string | null | undefined): string {
   return new Date(date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+export function stripTitleQuotes(title: string): string {
+  return title.replace(/^"|"$/g, '');
+}
+
 export function formatRelativeTime(date: string): string {
   const now = Date.now();
   const then = new Date(date).getTime();

@@ -16,6 +16,7 @@ import { StepResultsPanel } from '@/components/test-results/StepResultsPanel';
 import { ResultStatusBadge } from '@/components/test-results/ResultStatusBadge';
 import { CreateDefectDialog } from '@/components/test-results/CreateDefectDialog';
 import { priorityBadgeStyles, typeBadgeStyles } from '@/lib/constants';
+import { stripTitleQuotes } from '@/lib/format';
 import { ExecutionSkeleton } from './ExecutionSkeleton';
 import { useExecutionState } from './useExecutionState';
 
@@ -93,7 +94,7 @@ export default function ExecutePage({
             {cases.map((trc, index) => (
               <CaseResultRow
                 key={trc.id}
-                title={trc.testCase.title.replace(/^"|"$/g, '')}
+                title={stripTitleQuotes(trc.testCase.title)}
                 status={caseStatus(trc)}
                 isActive={index === activeCaseIndex}
                 onClick={() => selectCase(index)}
@@ -112,7 +113,7 @@ export default function ExecutePage({
                   label: activeCase.testCase.suite?.name ?? 'Suite',
                   href: `/projects/${projectId}/runs/${runId}`,
                 },
-                { label: activeCase.testCase.title },
+                { label: stripTitleQuotes(activeCase.testCase.title) },
               ]}
             />
 
@@ -125,7 +126,7 @@ export default function ExecutePage({
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <h1 className="text-xl font-bold tracking-tight">
-                  {activeCase.testCase.title.replace(/^"|"$/g, '')}
+                  {stripTitleQuotes(activeCase.testCase.title)}
                 </h1>
                 {activeCase.latestResult && (
                   <ResultStatusBadge status={activeCase.latestResult.status} />
@@ -245,7 +246,7 @@ export default function ExecutePage({
                 <CreateDefectDialog
                   projectId={projectId}
                   testResultId={activeCase.latestResult.id}
-                  caseTitle={activeCase.testCase.title}
+                  caseTitle={stripTitleQuotes(activeCase.testCase.title)}
                 />
               </div>
             )}

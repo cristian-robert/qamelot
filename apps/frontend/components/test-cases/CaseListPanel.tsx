@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CaseListSkeleton } from './CaseListSkeleton';
 import { priorityCompactStyles, typeCompactStyles } from '@/lib/constants';
+import { stripTitleQuotes } from '@/lib/format';
 
 interface CaseListPanelProps {
   projectId: string;
@@ -158,7 +159,7 @@ export function CaseListPanel({
                           isActive ? 'font-medium text-primary' : 'text-foreground',
                         )}
                       >
-                        {tc.title.replace(/^"|"$/g, '')}
+                        {stripTitleQuotes(tc.title)}
                       </p>
                       {tc.automationStatus === 'AUTOMATED' && (
                         <Zap className="h-3 w-3 shrink-0 text-green-500" />

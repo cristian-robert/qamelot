@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { ResultStatusBadge } from './ResultStatusBadge';
-import { formatRelativeTime } from '@/lib/format';
+import { formatRelativeTime, stripTitleQuotes } from '@/lib/format';
 
 interface ExecutionTableProps {
   cases: TestRunCaseWithResultDto[];
@@ -49,7 +49,7 @@ export function ExecutionTable({ cases, onViewResult }: ExecutionTableProps) {
           return (
             <TableRow key={trc.id}>
               <TableCell>
-                <span className="font-medium">{trc.testCase.title}</span>
+                <span className="font-medium">{stripTitleQuotes(trc.testCase.title)}</span>
               </TableCell>
               <TableCell>
                 <span className="text-muted-foreground">

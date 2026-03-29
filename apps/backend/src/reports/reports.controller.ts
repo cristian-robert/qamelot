@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { Role } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permission } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { ReportsService } from './reports.service';
 import { DateRangeDto } from './dto/date-range.dto';
 import { ComparisonQueryDto } from './dto/comparison-query.dto';
@@ -12,7 +12,7 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('projects/:projectId/reports/coverage')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.VIEW_REPORTS)
   @ApiOperation({ summary: 'Get test coverage report for a project' })
   @ApiResponse({ status: 200, description: 'Coverage report with status breakdown' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
@@ -22,7 +22,7 @@ export class ReportsController {
   }
 
   @Get('projects/:projectId/reports/progress')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.VIEW_REPORTS)
   @ApiOperation({ summary: 'Get progress report for a project (per-run counts)' })
   @ApiResponse({ status: 200, description: 'Progress report with per-run status counts' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
@@ -32,7 +32,7 @@ export class ReportsController {
   }
 
   @Get('projects/:projectId/reports/activity')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.VIEW_REPORTS)
   @ApiOperation({ summary: 'Get activity report — results per user per day' })
   @ApiResponse({ status: 200, description: 'Activity report with per-user per-day counts' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
@@ -47,7 +47,7 @@ export class ReportsController {
   }
 
   @Get('projects/:projectId/reports/reference-coverage')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.VIEW_REPORTS)
   @ApiOperation({ summary: 'Get reference coverage report — which requirements/tickets have passing tests' })
   @ApiResponse({ status: 200, description: 'Reference coverage report with per-reference status breakdown' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
@@ -57,7 +57,7 @@ export class ReportsController {
   }
 
   @Get('projects/:projectId/reports/comparison')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.VIEW_REPORTS)
   @ApiOperation({ summary: 'Compare two test runs — show delta (new passes, regressions, etc.)' })
   @ApiResponse({ status: 200, description: 'Comparison report with deltas between two runs' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
@@ -72,7 +72,7 @@ export class ReportsController {
   }
 
   @Get('projects/:projectId/reports/defect-summary')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.VIEW_REPORTS)
   @ApiOperation({ summary: 'Get defect summary — defects by age with linked test results' })
   @ApiResponse({ status: 200, description: 'Defect summary report' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
@@ -87,7 +87,7 @@ export class ReportsController {
   }
 
   @Get('projects/:projectId/reports/user-workload')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.VIEW_REPORTS)
   @ApiOperation({ summary: 'Get user workload — cases per user with completion rates' })
   @ApiResponse({ status: 200, description: 'User workload report' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
@@ -102,7 +102,7 @@ export class ReportsController {
   }
 
   @Get('reports/summary')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.VIEW_REPORTS)
   @ApiOperation({ summary: 'Get cross-project dashboard summary' })
   @ApiResponse({ status: 200, description: 'Dashboard summary with totals and recent activity' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
@@ -111,7 +111,7 @@ export class ReportsController {
   }
 
   @Get('reports/projects-stats')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.VIEW_REPORTS)
   @ApiOperation({ summary: 'Get stats for all projects (case count, active runs, pass rate)' })
   @ApiResponse({ status: 200, description: 'Per-project statistics' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })

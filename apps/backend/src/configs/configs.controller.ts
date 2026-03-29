@@ -8,8 +8,8 @@ import {
   Param,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { Role } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permission } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { ConfigsService } from './configs.service';
 import { CreateConfigGroupDto } from './dto/create-config-group.dto';
 import { UpdateConfigGroupDto } from './dto/update-config-group.dto';
@@ -24,7 +24,7 @@ export class ConfigsController {
   // ── Config Groups ──
 
   @Post('projects/:projectId/configs')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_CONFIGS)
   @ApiOperation({ summary: 'Create a config group for a project' })
   @ApiResponse({ status: 201, description: 'Config group created' })
   @ApiResponse({ status: 404, description: 'Project not found' })
@@ -52,7 +52,7 @@ export class ConfigsController {
   }
 
   @Patch('configs/:id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_CONFIGS)
   @ApiOperation({ summary: 'Update a config group' })
   @ApiResponse({ status: 200, description: 'Config group updated' })
   @ApiResponse({ status: 404, description: 'Config group not found' })
@@ -64,7 +64,7 @@ export class ConfigsController {
   }
 
   @Delete('configs/:id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_CONFIGS)
   @ApiOperation({ summary: 'Archive (soft delete) a config group' })
   @ApiResponse({ status: 200, description: 'Config group archived' })
   @ApiResponse({ status: 404, description: 'Config group not found' })
@@ -75,7 +75,7 @@ export class ConfigsController {
   // ── Config Items ──
 
   @Post('configs/:groupId/items')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_CONFIGS)
   @ApiOperation({ summary: 'Create a config item in a group' })
   @ApiResponse({ status: 201, description: 'Config item created' })
   @ApiResponse({ status: 404, description: 'Config group not found' })
@@ -87,7 +87,7 @@ export class ConfigsController {
   }
 
   @Patch('config-items/:id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_CONFIGS)
   @ApiOperation({ summary: 'Update a config item' })
   @ApiResponse({ status: 200, description: 'Config item updated' })
   @ApiResponse({ status: 404, description: 'Config item not found' })
@@ -99,7 +99,7 @@ export class ConfigsController {
   }
 
   @Delete('config-items/:id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_CONFIGS)
   @ApiOperation({ summary: 'Archive (soft delete) a config item' })
   @ApiResponse({ status: 200, description: 'Config item archived' })
   @ApiResponse({ status: 404, description: 'Config item not found' })

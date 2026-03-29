@@ -8,8 +8,8 @@ import {
   Param,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { Role } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permission } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { TestSuitesService } from './test-suites.service';
 import { CreateTestSuiteDto } from './dto/create-test-suite.dto';
 import { UpdateTestSuiteDto } from './dto/update-test-suite.dto';
@@ -20,7 +20,7 @@ export class TestSuitesController {
   constructor(private readonly testSuitesService: TestSuitesService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_SUITES)
   @ApiOperation({ summary: 'Create a test suite (root or nested)' })
   @ApiResponse({ status: 201, description: 'Suite created' })
   @ApiResponse({ status: 404, description: 'Project or parent suite not found' })
@@ -40,7 +40,7 @@ export class TestSuitesController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_SUITES)
   @ApiOperation({ summary: 'Update a test suite (rename, move, change description)' })
   @ApiResponse({ status: 200, description: 'Suite updated' })
   @ApiResponse({ status: 404, description: 'Suite or parent not found' })
@@ -53,7 +53,7 @@ export class TestSuitesController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_SUITES)
   @ApiOperation({ summary: 'Soft-delete a suite and all its descendants' })
   @ApiResponse({ status: 200, description: 'Suite(s) deleted' })
   @ApiResponse({ status: 404, description: 'Suite not found' })

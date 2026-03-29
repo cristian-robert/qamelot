@@ -9,8 +9,8 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { Role } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permission } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { DefectsService } from './defects.service';
 import { CreateDefectDto } from './dto/create-defect.dto';
 import { UpdateDefectDto } from './dto/update-defect.dto';
@@ -21,7 +21,7 @@ export class DefectsController {
   constructor(private readonly defectsService: DefectsService) {}
 
   @Post('projects/:projectId/defects')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_DEFECTS)
   @ApiOperation({ summary: 'Create a defect reference for a project' })
   @ApiResponse({ status: 201, description: 'Defect created' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN, LEAD, or TESTER role' })
@@ -69,7 +69,7 @@ export class DefectsController {
   }
 
   @Patch('defects/:id')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_DEFECTS)
   @ApiOperation({ summary: 'Update a defect reference' })
   @ApiResponse({ status: 200, description: 'Defect updated' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN, LEAD, or TESTER role' })
@@ -79,7 +79,7 @@ export class DefectsController {
   }
 
   @Delete('defects/:id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_DEFECTS)
   @ApiOperation({ summary: 'Remove (soft delete) a defect reference' })
   @ApiResponse({ status: 200, description: 'Defect removed' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })

@@ -23,8 +23,8 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { Response } from 'express';
-import { Role } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permission } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { TestCasesService } from './test-cases.service';
 import { CreateTestCaseDto } from './dto/create-test-case.dto';
 import { UpdateTestCaseDto } from './dto/update-test-case.dto';
@@ -52,7 +52,7 @@ export class TestCasesController {
   // ── Bulk Operations ──
 
   @Patch('cases/bulk')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_CASES)
   @ApiOperation({ summary: 'Bulk update fields on multiple test cases' })
   @ApiResponse({ status: 200, description: 'Cases updated with count' })
   @ApiResponse({ status: 404, description: 'One or more cases not found' })
@@ -64,7 +64,7 @@ export class TestCasesController {
   }
 
   @Post('cases/bulk-move')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_CASES)
   @ApiOperation({ summary: 'Bulk move test cases to another suite' })
   @ApiResponse({ status: 201, description: 'Cases moved with count' })
   @ApiResponse({ status: 404, description: 'Cases or target suite not found' })
@@ -80,7 +80,7 @@ export class TestCasesController {
   }
 
   @Delete('cases/bulk')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_CASES)
   @ApiOperation({ summary: 'Bulk soft-delete multiple test cases' })
   @ApiResponse({ status: 200, description: 'Cases deleted with count' })
   @ApiResponse({ status: 404, description: 'One or more cases not found' })
@@ -112,7 +112,7 @@ export class TestCasesController {
   }
 
   @Post('cases/import')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_CASES)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Import test cases from a CSV file' })
@@ -141,7 +141,7 @@ export class TestCasesController {
   // ── Test Case CRUD ──
 
   @Post('suites/:suiteId/cases')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_CASES)
   @ApiOperation({ summary: 'Create a test case in a suite' })
   @ApiResponse({ status: 201, description: 'Test case created' })
   @ApiResponse({ status: 404, description: 'Project or suite not found' })
@@ -195,7 +195,7 @@ export class TestCasesController {
   }
 
   @Patch('cases/:id')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_CASES)
   @ApiOperation({ summary: 'Update a test case' })
   @ApiResponse({ status: 200, description: 'Test case updated' })
   @ApiResponse({ status: 404, description: 'Test case not found' })
@@ -220,7 +220,7 @@ export class TestCasesController {
   }
 
   @Delete('cases/:id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_CASES)
   @ApiOperation({ summary: 'Soft-delete a test case' })
   @ApiResponse({ status: 200, description: 'Test case deleted' })
   @ApiResponse({ status: 404, description: 'Test case not found' })
@@ -234,7 +234,7 @@ export class TestCasesController {
   // ── Copy / Move ──
 
   @Post('cases/:id/copy')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_CASES)
   @ApiOperation({ summary: 'Copy a test case to another suite' })
   @ApiResponse({ status: 201, description: 'Test case copied' })
   @ApiResponse({ status: 404, description: 'Test case or target suite not found' })
@@ -247,7 +247,7 @@ export class TestCasesController {
   }
 
   @Post('cases/:id/move')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_CASES)
   @ApiOperation({ summary: 'Move a test case to another suite' })
   @ApiResponse({ status: 200, description: 'Test case moved' })
   @ApiResponse({ status: 404, description: 'Test case or target suite not found' })
@@ -262,7 +262,7 @@ export class TestCasesController {
   // ── Steps CRUD ──
 
   @Post('cases/:caseId/steps')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_CASES)
   @ApiOperation({ summary: 'Add a step to a test case' })
   @ApiResponse({ status: 201, description: 'Step created' })
   @ApiResponse({ status: 404, description: 'Test case not found' })
@@ -286,7 +286,7 @@ export class TestCasesController {
   }
 
   @Patch('cases/:caseId/steps/:stepId')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_CASES)
   @ApiOperation({ summary: 'Update a test case step' })
   @ApiResponse({ status: 200, description: 'Step updated' })
   @ApiResponse({ status: 404, description: 'Step not found' })
@@ -300,7 +300,7 @@ export class TestCasesController {
   }
 
   @Delete('cases/:caseId/steps/:stepId')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_CASES)
   @ApiOperation({ summary: 'Delete a test case step' })
   @ApiResponse({ status: 200, description: 'Step deleted' })
   @ApiResponse({ status: 404, description: 'Step not found' })
@@ -313,7 +313,7 @@ export class TestCasesController {
   }
 
   @Post('cases/:caseId/steps/reorder')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_CASES)
   @ApiOperation({ summary: 'Reorder steps within a test case' })
   @ApiResponse({ status: 200, description: 'Steps reordered' })
   @ApiResponse({ status: 404, description: 'Test case not found' })

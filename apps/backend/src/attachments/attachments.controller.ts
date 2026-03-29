@@ -13,8 +13,8 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { Response } from 'express';
-import { Role, AttachmentEntityType } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permission, AttachmentEntityType } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { AttachmentsService } from './attachments.service';
 import { UploadAttachmentDto } from './dto/upload-attachment.dto';
 
@@ -28,7 +28,7 @@ export class AttachmentsController {
   constructor(private readonly attachmentsService: AttachmentsService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.MANAGE_ATTACHMENTS)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload a file attachment' })
@@ -84,7 +84,7 @@ export class AttachmentsController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.MANAGE_ATTACHMENTS)
   @ApiOperation({ summary: 'Delete an attachment' })
   @ApiResponse({ status: 200, description: 'Attachment deleted' })
   @ApiResponse({ status: 404, description: 'Attachment not found' })

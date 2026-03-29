@@ -12,9 +12,9 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Response } from 'express';
 import { Observable, map, merge, interval } from 'rxjs';
-import { Role } from '@app/shared';
+import { Permission } from '@app/shared';
 import type { RunProgressEvent } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { TestResultsService } from './test-results.service';
 import { RunEventsService } from '../run-events/run-events.service';
 import { SubmitTestResultDto } from './dto/submit-test-result.dto';
@@ -34,7 +34,7 @@ export class TestResultsController {
   ) {}
 
   @Post('runs/:runId/results/bulk')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.SUBMIT_RESULTS)
   @ApiOperation({ summary: 'Bulk submit results for multiple cases in a run' })
   @ApiResponse({ status: 201, description: 'Results submitted with count' })
   @ApiResponse({ status: 400, description: 'One or more cases do not belong to this run' })
@@ -48,7 +48,7 @@ export class TestResultsController {
   }
 
   @Post('runs/:runId/results')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.SUBMIT_RESULTS)
   @ApiOperation({ summary: 'Submit a test result for a case in a run' })
   @ApiResponse({ status: 201, description: 'Result submitted' })
   @ApiResponse({ status: 400, description: 'Case does not belong to this run' })
@@ -113,7 +113,7 @@ export class TestResultsController {
   }
 
   @Patch('results/:id')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.SUBMIT_RESULTS)
   @ApiOperation({ summary: 'Update a test result (change status, comment, elapsed)' })
   @ApiResponse({ status: 200, description: 'Result updated' })
   @ApiResponse({ status: 404, description: 'Result not found' })

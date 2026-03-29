@@ -10,8 +10,8 @@ import {
   Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { Role } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Role, Permission } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { UsersService } from './users.service';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
@@ -27,7 +27,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @Roles(Role.ADMIN)
+  @RequirePermission(Permission.MANAGE_USERS)
   @ApiOperation({ summary: 'List all active users' })
   @ApiResponse({ status: 200, description: 'Paginated list of active users' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })
@@ -55,7 +55,7 @@ export class UsersController {
   }
 
   @Post('invite')
-  @Roles(Role.ADMIN)
+  @RequirePermission(Permission.MANAGE_USERS)
   @ApiOperation({ summary: 'Invite a new user with temporary password' })
   @ApiResponse({ status: 201, description: 'User created with temporary password' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })
@@ -65,7 +65,7 @@ export class UsersController {
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN)
+  @RequirePermission(Permission.MANAGE_USERS)
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiResponse({ status: 200, description: 'The user' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })
@@ -75,7 +75,7 @@ export class UsersController {
   }
 
   @Patch(':id/role')
-  @Roles(Role.ADMIN)
+  @RequirePermission(Permission.MANAGE_USERS)
   @ApiOperation({ summary: 'Change user role' })
   @ApiResponse({ status: 200, description: 'Role updated' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role or self-elevation' })
@@ -89,7 +89,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @RequirePermission(Permission.MANAGE_USERS)
   @ApiOperation({ summary: 'Deactivate (soft delete) a user' })
   @ApiResponse({ status: 200, description: 'User deactivated' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role or self-deactivation' })

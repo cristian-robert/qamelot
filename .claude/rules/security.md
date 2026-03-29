@@ -7,7 +7,7 @@
 - All routes protected by `JwtAuthGuard` by default
 - Public routes must be explicitly decorated with `@Public()`
 - Role hierarchy: `ADMIN` > `LEAD` > `TESTER` > `VIEWER`
-- Role enforcement via `RolesGuard` — NEVER inline role checks in services
+- Permission enforcement via `PermissionsGuard` — NEVER inline permission checks in services
 
 ## Input Validation
 - ALL incoming DTOs validated with `class-validator` (NestJS `ValidationPipe` global)

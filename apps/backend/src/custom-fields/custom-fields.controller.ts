@@ -100,7 +100,7 @@ export class CustomFieldsController {
   }
 
   @Post('values/:entityType/:entityId')
-  @RequirePermission(Permission.VIEW_CUSTOM_FIELDS)
+  @RequirePermission(Permission.EDIT_CUSTOM_FIELDS)
   @ApiOperation({ summary: 'Set custom field values for an entity' })
   @ApiResponse({ status: 201, description: 'Custom field values saved' })
   @ApiResponse({ status: 400, description: 'Validation error' })

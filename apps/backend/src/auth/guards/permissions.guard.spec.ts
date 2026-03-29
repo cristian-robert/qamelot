@@ -62,6 +62,11 @@ describe('PermissionsGuard', () => {
     expect(guard.canActivate(mockContext('VIEWER'))).toBe(false);
   });
 
+  it('should allow VIEWER for VIEW_REPORTS', () => {
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([Permission.VIEW_REPORTS]);
+    expect(guard.canActivate(mockContext('VIEWER'))).toBe(true);
+  });
+
   it('should require ALL permissions (not any)', () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue([
       Permission.MANAGE_CASES,

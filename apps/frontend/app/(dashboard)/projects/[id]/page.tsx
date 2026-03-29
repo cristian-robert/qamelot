@@ -65,17 +65,16 @@ export default function ProjectDetailPage({
         <PageHeader
           title={project?.name ?? 'Project'}
           action={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Button variant="outline" size="sm" disabled>
                 <Pencil className="size-3.5" />
                 Edit
               </Button>
               <Button
-                variant="outline"
+                variant="destructive"
                 size="sm"
                 onClick={() => setDeleteOpen(true)}
                 disabled={deleteProject.isPending}
-                className="text-destructive hover:text-destructive"
               >
                 <Trash2 className="size-3.5" />
                 Delete

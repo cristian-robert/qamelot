@@ -110,10 +110,9 @@ export default function CustomFieldsPage({
                 </TableCell>
                 <TableCell>
                   <Button
-                    variant="ghost"
+                    variant="destructive"
                     size="sm"
                     onClick={() => setDeleteTarget(def)}
-                    className="text-destructive hover:text-destructive"
                   >
                     Delete
                   </Button>

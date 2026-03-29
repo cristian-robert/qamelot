@@ -655,3 +655,5 @@ export interface AutomationSyncResultDto {
   stale: number;
   unmatched: string[]; // automationIds not found in Qamelot
 }
+
+export { Permission, ROLE_PERMISSIONS } from './permissions';

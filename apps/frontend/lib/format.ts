@@ -9,7 +9,10 @@ export function formatDateTime(date: string | null | undefined): string {
 }
 
 export function stripTitleQuotes(title: string): string {
-  return title.replace(/^"|"$/g, '');
+  if (title.length >= 2 && title.startsWith('"') && title.endsWith('"')) {
+    return title.slice(1, -1);
+  }
+  return title;
 }
 
 export function formatRelativeTime(date: string): string {

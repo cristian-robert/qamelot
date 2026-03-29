@@ -127,6 +127,7 @@ export function StepEditor({ steps, onChange }: StepEditorProps) {
     dragIndexRef.current = index;
     setDragIndex(index);
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
@@ -150,7 +151,8 @@ export function StepEditor({ steps, onChange }: StepEditorProps) {
 
     const updated = [...steps];
     const [moved] = updated.splice(from, 1);
-    updated.splice(index, 0, moved);
+    const targetIndex = from < index ? index - 1 : index;
+    updated.splice(targetIndex, 0, moved);
     onChange(updated);
     handleDragEnd();
   }, [steps, onChange, handleDragEnd]);

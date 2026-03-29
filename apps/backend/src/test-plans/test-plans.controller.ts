@@ -9,8 +9,8 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { Role } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permission } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { TestPlansService } from './test-plans.service';
 import { CreateTestPlanDto } from './dto/create-test-plan.dto';
 import { UpdateTestPlanDto } from './dto/update-test-plan.dto';
@@ -21,7 +21,7 @@ export class TestPlansController {
   constructor(private readonly testPlansService: TestPlansService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_PLANS)
   @ApiOperation({ summary: 'Create a test plan' })
   @ApiResponse({ status: 201, description: 'Test plan created' })
   @ApiResponse({ status: 404, description: 'Project not found' })
@@ -64,7 +64,7 @@ export class TestPlansController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_PLANS)
   @ApiOperation({ summary: 'Update a test plan' })
   @ApiResponse({ status: 200, description: 'Test plan updated' })
   @ApiResponse({ status: 404, description: 'Test plan not found' })
@@ -77,7 +77,7 @@ export class TestPlansController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_PLANS)
   @ApiOperation({ summary: 'Archive (soft delete) a test plan' })
   @ApiResponse({ status: 200, description: 'Test plan archived' })
   @ApiResponse({ status: 404, description: 'Test plan not found' })

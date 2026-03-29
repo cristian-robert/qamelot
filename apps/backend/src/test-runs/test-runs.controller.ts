@@ -9,8 +9,8 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { Role } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permission } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { TestRunsService } from './test-runs.service';
 import { CreateTestRunDto } from './dto/create-test-run.dto';
 import { UpdateTestRunDto } from './dto/update-test-run.dto';
@@ -22,7 +22,7 @@ export class TestRunsController {
   constructor(private readonly testRunsService: TestRunsService) {}
 
   @Post('plans/:planId/runs')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EXECUTE_RUNS)
   @ApiOperation({ summary: 'Create a test run under a plan' })
   @ApiResponse({ status: 201, description: 'Test run created' })
   @ApiResponse({ status: 404, description: 'Plan or cases not found' })
@@ -34,7 +34,7 @@ export class TestRunsController {
   }
 
   @Post('plans/:planId/runs/matrix')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EXECUTE_RUNS)
   @ApiOperation({ summary: 'Create matrix test runs — one per config combination' })
   @ApiResponse({ status: 201, description: 'Matrix runs created' })
   @ApiResponse({ status: 400, description: 'Invalid config items' })
@@ -78,7 +78,7 @@ export class TestRunsController {
   }
 
   @Patch('runs/:id')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EXECUTE_RUNS)
   @ApiOperation({ summary: 'Update a test run' })
   @ApiResponse({ status: 200, description: 'Test run updated' })
   @ApiResponse({ status: 404, description: 'Test run not found' })
@@ -90,7 +90,7 @@ export class TestRunsController {
   }
 
   @Patch('runs/:id/close')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EXECUTE_RUNS)
   @ApiOperation({ summary: 'Close a test run — marks it as COMPLETED and freezes results' })
   @ApiResponse({ status: 200, description: 'Test run closed' })
   @ApiResponse({ status: 404, description: 'Test run not found' })
@@ -100,7 +100,7 @@ export class TestRunsController {
   }
 
   @Post('runs/:id/rerun')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EXECUTE_RUNS)
   @ApiOperation({ summary: 'Create a rerun from a completed run with failed/untested cases' })
   @ApiResponse({ status: 201, description: 'Rerun created' })
   @ApiResponse({ status: 400, description: 'Run is not completed or no cases to rerun' })
@@ -110,7 +110,7 @@ export class TestRunsController {
   }
 
   @Delete('runs/:id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_RUNS)
   @ApiOperation({ summary: 'Archive (soft delete) a test run' })
   @ApiResponse({ status: 200, description: 'Test run archived' })
   @ApiResponse({ status: 404, description: 'Test run not found' })

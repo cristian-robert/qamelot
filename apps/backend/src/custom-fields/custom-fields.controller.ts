@@ -9,8 +9,8 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { Role, CustomFieldEntityType } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permission, CustomFieldEntityType } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CustomFieldsService } from './custom-fields.service';
 import { CreateCustomFieldDefinitionDto } from './dto/create-custom-field-definition.dto';
 import { UpdateCustomFieldDefinitionDto } from './dto/update-custom-field-definition.dto';
@@ -24,7 +24,7 @@ export class CustomFieldsController {
   // ── Definition CRUD ──
 
   @Post('definitions')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_CUSTOM_FIELDS)
   @ApiOperation({ summary: 'Create a custom field definition' })
   @ApiResponse({ status: 201, description: 'Custom field definition created' })
   @ApiResponse({ status: 404, description: 'Project not found' })
@@ -63,7 +63,7 @@ export class CustomFieldsController {
   }
 
   @Patch('definitions/:definitionId')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_CUSTOM_FIELDS)
   @ApiOperation({ summary: 'Update a custom field definition' })
   @ApiResponse({ status: 200, description: 'Custom field definition updated' })
   @ApiResponse({ status: 404, description: 'Definition not found' })
@@ -76,7 +76,7 @@ export class CustomFieldsController {
   }
 
   @Delete('definitions/:definitionId')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_CUSTOM_FIELDS)
   @ApiOperation({ summary: 'Soft-delete a custom field definition' })
   @ApiResponse({ status: 200, description: 'Custom field definition deleted' })
   @ApiResponse({ status: 404, description: 'Definition not found' })
@@ -100,7 +100,7 @@ export class CustomFieldsController {
   }
 
   @Post('values/:entityType/:entityId')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_CUSTOM_FIELDS)
   @ApiOperation({ summary: 'Set custom field values for an entity' })
   @ApiResponse({ status: 201, description: 'Custom field values saved' })
   @ApiResponse({ status: 400, description: 'Validation error' })

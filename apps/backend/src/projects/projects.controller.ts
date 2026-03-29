@@ -9,8 +9,8 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { Role } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permission } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -21,7 +21,7 @@ export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_PROJECTS)
   @ApiOperation({ summary: 'Create a new project' })
   @ApiResponse({ status: 201, description: 'Project created' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
@@ -53,7 +53,7 @@ export class ProjectsController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_PROJECTS)
   @ApiOperation({ summary: 'Update a project' })
   @ApiResponse({ status: 200, description: 'Project updated' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
@@ -63,7 +63,7 @@ export class ProjectsController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @RequirePermission(Permission.DELETE_PROJECTS)
   @ApiOperation({ summary: 'Archive (soft delete) a project' })
   @ApiResponse({ status: 200, description: 'Project archived' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })

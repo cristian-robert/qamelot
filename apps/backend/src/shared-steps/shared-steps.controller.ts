@@ -9,8 +9,8 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { Role } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permission } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { SharedStepsService } from './shared-steps.service';
 import { CreateSharedStepDto } from './dto/create-shared-step.dto';
 import { UpdateSharedStepDto } from './dto/update-shared-step.dto';
@@ -21,7 +21,7 @@ export class SharedStepsController {
   constructor(private readonly sharedStepsService: SharedStepsService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_SHARED_STEPS)
   @ApiOperation({ summary: 'Create a shared step in a project' })
   @ApiResponse({ status: 201, description: 'Shared step created' })
   @ApiResponse({ status: 404, description: 'Project not found' })
@@ -61,7 +61,7 @@ export class SharedStepsController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN, Role.LEAD, Role.TESTER)
+  @RequirePermission(Permission.EDIT_SHARED_STEPS)
   @ApiOperation({ summary: 'Update a shared step' })
   @ApiResponse({ status: 200, description: 'Shared step updated' })
   @ApiResponse({ status: 404, description: 'Shared step not found' })
@@ -74,7 +74,7 @@ export class SharedStepsController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_SHARED_STEPS)
   @ApiOperation({ summary: 'Soft-delete a shared step' })
   @ApiResponse({ status: 200, description: 'Shared step deleted' })
   @ApiResponse({ status: 404, description: 'Shared step not found' })

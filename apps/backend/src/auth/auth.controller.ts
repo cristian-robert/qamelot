@@ -15,6 +15,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { Public } from './decorators/public.decorator';
+import { Role, Permission, ROLE_PERMISSIONS } from '@app/shared';
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -104,5 +105,13 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   me(@Req() req: Request & { user: { id: string } }) {
     return this.auth.getProfile(req.user.id);
+  }
+
+  @Get('permissions')
+  @ApiOperation({ summary: 'Get current user effective permissions' })
+  @ApiResponse({ status: 200, description: 'Array of permission strings' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  getPermissions(@Req() req: Request & { user: { id: string; role: Role } }): Permission[] {
+    return ROLE_PERMISSIONS[req.user.role] ?? [];
   }
 }

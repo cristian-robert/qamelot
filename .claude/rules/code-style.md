@@ -23,7 +23,7 @@ paths:
 - Services own ALL business logic
 - DTOs use `class-validator` decorators (`@IsString()`, `@IsEnum()`, etc.)
 - ALL endpoints documented with `@ApiOperation()` + `@ApiResponse()` (Swagger)
-- Auth via Guards (`JwtAuthGuard`, `RolesGuard`) — never inline role checks
+- Auth via Guards (`JwtAuthGuard`, `PermissionsGuard`) — never inline permission checks
 - NEVER put business logic in controllers or modules
 - Use NestJS `Logger` — NEVER `console.log`
 

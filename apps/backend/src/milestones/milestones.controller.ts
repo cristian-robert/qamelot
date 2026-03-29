@@ -9,8 +9,8 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { Role } from '@app/shared';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Permission } from '@app/shared';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { MilestonesService } from './milestones.service';
 import { CreateMilestoneDto } from './dto/create-milestone.dto';
 import { UpdateMilestoneDto } from './dto/update-milestone.dto';
@@ -21,7 +21,7 @@ export class MilestonesController {
   constructor(private readonly milestonesService: MilestonesService) {}
 
   @Post('projects/:projectId/milestones')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_MILESTONES)
   @ApiOperation({ summary: 'Create a milestone for a project' })
   @ApiResponse({ status: 201, description: 'Milestone created' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
@@ -62,7 +62,7 @@ export class MilestonesController {
   }
 
   @Patch('milestones/:id')
-  @Roles(Role.ADMIN, Role.LEAD)
+  @RequirePermission(Permission.MANAGE_MILESTONES)
   @ApiOperation({ summary: 'Update / close a milestone' })
   @ApiResponse({ status: 200, description: 'Milestone updated' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN or LEAD role' })
@@ -72,7 +72,7 @@ export class MilestonesController {
   }
 
   @Delete('milestones/:id')
-  @Roles(Role.ADMIN)
+  @RequirePermission(Permission.DELETE_MILESTONES)
   @ApiOperation({ summary: 'Archive (soft delete) a milestone' })
   @ApiResponse({ status: 200, description: 'Milestone archived' })
   @ApiResponse({ status: 403, description: 'Forbidden — requires ADMIN role' })

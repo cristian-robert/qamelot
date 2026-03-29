@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { MoreHorizontal, Trash2 } from 'lucide-react';
 import type { UserDto } from '@app/shared';
 import { Role } from '@app/shared';
@@ -41,12 +42,19 @@ export function UserRow({ user, currentUserId }: UserRowProps) {
   const isSelf = user.id === currentUserId;
 
   function handleRoleChange(role: Role) {
-    updateRole.mutate({ id: user.id, data: { role } });
+    updateRole.mutate({ id: user.id, data: { role } }, {
+      onSuccess: () => toast.success(`Role updated to ${role}`),
+      onError: () => toast.error('Failed to update role'),
+    });
   }
 
   function handleDelete() {
     deleteUser.mutate(user.id, {
-      onSuccess: () => setDeleteOpen(false),
+      onSuccess: () => {
+        setDeleteOpen(false);
+        toast.success('User deactivated');
+      },
+      onError: () => toast.error('Failed to deactivate user'),
     });
   }
 
